@@ -1,0 +1,29 @@
+services:
+  mysql:
+    # v0.1 使用 MySQL 单节点，后续 v1.4 再演进到主从复制。
+    image: mysql:8.4
+    container_name: java-demo-mysql
+    restart: unless-stopped
+    environment:
+      # 以下账号密码只用于本地学习环境，真实环境不要直接复用。
+      MYSQL_ROOT_PASSWORD: root_pwd
+      MYSQL_DATABASE: java_demo
+      MYSQL_USER: java_demo
+      MYSQL_PASSWORD: java_demo_pwd
+      TZ: Asia/Shanghai
+    ports:
+      # 暴露到本机 3306，方便 Spring Boot 本地进程和数据库工具连接。
+      - "3306:3306"
+    volumes:
+      # 使用命名卷持久化 MySQL 数据，容器删除后数据仍可保留。
+      - java_demo_mysql_data:/var/lib/mysql
+    healthcheck:
+      # docker compose 通过该检查判断 MySQL 是否已经可以接受连接。
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot_pwd --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  # 项目专用 MySQL 数据卷，避免与其他学习项目混用。
+  java_demo_mysql_data:

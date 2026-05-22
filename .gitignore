@@ -1,0 +1,28 @@
+# Build output
+target/
+build/
+out/
+.mvn/user-home/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Runtime files
+tmp/
+
+# local
+notebook/
+
+# Environment files with real secrets
+.env
+*.local
+
+# OS files
+.DS_Store
+Thumbs.db

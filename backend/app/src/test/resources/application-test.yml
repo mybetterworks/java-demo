@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    # 测试环境使用 H2 内存数据库，避免单元/集成测试依赖 Docker MySQL。
+    driver-class-name: org.h2.Driver
+    # MODE=MySQL 让 H2 尽量模拟 MySQL 语法，便于复用 schema.sql。
+    url: jdbc:h2:mem:java_demo;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  sql:
+    init:
+      # 每次测试启动都初始化表结构，保证测试之间相互隔离。
+      mode: always
+
+app:
+  jwt:
+    # 测试专用密钥，长度满足 HS256 要求，不用于真实环境。
+    secret: java-demo-test-secret-change-me-32chars
+    # 与本地运行配置保持一致，便于测试断言登录响应。
+    expiration-seconds: 7200

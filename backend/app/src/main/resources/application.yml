@@ -1,0 +1,46 @@
+server:
+  # 本地后端默认端口。若 8080 被 IDE 或其他应用占用，可启动时用 --server.port=18080 临时覆盖。
+  port: 8080
+
+spring:
+  application:
+    # 应用名称，后续接入 Nacos、链路追踪和日志采集时会作为服务标识。
+    name: java-demo-app
+  datasource:
+    # v0.1 运行环境连接 Docker Desktop 中的 MySQL 单节点。
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # allowPublicKeyRetrieval=true 便于本地 MySQL 8 首次连接；生产环境应结合 SSL 和账号权限重新评估。
+    url: jdbc:mysql://localhost:3306/java_demo?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    # 数据库账号支持环境变量覆盖，避免把真实密码写入代码仓库。
+    username: ${JAVA_DEMO_DB_USERNAME:java_demo}
+    password: ${JAVA_DEMO_DB_PASSWORD:java_demo_pwd}
+  sql:
+    init:
+      # 每次启动都尝试执行 schema.sql；脚本使用 IF NOT EXISTS，因此重复启动是安全的。
+      mode: always
+
+mybatis-plus:
+  configuration:
+    # 数据库字段使用下划线，Java 字段使用驼峰，通过该配置自动完成映射。
+    map-underscore-to-camel-case: true
+  global-config:
+    # 关闭 MyBatis Plus 启动 banner，让本地日志更聚焦业务启动信息。
+    banner: false
+
+springdoc:
+  api-docs:
+    # OpenAPI JSON 地址，测试和前端工具都可以读取该接口描述。
+    path: /v3/api-docs
+  swagger-ui:
+    # Swagger UI 页面入口，用于浏览器可视化查看和调试后端接口。
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+    tags-sorter: alpha
+
+app:
+  jwt:
+    # 本地默认 JWT 密钥仅用于学习环境；真实环境必须通过 JAVA_DEMO_JWT_SECRET 覆盖。
+    secret: ${JAVA_DEMO_JWT_SECRET:java-demo-v0-1-local-secret-change-me-32chars}
+    # JWT 有效期，单位秒；默认 2 小时。
+    expiration-seconds: ${JAVA_DEMO_JWT_EXPIRATION_SECONDS:7200}
