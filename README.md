@@ -4,11 +4,11 @@
 
 ## 当前版本
 
-当前已完成 `v0.1 MVP Login`。
+当前已完成 `v0.2 User CRUD`。
 
 | 项目 | 内容 |
 |---|---|
-| 核心能力 | 注册、登录、JWT 签发、获取当前登录用户 |
+| 核心能力 | 注册、登录、JWT 签发、获取当前登录用户、用户管理 CRUD、分页查询、逻辑删除、修改密码 |
 | 后端 | Spring Boot `3.3.5` |
 | ORM | MyBatis Plus `3.5.7` |
 | 数据库 | MySQL `8.4` Docker 单节点 |
@@ -107,7 +107,7 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 .\mvnw.cmd package
 ```
 
-当前集成测试覆盖注册、重复注册、登录、JWT 查询当前用户、无 token 拦截、错误密码拦截和 OpenAPI JSON 生成。
+当前集成测试覆盖注册、重复注册、登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码和 OpenAPI JSON 生成。
 
 ## 启动后端
 
@@ -120,7 +120,7 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.1.0-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.2.0-SNAPSHOT.jar
 ```
 
 应用默认端口：
@@ -152,6 +152,12 @@ D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.1.0
 | `POST` | `/api/auth/register` | 注册用户 | 否 |
 | `POST` | `/api/auth/login` | 登录并返回 JWT | 否 |
 | `GET` | `/api/users/me` | 获取当前用户 | 是 |
+| `GET` | `/api/users` | 用户分页查询，支持 `current`、`size`、`username`、`status` | 是 |
+| `GET` | `/api/users/{id}` | 用户详情 | 是 |
+| `POST` | `/api/users` | 创建用户 | 是 |
+| `PUT` | `/api/users/{id}` | 更新用户昵称、状态、角色 | 是 |
+| `DELETE` | `/api/users/{id}` | 逻辑删除用户 | 是 |
+| `PUT` | `/api/users/{id}/password` | 修改用户密码 | 是 |
 
 注册请求：
 
@@ -174,6 +180,39 @@ $token = $login.data.accessToken
 Invoke-RestMethod -Method Get -Uri http://localhost:8080/api/users/me -Headers @{ Authorization = "Bearer $token" }
 ```
 
+用户分页查询：
+
+```powershell
+Invoke-RestMethod -Method Get -Uri "http://localhost:8080/api/users?current=1&size=10&username=alice&status=1" -Headers @{ Authorization = "Bearer $token" }
+```
+
+创建用户：
+
+```powershell
+$body = @{ username = "bob"; password = "secret123"; nickname = "Bob"; status = 1; role = "USER" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/users -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body
+```
+
+更新用户：
+
+```powershell
+$body = @{ nickname = "Bobby"; status = 1; role = "ADMIN" } | ConvertTo-Json
+Invoke-RestMethod -Method Put -Uri http://localhost:8080/api/users/2 -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body
+```
+
+修改密码：
+
+```powershell
+$body = @{ password = "newSecret123" } | ConvertTo-Json
+Invoke-RestMethod -Method Put -Uri http://localhost:8080/api/users/2/password -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body
+```
+
+逻辑删除用户：
+
+```powershell
+Invoke-RestMethod -Method Delete -Uri http://localhost:8080/api/users/2 -Headers @{ Authorization = "Bearer $token" }
+```
+
 ## Swagger UI
 
 启动后端后访问：
@@ -182,7 +221,7 @@ Invoke-RestMethod -Method Get -Uri http://localhost:8080/api/users/me -Headers @
 http://localhost:8080/swagger-ui.html
 ```
 
-Swagger UI 中可以直接查看并调试当前 v0.1 的所有接口。访问 `/api/users/me` 这类需要登录的接口时，先调用登录接口拿到 `accessToken`，再点击页面右上角 `Authorize`，在 `bearerAuth` 中填入登录返回的 token。
+Swagger UI 中可以直接查看并调试当前 v0.2 的所有接口。访问 `/api/users/me`、`/api/users` 这类需要登录的接口时，先调用登录接口拿到 `accessToken`，再点击页面右上角 `Authorize`，在 `bearerAuth` 中填入登录返回的 token。
 
 OpenAPI JSON 地址：
 
@@ -199,6 +238,12 @@ http://localhost:8080/v3/api-docs
 | `JAVA_DEMO_JWT_SECRET` | `java-demo-v0-1-local-secret-change-me-32chars` | JWT 签名密钥，至少 32 字节 |
 | `JAVA_DEMO_JWT_EXPIRATION_SECONDS` | `7200` | JWT 有效期，单位秒 |
 
+## 数据库升级
+
+`v0.2` 在 `sys_user` 表上新增了 `role`、`deleted`、`last_login_at` 字段。新库会通过 `schema.sql` 直接创建完整表结构；如果本地已经存在 `v0.1` 表，应用启动时会通过轻量迁移器自动检查并补齐缺失字段。
+
+当前仍未引入 Flyway 或 Liquibase，数据库迁移先保持最小实现；后续里程碑如果迁移脚本变复杂，再单独引入专业迁移工具。
+
 ## 下一步
 
-下一个 milestone 是 `v0.2 User CRUD`，目标是在当前登录闭环基础上增加用户管理 CRUD、分页查询和更完整的用户字段。
+下一个 milestone 是 `v0.3 React Frontend`，目标是在当前后端登录和用户管理接口基础上增加 React 管理端。

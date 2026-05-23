@@ -101,6 +101,9 @@ class AuthFlowIntegrationTest {
         assertThat(openApiJson.path("paths").has("/api/auth/register")).isTrue();
         assertThat(openApiJson.path("paths").has("/api/auth/login")).isTrue();
         assertThat(openApiJson.path("paths").has("/api/users/me")).isTrue();
+        assertThat(openApiJson.path("paths").has("/api/users")).isTrue();
+        assertThat(openApiJson.path("paths").has("/api/users/{id}")).isTrue();
+        assertThat(openApiJson.path("paths").has("/api/users/{id}/password")).isTrue();
         assertThat(openApiJson.path("components").path("securitySchemes").has("bearerAuth")).isTrue();
     }
 

@@ -7,8 +7,9 @@ import org.apache.ibatis.annotations.Mapper;
 /**
  * 用户表 MyBatis Plus Mapper。
  *
- * <p>继承 BaseMapper 后即可获得常用 CRUD 方法，例如 insert、selectById、selectOne。
- * v0.1 业务查询较少，暂时不需要自定义 SQL；后续用户管理分页、角色查询等能力可以从这里扩展。</p>
+ * <p>继承 BaseMapper 后即可获得常用 CRUD 方法，例如 insert、selectById、selectOne、selectPage。
+ * v0.2 的分页查询仍然优先使用 MyBatis Plus 条件构造器，暂不写 XML SQL，
+ * 让学习重点放在 CRUD 能力和分页插件上。</p>
  */
 @Mapper
 public interface UserMapper extends BaseMapper<User> {

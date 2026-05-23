@@ -29,6 +29,12 @@ public class UserAccountService {
     /** 当前版本约定 1 表示账号启用，后续可以扩展禁用、锁定、待激活等状态。 */
     private static final int STATUS_ENABLED = 1;
 
+    /** v0.2 默认角色，当前只做字段存储，不做权限判断。 */
+    private static final String DEFAULT_ROLE = "USER";
+
+    /** 逻辑删除默认值，0 表示未删除。 */
+    private static final int NOT_DELETED = 0;
+
     private final UserMapper userMapper;
     private final PasswordService passwordService;
     private final JwtService jwtService;
@@ -62,6 +68,8 @@ public class UserAccountService {
         user.setPasswordHash(passwordService.hash(request.getPassword()));
         user.setNickname(resolveNickname(request.getNickname(), username));
         user.setStatus(STATUS_ENABLED);
+        user.setRole(DEFAULT_ROLE);
+        user.setDeleted(NOT_DELETED);
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         userMapper.insert(user);
@@ -83,6 +91,11 @@ public class UserAccountService {
         if (user == null || user.getStatus() == null || user.getStatus() != STATUS_ENABLED || !passwordService.matches(request.getPassword(), user.getPasswordHash())) {
             throw BusinessException.unauthorized("Invalid username or password");
         }
+
+        LocalDateTime now = LocalDateTime.now();
+        user.setLastLoginAt(now);
+        user.setUpdatedAt(now);
+        userMapper.updateById(user);
 
         String token = jwtService.createToken(user.getId(), user.getUsername());
         return new LoginResponse("Bearer", token, jwtService.getExpirationSeconds(), UserProfileResponse.from(user));

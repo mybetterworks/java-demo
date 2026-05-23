@@ -47,7 +47,7 @@
 1. 当前目录结构。
 2. `docs/PROGRESS.md` 中记录的当前阶段。
 3. 当前 milestone 文档中的目标、范围和验收标准。
-4. 本地 Java、Maven Wrapper、Docker 是否满足本阶段要求。
+4. 本地 Java、Maven Wrapper、Docker 是否满足本阶段要求；涉及前端 milestone 时还必须检查 Node.js 22 是否可用。
 5. 如果项目已初始化 Git，检查工作区状态，避免覆盖用户改动。
 
 ## 项目构建规则
@@ -59,7 +59,20 @@
 5. 不把用户全局 Maven PATH 作为唯一构建前提。
 6. `mvn -v` 或 `.\mvnw.cmd -v` 必须显示 Java version 为 `17.0.19`，否则需要先修正 `JAVA_HOME` 或当前终端环境。
 7. 如果引入 `.mvn/maven.config` 或 Maven `settings.xml` 示例，必须确保本地仓库指向 `D:\software\maven_download`。
-8. 前端使用项目内 package manager 配置，不依赖全局脚手架生成不可追踪内容。
+8. 前端默认运行环境为 Node.js `22.x`，React、Vue、前端开发服务器和前端生产构建均以该版本为基线。
+9. 进入前端 milestone 前必须执行 `node -v`，期望结果为 `v22.x.x`；如果旧终端未刷新 PATH，应重启终端或 Codex 会话后再验证。
+10. 前端使用项目内 package manager 配置，不依赖全局脚手架生成不可追踪内容。
+11. 前端默认优先使用项目内 `npm scripts`；如果后续改用 `pnpm`、`yarn` 或其他工具，必须补充决策记录并提交对应 lockfile。
+
+## 前端 UI 规则
+
+已采纳 `docs/decisions/0007-frontend-component-libraries.md`。
+
+1. React 管理端默认使用 Ant Design 组件库。
+2. Vue 管理端默认使用 Element UI 系列组件库；如果使用 Vue 3，则使用 Element Plus。
+3. 登录页、首页、用户列表、用户编辑表单应优先使用对应组件库的布局、表单、表格、分页、消息提示和弹窗能力。
+4. 不在同一套前端中混用多个同类大型 UI 组件库，除非新增决策记录说明原因。
+5. 前端组件封装、表单校验、表格分页、接口错误处理和登录态恢复逻辑需要补充中文注释，便于学习对比。
 
 ## Docker 规则
 
@@ -105,7 +118,8 @@
 2. 单元测试或最小接口测试。
 3. 服务启动验证。
 4. 当前 milestone 文档中的验收清单。
-5. 关键命令记录到 `README.md` 或 `docs/PROGRESS.md`。
+5. 前端 milestone 还必须执行前端启动或构建验证，并确认命令运行在 Node.js `22.x` 环境下。
+6. 关键命令记录到 `README.md` 或 `docs/PROGRESS.md`。
 
 验收失败时：
 
@@ -130,11 +144,13 @@
 
 如果项目已初始化 Git：
 
-1. 每个 milestone 完成后建议一次提交。
-2. 提交信息建议格式：`feat: complete v0.1 mvp login`。
-3. 每个可运行版本建议打 tag：`v0.1-mvp-login`。
-4. 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求。
-5. 不覆盖用户未提交修改。
+1. 项目已经提交到 GitHub，后续所有代码提交、tag 和推送必须由用户手动执行。
+2. Codex 不允许自动执行 `git commit`、`git tag`、`git push`、`git merge`、`git rebase` 等会改变 Git 历史或远端状态的操作。
+3. Codex 可以执行 `git status`、`git diff`、`git log` 等只读检查，用于确认工作区状态和避免覆盖用户修改。
+4. 每个 milestone 完成后，Codex 可以提示建议提交信息，例如 `feat: complete v0.2 user crud`，但不得代替用户提交。
+5. 每个可运行版本可以建议 tag，例如 `v0.2-user-crud`，但不得代替用户打 tag 或推送 tag。
+6. 不使用 `git reset --hard`、`git checkout --` 等破坏性命令，除非用户明确要求且风险已说明。
+7. 不覆盖用户未提交修改。
 
 ## 分叉规则
 

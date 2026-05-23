@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 /**
  * 用户基础信息响应 DTO。
  *
- * <p>该对象用于返回给前端的用户资料，刻意不包含 passwordHash，避免敏感字段通过 API 泄露。</p>
+ * <p>该对象用于返回给前端的用户资料，刻意不包含 passwordHash，避免敏感字段通过 API 泄露。
+ * v0.2 增加 role、deleted、lastLoginAt，方便用户管理页面展示更多账号状态。</p>
  */
 @Schema(description = "用户基础信息")
 public class UserProfileResponse {
@@ -29,6 +30,18 @@ public class UserProfileResponse {
     @Schema(description = "用户状态，1 表示启用", example = "1")
     private Integer status;
 
+    /** 简化角色字段，当前仅用于展示和学习，不参与权限判断。 */
+    @Schema(description = "简化角色字段，当前仅存储不做权限判断", example = "USER")
+    private String role;
+
+    /** 逻辑删除标记，默认列表不会返回已删除用户。 */
+    @Schema(description = "逻辑删除标记，0 未删除，1 已删除", example = "0")
+    private Integer deleted;
+
+    /** 最近一次登录成功时间。 */
+    @Schema(description = "最近一次登录成功时间")
+    private LocalDateTime lastLoginAt;
+
     /** 用户创建时间。 */
     @Schema(description = "创建时间")
     private LocalDateTime createdAt;
@@ -40,11 +53,14 @@ public class UserProfileResponse {
     public UserProfileResponse() {
     }
 
-    public UserProfileResponse(Long id, String username, String nickname, Integer status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public UserProfileResponse(Long id, String username, String nickname, Integer status, String role, Integer deleted, LocalDateTime lastLoginAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.username = username;
         this.nickname = nickname;
         this.status = status;
+        this.role = role;
+        this.deleted = deleted;
+        this.lastLoginAt = lastLoginAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -60,6 +76,9 @@ public class UserProfileResponse {
                 user.getUsername(),
                 user.getNickname(),
                 user.getStatus(),
+                user.getRole(),
+                user.getDeleted(),
+                user.getLastLoginAt(),
                 user.getCreatedAt(),
                 user.getUpdatedAt()
         );
@@ -95,6 +114,30 @@ public class UserProfileResponse {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public Integer getDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(Integer deleted) {
+        this.deleted = deleted;
+    }
+
+    public LocalDateTime getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(LocalDateTime lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
     }
 
     public LocalDateTime getCreatedAt() {

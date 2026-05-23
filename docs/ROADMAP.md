@@ -7,13 +7,14 @@
 1. 每个阶段都是一个可运行版本，而不是半成品。
 2. 每个阶段只新增一个核心能力，便于理解、验证和回滚。
 3. 业务始终围绕用户注册、登录、认证、用户管理、审计和通知展开。
-4. Windows 11 作为开发机，Java、Git、Maven 使用本地环境，基础设施优先使用 Docker Desktop。
+4. Windows 11 作为开发机，Java、Git、Maven、Node.js 使用本地环境，基础设施优先使用 Docker Desktop。
 5. 所有写入和修改都限制在当前项目目录下。
 6. 生成和修改的代码必须补充详细中文注释，便于后续学习、复盘和逐步理解微服务技术栈。
+7. 代码提交、tag 和推送必须由用户手动执行，Codex 不自动执行 Git 提交相关操作。
 
 ## 当前环境记录
 
-记录时间：2026-05-20，时区：Asia/Shanghai。
+记录时间：2026-05-22，时区：Asia/Shanghai。
 
 当前目标开发环境：
 
@@ -22,8 +23,9 @@
 | Java | JDK `17.0.19`，路径 `D:\software\jdk-17.0.19` | 作为 Spring Boot、Spring Cloud 和完整微服务路线的目标 Java 基线 |
 | Maven | Apache Maven `3.9.16`，路径 `D:\software\apache-maven-3.9.16` | 作为本地 Maven 环境，项目仍建议引入 Maven Wrapper 保持构建入口一致 |
 | Maven 本地仓库 | `D:\software\maven_download` | Maven 依赖统一下载到该目录，避免进入默认用户目录 |
+| Node.js | 用户已在 Windows 11 配置 Node.js `22.x` | 作为 React、Vue 等前端项目的默认本地开发和构建运行时 |
 | Docker | Docker Desktop 可用，Server `29.2.1` | 适合承载 MySQL、Nacos、Redis、MQ 等基础设施 |
-| Git | 已初始化 Git 仓库，尚未提交 milestone commit | 建议按 milestone 提交和打 tag |
+| Git | 已初始化 Git 仓库，用户已提交 GitHub | 后续由用户手动提交、打 tag 和推送，Codex 只做只读检查和建议 |
 
 环境验证提示：
 
@@ -31,9 +33,11 @@
 |---|---|
 | `java -version` | 显示 `17.0.19` |
 | `mvn -v` | 显示 Maven `3.9.16`，并且 Java version 为 `17.0.19` |
+| `node -v` | 显示 `v22.x.x` |
+| `npm -v` | 显示 Node.js 22 随附或用户配置的 npm 版本 |
 | Maven 本地仓库 | Maven settings 或命令参数指向 `D:\software\maven_download` |
 
-如果刚修改过系统环境变量，旧终端或旧 Codex 会话可能仍读取旧 PATH 或旧 `JAVA_HOME`。遇到这种情况，重启终端或 Codex 会话后再验证。
+如果刚修改过系统环境变量，旧终端或旧 Codex 会话可能仍读取旧 PATH、旧 `JAVA_HOME` 或旧 Node.js 路径。遇到这种情况，重启终端或 Codex 会话后再验证。
 
 目标建议：
 
@@ -42,8 +46,9 @@
 | Java | 使用 JDK `17.0.19` 作为项目基线 |
 | Maven | 使用 Maven `3.9.16`，同时引入 `mvnw` 和 `mvnw.cmd` 固化构建入口 |
 | Maven 本地仓库 | 统一配置为 `D:\software\maven_download` |
+| Node.js | 使用 Node.js `22.x` 作为默认前端运行时，React、Vue 前端均以该版本为基线 |
 | Docker | 基础设施全部通过 `infra/docker-compose` 管理 |
-| Git | 每个可运行 milestone 完成后提交和打 tag |
+| Git | 每个可运行 milestone 完成后，由用户手动提交和打 tag；Codex 不自动提交、不自动打 tag、不自动推送 |
 
 具体版本号在开发对应 milestone 前再按官方兼容矩阵确认，避免文档长期存在后版本过时。
 
@@ -54,7 +59,10 @@
 | 技术 | 用途 |
 |---|---|
 | React | 第一套管理端 UI |
+| Ant Design | React 管理端默认组件库，用于布局、表单、表格、分页、反馈组件 |
 | Vue | 第二套管理端 UI，用于对比生态和实现方式 |
+| Element UI / Element Plus | Vue 管理端默认组件库；若使用 Vue 3，则使用 Element Plus |
+| Node.js 22 | 前端本地开发、依赖安装、开发服务器和生产构建的默认运行时 |
 | IndexedDB | 保存离线缓存、最近登录信息、轻量客户端状态 |
 | HTTP/HTTPS | 常规 API 调用与安全访问 |
 | WebSocket | 在线状态、系统消息、通知推送 |
@@ -145,6 +153,9 @@ E:\Code\codex\java-demo
 |---|---|---|
 | 服务拆分策略 | `docs/decisions/0002-service-split.md` | 先单体闭环，再模块化，再微服务拆分 |
 | 部署策略 | `docs/decisions/0003-deploy-strategy.md` | 先本地进程 + Docker 基础设施，再 Docker Compose，最后 Kubernetes 和 Jenkins |
+| Git 提交策略 | `docs/decisions/0005-manual-git-commit.md` | 用户手动提交、打 tag 和推送，Codex 不自动执行 Git 写操作 |
+| 前端 Node 环境 | `docs/decisions/0006-node-frontend-environment.md` | Node.js 22 作为 React、Vue 前端默认运行时 |
+| 前端组件库 | `docs/decisions/0007-frontend-component-libraries.md` | React 使用 Ant Design，Vue 使用 Element UI 系列组件库 |
 
 服务拆分阶段：
 
@@ -170,8 +181,8 @@ E:\Code\codex\java-demo
 |---|---|---|---|
 | `v0.1` | 最小登录系统 | Spring Boot、MyBatis Plus、MySQL、JWT、Springdoc OpenAPI | 注册、登录、获取当前用户、查看 Swagger UI |
 | `v0.2` | 用户管理 CRUD | MyBatis Plus、分页、角色字段 | 增删改查、分页查询可用 |
-| `v0.3` | React 管理端 | React、HTTP、IndexedDB | 浏览器完成登录和用户列表查看 |
-| `v0.4` | Vue 管理端 | Vue、HTTP | 第二套前端访问同一后端 API |
+| `v0.3` | React 管理端 | Node.js 22、React、Ant Design、HTTP、IndexedDB | 浏览器完成登录和用户列表查看 |
+| `v0.4` | Vue 管理端 | Node.js 22、Vue、Element UI / Element Plus、HTTP | 第二套前端访问同一后端 API |
 | `v0.5` | 网关入口 | Spring Cloud Gateway、JWT 校验 | 请求统一经过网关 |
 | `v0.6` | 注册与配置中心 | Nacos | 服务注册、配置读取、配置刷新 |
 | `v0.7` | 缓存与限流 | Redis、Redis Cluster 预研 | 登录缓存、验证码或限流生效 |
@@ -193,12 +204,12 @@ E:\Code\codex\java-demo
 每个 milestone 遵循固定流程：
 
 1. 读取 `docs/ROADMAP.md`、`docs/DEVELOPMENT_RULES.md`、`docs/PROGRESS.md` 和当前 milestone 文档。
-2. 确认当前环境和上一版本是否可运行。
+2. 确认当前环境和上一版本是否可运行；涉及前端 milestone 时确认 `node -v` 显示 `v22.x.x`。
 3. 实现本 milestone 的唯一核心新增能力。
 4. 为新增或修改的代码补充详细中文注释，重点说明类职责、关键流程、配置含义、异常处理和测试意图。
 5. 运行自动化测试、启动验证和接口验证。
 6. 更新 `README.md`、`docs/PROGRESS.md`，必要时补充 `docs/decisions`。
-7. 如果已初始化 Git，则提交并打 tag。
+7. 如果需要保存版本，Codex 只提示建议提交信息和 tag 名称，由用户手动提交、打 tag 和推送。
 
 ## 后续对 Codex 的推荐指令
 
