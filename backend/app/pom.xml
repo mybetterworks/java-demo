@@ -7,13 +7,13 @@
     <parent>
         <groupId>com.example.javademo</groupId>
         <artifactId>java-demo</artifactId>
-        <version>0.2.0-SNAPSHOT</version>
+        <version>0.3.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <artifactId>java-demo-app</artifactId>
     <name>java-demo-app</name>
-    <description>v0.1 single backend application for login and current-user APIs.</description>
+    <description>Single backend application for login, user management and frontend API validation.</description>
 
     <dependencies>
         <dependency>

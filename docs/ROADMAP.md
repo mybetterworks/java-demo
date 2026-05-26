@@ -14,7 +14,7 @@
 
 ## 当前环境记录
 
-记录时间：2026-05-22，时区：Asia/Shanghai。
+记录时间：2026-05-23，时区：Asia/Shanghai。
 
 当前目标开发环境：
 
@@ -26,6 +26,7 @@
 | Node.js | 用户已在 Windows 11 配置 Node.js `22.x` | 作为 React、Vue 等前端项目的默认本地开发和构建运行时 |
 | Docker | Docker Desktop 可用，Server `29.2.1` | 适合承载 MySQL、Nacos、Redis、MQ 等基础设施 |
 | Git | 已初始化 Git 仓库，用户已提交 GitHub | 后续由用户手动提交、打 tag 和推送，Codex 只做只读检查和建议 |
+| 本机占用端口 | `7991-8090`、`8146-8245` | 后续项目端口必须避开这两个范围，当前后端使用 `8091` |
 
 环境验证提示：
 
@@ -49,6 +50,7 @@
 | Node.js | 使用 Node.js `22.x` 作为默认前端运行时，React、Vue 前端均以该版本为基线 |
 | Docker | 基础设施全部通过 `infra/docker-compose` 管理 |
 | Git | 每个可运行 milestone 完成后，由用户手动提交和打 tag；Codex 不自动提交、不自动打 tag、不自动推送 |
+| 端口 | 后端默认 `8091`，React `5173`，后续新增端口避开 `7991-8090` 和 `8146-8245` |
 
 具体版本号在开发对应 milestone 前再按官方兼容矩阵确认，避免文档长期存在后版本过时。
 
@@ -156,6 +158,7 @@ E:\Code\codex\java-demo
 | Git 提交策略 | `docs/decisions/0005-manual-git-commit.md` | 用户手动提交、打 tag 和推送，Codex 不自动执行 Git 写操作 |
 | 前端 Node 环境 | `docs/decisions/0006-node-frontend-environment.md` | Node.js 22 作为 React、Vue 前端默认运行时 |
 | 前端组件库 | `docs/decisions/0007-frontend-component-libraries.md` | React 使用 Ant Design，Vue 使用 Element UI 系列组件库 |
+| 本地端口规划 | `docs/decisions/0008-local-port-allocation.md` | 后端使用 `8091`，后续端口避开 `7991-8090` 和 `8146-8245` |
 
 服务拆分阶段：
 

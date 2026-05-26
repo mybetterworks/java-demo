@@ -1,6 +1,7 @@
 server:
-  # 本地后端默认端口。若 8080 被 IDE 或其他应用占用，可启动时用 --server.port=18080 临时覆盖。
-  port: 8080
+  # 本地后端默认端口。7991-8090、8146-8245 已被本机环境占用，因此默认使用 8091。
+  # 如需临时覆盖，可启动时传入 --server.port=8250 或设置环境变量 SERVER_PORT。
+  port: ${SERVER_PORT:8091}
 
 spring:
   application:

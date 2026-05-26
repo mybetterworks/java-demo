@@ -2,6 +2,7 @@
 target/
 build/
 out/
+dist/
 .mvn/user-home/
 
 # IDE files
@@ -18,6 +19,7 @@ tmp/
 
 # local
 notebook/
+node_modules/
 
 # Environment files with real secrets
 .env

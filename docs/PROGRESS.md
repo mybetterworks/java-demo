@@ -1,10 +1,10 @@
 # Project Progress
 
-最后更新：2026-05-22，Asia/Shanghai。
+最后更新：2026-05-23，Asia/Shanghai。
 
 ## 当前状态
 
-`v0.2 User CRUD` 已实现并完成自动化测试、打包、真实 MySQL 接口验收、Swagger UI 接口文档更新和新增代码中文注释补全。
+`v0.3 React Frontend` 已实现并完成前端构建、后端回归测试、真实前后端联调、浏览器登录验证、IndexedDB 登录态恢复验证和文档更新。
 
 已完成：
 
@@ -20,6 +20,7 @@
 | Maven 本地仓库决策 | 已创建 `docs/decisions/0004-maven-local-repository.md` |
 | Git 手动提交策略 | 已采纳 `docs/decisions/0005-manual-git-commit.md` |
 | 前端组件库策略 | 已采纳 `docs/decisions/0007-frontend-component-libraries.md` |
+| 本地端口规划 | 已采纳 `docs/decisions/0008-local-port-allocation.md` |
 | 本地 JDK 目标版本 | 用户已升级为 JDK `17.0.19`，路径 `D:\software\jdk-17.0.19` |
 | 本地 Maven 目标版本 | 用户已配置 Maven `3.9.16`，路径 `D:\software\apache-maven-3.9.16` |
 | Maven 下载目录 | 已指定为 `D:\software\maven_download` |
@@ -35,13 +36,19 @@
 | v0.2 用户管理 CRUD | 已完成分页、详情、创建、更新、逻辑删除、修改密码 |
 | v0.2 数据模型扩展 | 已新增 `role`、`deleted`、`last_login_at` 字段，并提供启动时轻量迁移 |
 | v0.2 自动化测试 | 已新增 `UserManagementIntegrationTest` 覆盖用户管理验收链路 |
+| v0.3 React 管理端 | 已完成登录页、首页、用户列表、新增用户、编辑用户 |
+| v0.3 Ant Design | 已接入 Ant Design `5`，用于表单、布局、表格、弹窗和反馈 |
+| v0.3 IndexedDB | 已保存 `auth_session` 和 `recent_users_query` |
+| v0.3 前端构建 | 已通过 `npm.cmd run build` |
+| v0.3 前后端联调 | 已通过 Vite 代理、真实后端和真实 MySQL 验证 |
+| 本地后端端口调整 | 已将后端默认端口从占用范围内的 `8082` 调整为 `8091` |
+| React 代理端口调整 | 已将 Vite 代理目标调整为 `http://localhost:8091` |
 
 尚未完成：
 
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| v0.3 React 管理端 | 未开始 |
 | Vue 前端项目骨架 | 未开始，计划在 `v0.4` 引入 |
 | 网关和微服务基础设施 | 未开始，按后续 milestone 逐步引入 |
 
@@ -55,6 +62,7 @@
 | Node.js | 目标版本 Node.js `22.x`，用于 `v0.3` React 和 `v0.4` Vue 前端开发 |
 | Docker | Docker Desktop 可用，MySQL `8.4` 单节点容器启动验证通过 |
 | Git | 已初始化 Git 仓库，用户已提交 GitHub；后续提交、tag 和推送由用户手动执行 |
+| 本机占用端口 | `7991-8090`、`8146-8245`；当前项目端口规划已避开 |
 
 当前会话验证说明：
 
@@ -67,7 +75,11 @@
 | 执行 `.\mvnw.cmd package` | 已通过，生成可执行 jar |
 | 访问 `GET /v3/api-docs` | 已确认返回 OpenAPI JSON |
 | 访问 `GET /swagger-ui.html` | 已确认返回 Swagger UI 页面 |
-| Node.js 22 | 用户已配置为 Windows 11 本地前端环境；后续进入 `v0.3` 前在新终端执行 `node -v` 复核 |
+| Node.js 22 | 已确认当前会话 `node -v` 为 `v22.22.3` |
+| npm | PowerShell 执行 `npm.ps1` 受本机策略限制，已使用 `npm.cmd` 完成安装和构建 |
+| 端口扫描 | 已确认当前显式配置端口中，只有旧后端 `8082`/历史文档 `8080` 落入占用范围；当前配置已改为 `8091` |
+| 后端 `8091` 运行验证 | 已通过，`GET http://127.0.0.1:8091/api/health`、`/v3/api-docs`、`/swagger-ui.html` 均返回 `200` |
+| React `5173` 代理验证 | 已通过，`GET http://127.0.0.1:5173`、`/api/health`、`/v3/api-docs` 均返回 `200`，确认 Vite 已代理到后端 `8091` |
 
 注意：当前 Codex 进程的 PATH/JAVA_HOME/Node.js 路径可能仍是旧会话环境。若 `java -version`、`mvn -v` 或 `node -v` 未显示上述版本，重启终端或 Codex 会话后再验证。
 
@@ -141,19 +153,97 @@
 | Docker 权限 | 当前沙箱读取 Docker 状态需要授权，已获准执行 `docker ps` 并确认 `java-demo-mysql` 为 `healthy` |
 | 数据库迁移 | 应用启动时会自动补齐 v0.2 新增用户字段，避免已有 v0.1 本地表缺列 |
 
+## v0.3 验证记录
+
+自动化和构建验证：
+
+| 命令 | 结果 |
+|---|---|
+| `node -v` | 通过，输出 `v22.22.3` |
+| `npm.cmd install` | 通过，生成 `frontend-react/package-lock.json` |
+| `npm.cmd run build` | 通过，TypeScript 类型检查和 Vite 生产构建均成功 |
+| `npm.cmd audit --audit-level=high` | 通过，无 high/critical 漏洞；存在 Vite/esbuild 相关 moderate 提示 |
+| `.\mvnw.cmd test` | 通过，`Tests run: 2, Failures: 0, Errors: 0, Skipped: 0` |
+| `.\mvnw.cmd package` | 通过，生成 `backend/app/target/java-demo-app-0.3.0-SNAPSHOT.jar` |
+
+真实联调验收：
+
+| 验收项 | 结果 |
+|---|---|
+| React 应用访问 `http://127.0.0.1:5173` | `200` |
+| 通过 Vite 代理访问 `GET /api/health` | `200` |
+| 通过 Vite 代理注册测试用户 | `200` |
+| 通过 Vite 代理登录测试用户 | `200`，成功签发 JWT |
+| 通过 Vite 代理访问用户分页 | `200` |
+| 浏览器登录 React 管理端 | 通过 |
+| 刷新页面后从 IndexedDB 恢复登录态 | 通过 |
+| 浏览器查看用户列表 | 通过 |
+| 浏览器新增用户 | 通过 |
+| 浏览器编辑用户 | 通过 |
+
+验证说明：
+
+| 项目 | 说明 |
+|---|---|
+| 后端验证端口 | 历史验证使用 `8080`；当前端口规划已改为 `8091` |
+| 前端验证端口 | `5173` |
+| 浏览器验证用户 | `react_v03_20260523030103` |
+| 浏览器新增用户 | `ui_v03_1779505466368` |
+| 截图记录 | `target/run/react-v0.3-users.png`，仅作为本地验证产物，不提交 |
+| 构建提示 | Ant Design 主包导致 Vite chunk size warning，不影响当前版本运行 |
+| 安全提示 | `npm audit` 仍提示 Vite/esbuild moderate 风险，修复需要强制升级到破坏性版本，暂不执行 `npm audit fix --force` |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.2-user-crud.md
+docs/milestones/v0.3-react-frontend.md
 ```
 
 建议下一步执行：
 
 ```text
-docs/milestones/v0.3-react-frontend.md
+docs/milestones/v0.4-vue-frontend.md
 ```
+
+## 端口调整记录
+
+调整时间：2026-05-23，Asia/Shanghai。
+
+本机占用端口范围：
+
+| 起始端口 | 结束端口 | 处理规则 |
+|---|---|---|
+| `7991` | `8090` | 项目当前和后续服务不得使用 |
+| `8146` | `8245` | 项目当前和后续服务不得使用 |
+
+当前端口规划：
+
+| 服务 | 端口 | 状态 |
+|---|---|---|
+| Spring Boot 后端 | `8091` | 已配置 |
+| Swagger UI / OpenAPI JSON | `8091` | 跟随后端端口 |
+| React 开发服务器 | `5173` | 已配置，未落入占用范围 |
+| React Preview | `4173` | 已配置，未落入占用范围 |
+| Vue 开发服务器 | `5174` | 后续 `v0.4` 建议端口 |
+| Vue Preview | `4174` | 后续 `v0.4` 建议端口 |
+| Spring Cloud Gateway | `8092` | 后续 `v0.5` 建议端口 |
+| 后续拆分业务服务 | `8093-8145` 或 `8246+` | 后续按需分配 |
+| 本地 Nginx 非标准 HTTP/HTTPS | `8250` / `8251` | 后续 `v1.6` 如不使用 `80` / `443` 时优先使用 |
+| MySQL Docker | `3306` | 已配置，未落入占用范围 |
+
+端口调整验证：
+
+| 验证项 | 结果 |
+|---|---|
+| 后端 `http://127.0.0.1:8091/api/health` | `200` |
+| 后端 `http://127.0.0.1:8091/v3/api-docs` | `200`，标题为 `Java Demo API` |
+| 后端 `http://127.0.0.1:8091/swagger-ui.html` | `200` |
+| React `http://127.0.0.1:5173` | `200` |
+| React 代理 `http://127.0.0.1:5173/api/health` | `200`，确认请求可转发到后端 `8091` |
+| React 代理 `http://127.0.0.1:5173/v3/api-docs` | `200`，标题为 `Java Demo API` |
+| 验证进程 | 验证结束后已停止本次临时启动的后端和前端进程 |
 
 ## 已采纳执行路线
 
@@ -178,8 +268,8 @@ docs/milestones/v0.3-react-frontend.md
 ## 下一步建议
 
 1. 如需保存当前稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 开始 `docs/milestones/v0.3-react-frontend.md`。
-3. 在 v0.3 中使用 Node.js `22.x`、React 和 Ant Design 增加 React 管理端，调用当前后端登录和用户管理 API。
+2. 开始 `docs/milestones/v0.4-vue-frontend.md`。
+3. 在 v0.4 中使用 Node.js `22.x`、Vue 和 Element Plus 增加第二套管理端，调用当前后端登录和用户管理 API。
 4. 保持当前部署路线：前端本地进程，MySQL 继续使用 Docker Desktop。
 
 ## 后续对 Codex 的推荐指令
@@ -194,7 +284,7 @@ docs/milestones/v0.3-react-frontend.md
 |---|---|---|---|
 | `v0.1` | 已完成 | 2026-05-20 | 最小登录系统，已补充 Swagger UI 和中文注释；提交、tag 和推送由用户手动执行 |
 | `v0.2` | 已完成 | 2026-05-22 | 用户管理 CRUD、分页、逻辑删除、改密、字段迁移；提交、tag 和推送由用户手动执行 |
-| `v0.3` | 未开始 | - | React 管理端，默认使用 Ant Design |
+| `v0.3` | 已完成 | 2026-05-23 | React 管理端、Ant Design、IndexedDB 登录态恢复；提交、tag 和推送由用户手动执行 |
 | `v0.4` | 未开始 | - | Vue 管理端，默认使用 Element UI / Element Plus |
 | `v0.5` | 未开始 | - | Spring Cloud Gateway |
 | `v0.6` | 未开始 | - | Nacos |
@@ -219,7 +309,11 @@ docs/milestones/v0.3-react-frontend.md
 | 当前 Codex 会话可能未刷新环境变量 | `java` 或 `mvn` 命令可能仍显示旧版本 | 重启终端或 Codex 会话后再验证 |
 | Maven 直接运行时可能读取旧 `JAVA_HOME` | Maven 可能使用 Java 8 而不是 Java 17 | 确保 `JAVA_HOME=D:\software\jdk-17.0.19` |
 | 端口 `3306` 可能与本机 MySQL 冲突 | MySQL Docker 容器无法启动 | 暂停本机 MySQL 或调整 compose 端口后记录变更 |
-| 端口 `8080` 可能被其他应用占用 | 后端应用无法启动 | 启动前检查端口，必要时临时调整 `server.port` |
+| 端口 `8091` 可能被其他应用占用 | 后端应用无法启动 | 启动前检查端口，必要时临时调整到 `8250` 等非占用范围端口 |
+| 端口 `5173` 可能被其他前端项目占用 | React 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口 |
+| 占用端口范围 `7991-8090`、`8146-8245` | 新增服务若误用这些端口会启动失败或冲突 | 后续新增服务必须按 `docs/decisions/0008-local-port-allocation.md` 分配端口 |
 | PowerShell 旧版本不支持 `-SkipHttpErrorCheck` | 直接验证 4xx 状态时命令参数不可用 | 使用 `try/catch` 捕获 HTTP 4xx 状态 |
-| 当前 Codex 会话可能未刷新 Node.js PATH | `node -v` 可能无法显示 `v22.x.x`，影响前端开发验证 | 进入 v0.3 前重启终端或 Codex 会话后再验证 Node.js 22 |
+| 当前 Codex 会话可能未刷新 Node.js PATH | `node -v` 可能无法显示 `v22.x.x`，影响前端开发验证 | 进入前端 milestone 前重启终端或 Codex 会话后再验证 Node.js 22 |
+| PowerShell 执行策略阻止 `npm.ps1` | 直接运行 `npm` 可能失败 | 使用 `npm.cmd` 执行安装、启动和构建 |
+| Vite/esbuild moderate audit 提示 | 开发服务器场景存在中等级别安全提示 | 当前不强制破坏性升级，后续可在前端依赖维护任务中处理 |
 | 中间件范围很大 | 容易一次性复杂化 | 严格按 milestone 单步推进 |

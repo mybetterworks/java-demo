@@ -82,6 +82,19 @@
 4. Docker volume 命名要带项目名前缀，避免污染其他项目。
 5. 对外端口必须记录在对应 README 或 milestone 文档中。
 
+## 端口规则
+
+已采纳 `docs/decisions/0008-local-port-allocation.md`。
+
+1. 本地环境中 `7991-8090`、`8146-8245` 已被占用，当前项目和后续新增服务不得使用这两个范围内的端口。
+2. Spring Boot 后端默认端口为 `8091`，配置在 `backend/app/src/main/resources/application.yml`。
+3. React 管理端开发端口为 `5173`，preview 端口为 `4173`。
+4. `v0.4` Vue 管理端建议使用 `5174`，preview 端口建议使用 `4174`。
+5. `v0.5` Spring Cloud Gateway 建议使用 `8092`。
+6. 后续拆分业务服务优先使用 `8093-8145` 或 `8246+`。
+7. 如果 Nginx 本地学习阶段不使用 `80` / `443`，非标准 HTTP/HTTPS 建议使用 `8250` / `8251`。
+8. 每次新增 Docker Compose、前端 dev server、后端服务、网关或运维组件端口时，都必须先检查是否落入占用范围，并同步更新 README 和 `docs/PROGRESS.md`。
+
 ## API 规则
 
 1. 后端接口统一使用 `/api` 前缀。

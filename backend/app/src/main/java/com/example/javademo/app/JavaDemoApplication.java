@@ -21,7 +21,7 @@ public class JavaDemoApplication {
     /**
      * 应用主入口，本地开发时可以直接从 IDE 运行，也可以通过 Maven 或可执行 jar 启动。
      *
-     * @param args 命令行参数，例如临时覆盖端口：--server.port=18080
+     * @param args 命令行参数，例如临时覆盖端口：--server.port=8250
      */
     public static void main(String[] args) {
         SpringApplication.run(JavaDemoApplication.class, args);
