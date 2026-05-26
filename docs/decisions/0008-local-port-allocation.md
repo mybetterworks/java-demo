@@ -19,7 +19,7 @@
 
 1. 当前 Spring Boot 后端默认端口改为 `8091`。
 2. React 管理端继续使用 `5173`，React preview 使用 `4173`。
-3. `v0.4` Vue 管理端建议使用 `5174`，Vue preview 建议使用 `4174`。
+3. `v0.4` Vue 管理端使用 `5174`，Vue preview 使用 `4174`。
 4. `v0.5` Spring Cloud Gateway 建议使用 `8092`。
 5. 后续拆分出的本地业务服务优先使用 `8093-8145` 或 `8246+`。
 6. 如果 Nginx 本地学习阶段不使用 `80` / `443`，非标准 HTTP/HTTPS 建议使用 `8250` / `8251`。
@@ -32,6 +32,8 @@
 | Spring Boot 后端 | `8091` | 当前后端 API、Swagger UI、OpenAPI JSON |
 | React 开发服务器 | `5173` | `frontend-react` 本地开发 |
 | React Preview | `4173` | `frontend-react` 生产构建预览 |
+| Vue 开发服务器 | `5174` | `frontend-vue` 本地开发 |
+| Vue Preview | `4174` | `frontend-vue` 生产构建预览 |
 | MySQL Docker | `3306` | 当前 MySQL 单节点 |
 
 ## 验证记录
@@ -47,9 +49,18 @@
 | `http://127.0.0.1:5173/api/health` | `200`，确认 Vite 代理已转发到后端 `8091` |
 | `http://127.0.0.1:5173/v3/api-docs` | `200`，确认 OpenAPI 代理可用 |
 
+2026-05-26 已完成 Vue 端口验证：
+
+| 验证项 | 结果 |
+|---|---|
+| `http://127.0.0.1:5174` | `200` |
+| `http://127.0.0.1:5174/api/health` | `200`，确认 Vue Vite 代理已转发到后端 `8091` |
+| `http://127.0.0.1:5174/api/auth/login` | `200`，确认 Vue 端口可完成登录链路 |
+
 ## 影响
 
 1. 后端地址从 `http://localhost:8080` 调整为 `http://localhost:8091`。
 2. React Vite 代理目标从 `http://localhost:8080` 调整为 `http://localhost:8091`。
-3. README、PROGRESS 和 milestone 文档中的当前接口示例必须同步改为 `8091`。
-4. 历史验证记录如果提到旧端口，应明确其为历史记录；当前启动和后续开发以本决策为准。
+3. Vue Vite 代理目标统一指向 `http://localhost:8091`。
+4. README、PROGRESS 和 milestone 文档中的当前接口示例必须同步改为 `8091`。
+5. 历史验证记录如果提到旧端口，应明确其为历史记录；当前启动和后续开发以本决策为准。

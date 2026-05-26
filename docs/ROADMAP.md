@@ -50,7 +50,7 @@
 | Node.js | 使用 Node.js `22.x` 作为默认前端运行时，React、Vue 前端均以该版本为基线 |
 | Docker | 基础设施全部通过 `infra/docker-compose` 管理 |
 | Git | 每个可运行 milestone 完成后，由用户手动提交和打 tag；Codex 不自动提交、不自动打 tag、不自动推送 |
-| 端口 | 后端默认 `8091`，React `5173`，后续新增端口避开 `7991-8090` 和 `8146-8245` |
+| 端口 | 后端默认 `8091`，React `5173`，Vue `5174`，后续新增端口避开 `7991-8090` 和 `8146-8245` |
 
 具体版本号在开发对应 milestone 前再按官方兼容矩阵确认，避免文档长期存在后版本过时。
 
@@ -159,6 +159,7 @@ E:\Code\codex\java-demo
 | 前端 Node 环境 | `docs/decisions/0006-node-frontend-environment.md` | Node.js 22 作为 React、Vue 前端默认运行时 |
 | 前端组件库 | `docs/decisions/0007-frontend-component-libraries.md` | React 使用 Ant Design，Vue 使用 Element UI 系列组件库 |
 | 本地端口规划 | `docs/decisions/0008-local-port-allocation.md` | 后端使用 `8091`，后续端口避开 `7991-8090` 和 `8146-8245` |
+| 前端语言策略 | `docs/decisions/0009-frontend-language-strategy.md` | React 管理端使用 TypeScript，Vue 管理端使用 JavaScript |
 
 服务拆分阶段：
 
@@ -184,8 +185,8 @@ E:\Code\codex\java-demo
 |---|---|---|---|
 | `v0.1` | 最小登录系统 | Spring Boot、MyBatis Plus、MySQL、JWT、Springdoc OpenAPI | 注册、登录、获取当前用户、查看 Swagger UI |
 | `v0.2` | 用户管理 CRUD | MyBatis Plus、分页、角色字段 | 增删改查、分页查询可用 |
-| `v0.3` | React 管理端 | Node.js 22、React、Ant Design、HTTP、IndexedDB | 浏览器完成登录和用户列表查看 |
-| `v0.4` | Vue 管理端 | Node.js 22、Vue、Element UI / Element Plus、HTTP | 第二套前端访问同一后端 API |
+| `v0.3` | React 管理端 | Node.js 22、React、TypeScript、Ant Design、HTTP、IndexedDB | 浏览器完成登录和用户列表查看 |
+| `v0.4` | Vue 管理端 | Node.js 22、Vue、JavaScript、Element UI / Element Plus、HTTP | 第二套前端访问同一后端 API，业务行为与 React 端一致，项目结构体现 Vue 开发习惯 |
 | `v0.5` | 网关入口 | Spring Cloud Gateway、JWT 校验 | 请求统一经过网关 |
 | `v0.6` | 注册与配置中心 | Nacos | 服务注册、配置读取、配置刷新 |
 | `v0.7` | 缓存与限流 | Redis、Redis Cluster 预研 | 登录缓存、验证码或限流生效 |

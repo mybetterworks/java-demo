@@ -19,6 +19,7 @@
 3. 如果 `v0.4` 选择 Vue 3，则使用 Element Plus；Element Plus 视为 Element UI 在 Vue 3 生态中的延续版本。
 4. 两套前端都应优先使用组件库提供的表单校验、表格、分页、消息提示、弹窗和布局能力，不重复造基础 UI 轮子。
 5. 两套前端的页面结构和交互可以保持相似，方便学习时横向比较 Ant Design 与 Element UI / Element Plus 的使用差异。
+6. 组件库策略与语言策略配合执行：React + Ant Design 使用 TypeScript，Vue + Element UI / Element Plus 使用 JavaScript。
 
 ## 影响
 
@@ -33,5 +34,6 @@
 
 1. 开发 `v0.3` 前必须在 React milestone 中确认 Ant Design 依赖、样式引入方式和主题配置方式。
 2. 开发 `v0.4` 前必须在 Vue milestone 中确认 Vue 版本；Vue 3 默认使用 Element Plus。
-3. 不同时在同一套前端中混用多个同类大型 UI 组件库，除非新增决策记录说明原因。
-4. 页面实现应保留学习价值，关键组件封装、表单校验、表格分页和接口错误处理需要补充中文注释。
+3. 开发 `v0.4` 时 Vue 组件和页面使用 JavaScript 编写，不为 Element Plus 单独引入 TypeScript 业务代码。
+4. 不同时在同一套前端中混用多个同类大型 UI 组件库，除非新增决策记录说明原因。
+5. 页面实现应保留学习价值，关键组件封装、表单校验、表格分页和接口错误处理需要补充中文注释。

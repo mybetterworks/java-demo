@@ -20,6 +20,7 @@ tmp/
 # local
 notebook/
 node_modules/
+.npm-cache/
 
 # Environment files with real secrets
 .env

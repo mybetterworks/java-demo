@@ -4,18 +4,18 @@
 
 ## 当前版本
 
-当前已完成 `v0.3 React Frontend`。
+当前已完成 `v0.4 Vue Frontend`。
 
 | 项目 | 内容 |
 |---|---|
-| 核心能力 | 注册、登录、JWT 签发、获取当前登录用户、用户管理 CRUD、React 管理端、IndexedDB 登录态恢复 |
+| 核心能力 | 注册、登录、JWT 签发、获取当前登录用户、用户管理 CRUD、React 管理端、Vue 管理端、IndexedDB 登录态恢复 |
 | 后端 | Spring Boot `3.3.5` |
 | ORM | MyBatis Plus `3.5.7` |
 | 数据库 | MySQL `8.4` Docker 单节点 |
 | 认证 | JWT |
 | 接口文档 | Springdoc OpenAPI `2.6.0`、Swagger UI |
-| 前端 | React `18`、Vite、TypeScript、Ant Design `5` |
-| 前端缓存 | IndexedDB |
+| 前端 | React `18`、TypeScript、Ant Design `5`；Vue `3`、JavaScript、Element Plus |
+| 前端缓存 | React 端使用 IndexedDB；Vue 端使用 localStorage |
 | Java | JDK `17.0.19`，路径 `D:\software\jdk-17.0.19` |
 | Maven | Maven Wrapper，发行版 `3.9.16` |
 | Maven 本地仓库 | `D:\software\maven_download` |
@@ -34,6 +34,10 @@ E:\Code\codex\java-demo
 │  ├─ src
 │  ├─ package.json
 │  └─ vite.config.ts
+├─ frontend-vue
+│  ├─ src
+│  ├─ package.json
+│  └─ vite.config.js
 ├─ docs
 │  ├─ ROADMAP.md
 │  ├─ DEVELOPMENT_RULES.md
@@ -136,7 +140,7 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.3.0-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.4.0-SNAPSHOT.jar
 ```
 
 应用默认端口：
@@ -166,6 +170,24 @@ http://127.0.0.1:5173
 
 开发环境中，Vite 会把 `/api` 和 `/v3/api-docs` 代理到 `http://localhost:8091`，因此浏览器访问前端时不会遇到跨域问题。
 
+## 启动 Vue 管理端
+
+先确认 MySQL 和后端已启动，再启动 Vue 前端：
+
+```powershell
+cd frontend-vue
+npm.cmd install
+npm.cmd run dev
+```
+
+Vue 管理端默认地址：
+
+```text
+http://127.0.0.1:5174
+```
+
+Vue 端使用 Vue `3`、JavaScript 和 Element Plus，不启用 TypeScript 模板。开发环境中，Vite 会把 `/api` 和 `/v3/api-docs` 代理到 `http://localhost:8091`，端口 `5174` 和 preview 端口 `4174` 均避开了本机占用范围。
+
 ## 本地端口规划
 
 当前本机 `7991-8090`、`8146-8245` 两段端口已被占用，项目当前和后续新增服务都必须避开这两个范围。
@@ -175,17 +197,24 @@ http://127.0.0.1:5173
 | Spring Boot 后端 | `8091` | 当前后端固定端口，Swagger UI 和 OpenAPI JSON 同端口 |
 | React 开发服务器 | `5173` | `v0.3` React 管理端 |
 | React Preview | `4173` | `npm.cmd run preview` |
-| Vue 开发服务器 | `5174` | `v0.4` 建议端口，避开 React 端口 |
-| Vue Preview | `4174` | `v0.4` 建议预览端口 |
+| Vue 开发服务器 | `5174` | `v0.4` Vue 管理端，避开 React 端口 |
+| Vue Preview | `4174` | `v0.4` Vue 生产构建预览 |
 | Spring Cloud Gateway | `8092` | `v0.5` 建议端口，避开占用范围 |
 | 后续拆分服务 | `8093-8145` 或 `8246+` | 不使用 `8146-8245` |
 | 本地 Nginx 非标准 HTTP/HTTPS | `8250` / `8251` | 如不使用 `80` / `443`，优先使用该范围 |
 | MySQL Docker | `3306` | 当前 MySQL 单节点 |
 
-前端生产构建：
+React 前端生产构建：
 
 ```powershell
 cd frontend-react
+npm.cmd run build
+```
+
+Vue 前端生产构建：
+
+```powershell
+cd frontend-vue
 npm.cmd run build
 ```
 
@@ -201,6 +230,28 @@ npm.cmd run build
 | 新增用户 | 调用 `POST /api/users` |
 | 编辑用户 | 调用 `PUT /api/users/{id}` |
 | 逻辑删除 | 调用 `DELETE /api/users/{id}` |
+
+`v0.4` 的 Vue 管理端已实现：
+
+| 页面/能力 | 说明 |
+|---|---|
+| 登录页 | 调用 `/api/auth/login` 获取 JWT，并把登录结果交给根组件保存到 localStorage |
+| 首页 | 展示当前登录用户，并验证 `/api/users/me` |
+| 用户列表 | 调用 `/api/users` 分页查询用户，并保存最近查询条件 |
+| 新增用户 | 调用 `POST /api/users` |
+| 编辑用户 | 调用 `PUT /api/users/{id}` |
+| 逻辑删除 | 调用 `DELETE /api/users/{id}` |
+
+Vue 管理端保持与 React 管理端一致的业务功能和操作路径，但目录组织采用更常见的 Vue 分层：
+
+| Vue 文件/目录 | 职责 |
+|---|---|
+| `frontend-vue/src/App.vue` | 应用入口接线，负责启动恢复、登录态判断和当前 view 渲染 |
+| `frontend-vue/src/layouts/AppLayout.vue` | 管理端外壳，负责侧边菜单、顶部用户信息和内容插槽 |
+| `frontend-vue/src/views` | 页面级组件，包含登录页、首页和用户管理页 |
+| `frontend-vue/src/composables` | 组合式业务逻辑，包含登录会话和用户管理状态逻辑 |
+| `frontend-vue/src/api` | 后端请求封装 |
+| `frontend-vue/src/storage` | localStorage 持久化封装 |
 
 ## API
 
@@ -291,7 +342,7 @@ Invoke-RestMethod -Method Delete -Uri http://localhost:8091/api/users/2 -Headers
 http://localhost:8091/swagger-ui.html
 ```
 
-Swagger UI 中可以直接查看并调试当前 v0.3 的所有接口。访问 `/api/users/me`、`/api/users` 这类需要登录的接口时，先调用登录接口拿到 `accessToken`，再点击页面右上角 `Authorize`，在 `bearerAuth` 中填入登录返回的 token。
+Swagger UI 中可以直接查看并调试当前 v0.4 的所有后端接口。访问 `/api/users/me`、`/api/users` 这类需要登录的接口时，先调用登录接口拿到 `accessToken`，再点击页面右上角 `Authorize`，在 `bearerAuth` 中填入登录返回的 token。
 
 OpenAPI JSON 地址：
 
@@ -321,7 +372,7 @@ http://localhost:8091/v3/api-docs
 | 验证项 | 结果 |
 |---|---|
 | `npm.cmd install` | 通过，生成 `frontend-react/package-lock.json` |
-| `npm.cmd run build` | 通过 |
+| `npm.cmd run build` | 通过，Vue 习惯结构优化后已再次验证 |
 | `npm.cmd audit --audit-level=high` | 通过，无 high/critical 漏洞；仍存在 Vite/esbuild 相关 moderate 提示 |
 | 前端页面访问 | `http://127.0.0.1:5173` 返回 `200` |
 | Vite 代理 | 通过前端端口访问 `/api/health`、登录、用户分页均返回 `200` |
@@ -333,6 +384,23 @@ http://localhost:8091/v3/api-docs
 
 构建提示：Ant Design 进入主包后，Vite 提示单个 chunk 超过 500KB。这不影响 `v0.3` 可运行版本；后续页面增多后可以再通过路由懒加载或 `manualChunks` 优化。
 
+本次 `v0.4` 验证内容：
+
+| 验证项 | 结果 |
+|---|---|
+| `node -v` | 通过，输出 `v22.22.3` |
+| `npm.cmd install` | 通过，生成 `frontend-vue/package-lock.json` |
+| `npm.cmd run build` | 通过 |
+| `npm.cmd audit --audit-level=high --cache E:\Code\codex\java-demo\.npm-cache` | 通过，无 high/critical 漏洞；仍存在 Vite/esbuild moderate 提示 |
+| React 构建回归 | 通过，`frontend-react` 执行 `npm.cmd run build` 成功 |
+| 后端 Maven package | 通过，生成 `backend/app/target/java-demo-app-0.4.0-SNAPSHOT.jar` |
+| Vue 页面访问 | `http://127.0.0.1:5174` 返回 `200` |
+| Vue Vite 代理 | 通过前端端口访问 `/api/health`、登录、用户分页、新增、编辑和删除均成功 |
+| 浏览器登录 Vue 管理端 | 通过，进入“当前用户”和“用户管理”工作区 |
+| Vue 结构优化 | 通过，已调整为 `layouts`、`views`、`composables`、`api`、`storage` 的 Vue 常见结构，功能和样式保持不变；结构优化后浏览器验证用户为 `vue_struct_20260526063858` |
+
+构建提示：Element Plus 进入主包后，Vite 提示单个 chunk 超过 500KB；同时 `npm audit` 提示 Vite/esbuild moderate 风险。两者都不影响当前 `v0.4` 可运行版本，后续可在前端依赖维护或路由拆分任务中处理。
+
 ## 下一步
 
-下一个 milestone 是 `v0.4 Vue Frontend`，目标是新增 Vue 管理端，复用当前后端登录和用户管理接口，并与 React 管理端做实现方式对比。
+下一个 milestone 是 `v0.5 Gateway JWT`，目标是引入 Spring Cloud Gateway，让外部请求统一经过网关入口，并在网关层验证 JWT。

@@ -21,6 +21,7 @@
 3. 进入前端 milestone 前，必须在新终端执行 `node -v`，期望结果为 `v22.x.x`。
 4. 前端默认优先使用项目内 `npm scripts` 作为任务入口。
 5. 如果后续改用 `pnpm`、`yarn` 或其他包管理器，需要新增或更新决策记录，并提交对应 lockfile。
+6. 前端语言策略见 `docs/decisions/0009-frontend-language-strategy.md`：React 使用 TypeScript，Vue 使用 JavaScript。
 
 ## 影响
 
