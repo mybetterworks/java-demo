@@ -17,6 +17,9 @@ services:
     volumes:
       # 使用命名卷持久化 MySQL 数据，容器删除后数据仍可保留。
       - java_demo_mysql_data:/var/lib/mysql
+      # 初始化脚本只会在 MySQL 数据卷首次创建时执行，用于创建 v0.5.1 拆分后的任务库和通知库。
+      # 如果本地已有旧数据卷，请参考 README 中的 root 手动建库命令补齐 database。
+      - ./init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       # docker compose 通过该检查判断 MySQL 是否已经可以接受连接。
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot_pwd --silent"]

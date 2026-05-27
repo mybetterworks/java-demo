@@ -25,7 +25,7 @@ import java.util.Set;
  *
  * <p>该过滤器是 v0.5 的核心：所有进入网关的请求都会先经过这里。
  * 登录、注册、健康检查和接口文档属于公开路径，会直接放行；用户管理等受保护接口必须携带
- * Authorization: Bearer {token}。校验通过后请求继续转发到 backend/app，后端自己的拦截器
+ * Authorization: Bearer {token}。校验通过后请求继续转发到对应业务服务，业务服务自己的拦截器
  * 仍会再次校验 JWT，用来演示“网关入口校验 + 服务自身防线”的双层保护。</p>
  */
 @Component
@@ -37,6 +37,8 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
     /** 精确匹配的公开路径，这些路径不需要登录即可访问。 */
     private static final Set<String> PUBLIC_EXACT_PATHS = Set.of(
             "/api/health",
+            "/api/tasks/health",
+            "/api/notifications/health",
             "/api/auth/register",
             "/api/auth/login",
             "/v3/api-docs",

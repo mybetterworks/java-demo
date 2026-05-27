@@ -1,5 +1,5 @@
 server:
-  # v0.5 网关默认端口。7991-8090、8146-8245 已被本机环境占用，因此使用 8092。
+  # v0.5.1 网关默认端口。7991-8090、8146-8245 已被本机环境占用，因此使用 8092。
   # 如需临时覆盖，可启动时传入 --server.port=8250 或设置 GATEWAY_SERVER_PORT。
   port: ${GATEWAY_SERVER_PORT:8092}
 
@@ -9,13 +9,21 @@ spring:
     name: java-demo-gateway
   cloud:
     gateway:
-      # v0.5 暂时使用静态地址把所有 API 和 Swagger 文档转发到单体后端。
-      # 后续 v0.6 接入 Nacos 后，可将 uri 演进为 lb://java-demo-app。
+      # v0.5.1 暂时使用静态地址转发到三个业务服务。
+      # 后续 v0.6 接入 Nacos 后，可将 uri 演进为 lb://java-demo-app、lb://task-service 等服务名。
       routes:
         - id: java-demo-backend-api
           uri: ${JAVA_DEMO_BACKEND_URI:http://localhost:8091}
           predicates:
-            - Path=/api/**,/v3/api-docs,/v3/api-docs/**,/swagger-ui.html,/swagger-ui/**
+            - Path=/api/auth/**,/api/users/**,/api/health,/v3/api-docs,/v3/api-docs/**,/swagger-ui.html,/swagger-ui/**
+        - id: java-demo-task-api
+          uri: ${JAVA_DEMO_TASK_SERVICE_URI:http://localhost:8093}
+          predicates:
+            - Path=/api/tasks/**
+        - id: java-demo-notification-api
+          uri: ${JAVA_DEMO_NOTIFICATION_SERVICE_URI:http://localhost:8094}
+          predicates:
+            - Path=/api/notifications/**
       # 网关统一处理跨域。当前前端主要通过 Vite proxy 访问网关，但保留 CORS 配置便于直接从浏览器调试。
       globalcors:
         cors-configurations:

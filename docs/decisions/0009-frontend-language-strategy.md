@@ -29,6 +29,7 @@
 | `v0.3 React Frontend` | 已完成版本保持 React + TypeScript，后续维护继续执行类型检查 |
 | `v0.4 Vue Frontend` | 待开发版本必须选择 Vue + JavaScript，不使用 TypeScript 模板 |
 | README 和 milestone 文档 | 前端启动、构建和验收说明需要明确对应语言 |
+| `v0.5.3 Task And Notification Frontends` | 任务管理和通知中心在 React 侧使用 TypeScript，在 Vue 侧使用 JavaScript |
 | 后续前端扩展 | WebSocket、MinIO 上传、搜索、趋势图等功能在 React 侧使用 TypeScript，在 Vue 侧使用 JavaScript |
 
 ## 执行约束
@@ -38,4 +39,5 @@
 3. 两套前端应共享接口语义、页面交互、操作路径和核心处理逻辑，以便进行对比学习。
 4. 两套前端不要求目录一一镜像；React 可以保持 `components` 页面组织，Vue 应体现常见 Vue 分层，例如 `views`、`layouts`、`composables`、`api` 和 `storage`。
 5. 不要为了“代码一致”强行统一语言、组件库、样式实现或目录结构；React 保持 TypeScript，Vue 保持 JavaScript。
-6. 验收 `v0.4` 时，需要检查 `frontend-vue` 未生成 `tsconfig`，且业务代码未使用 `.ts` / `.tsx`。
+6. `v0.5.3` 及后续双端功能开发时，应保持业务功能和布局一致，但 React 继续用类型定义表达接口和页面状态，Vue 继续用 JavaScript、组合式逻辑和必要注释表达业务意图。
+7. 验收 `v0.4` 时，需要检查 `frontend-vue` 未生成 `tsconfig`，且业务代码未使用 `.ts` / `.tsx`。

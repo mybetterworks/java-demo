@@ -1,7 +1,7 @@
 /**
  * API 基础地址：
- * - 开发环境默认留空，依赖 Vite proxy 把 /api 转发到 Spring Boot 8091。
- * - 独立部署时可以通过 VITE_API_BASE_URL 指向完整后端地址。
+ * - 开发环境默认留空，依赖 Vite proxy 把 /api 转发到 Gateway 8092。
+ * - 独立部署时可以通过 VITE_API_BASE_URL 指向完整网关或后端地址。
  */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 

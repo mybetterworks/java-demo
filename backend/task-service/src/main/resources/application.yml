@@ -1,0 +1,49 @@
+server:
+  # 任务服务端口。根据本机端口规划，避开 7991-8090 和 8146-8245。
+  port: ${TASK_SERVER_PORT:8093}
+
+spring:
+  application:
+    # 服务名用于日志、Swagger 标题和后续 Nacos 注册。
+    name: task-service
+  datasource:
+    # v0.5.1 继续复用 Docker Desktop 中的 MySQL 单实例，但为任务服务单独使用 database。
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/java_demo_task?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: ${JAVA_DEMO_TASK_DB_USERNAME:java_demo}
+    password: ${JAVA_DEMO_TASK_DB_PASSWORD:java_demo_pwd}
+  sql:
+    init:
+      # schema.sql 使用 IF NOT EXISTS，重复启动安全；真实生产迁移会在后续版本引入专业迁移工具。
+      mode: always
+
+mybatis-plus:
+  configuration:
+    # 数据库字段使用下划线，Java 字段使用驼峰，通过该配置自动完成映射。
+    map-underscore-to-camel-case: true
+  global-config:
+    # 关闭 MyBatis Plus banner，让多服务本地启动日志更聚焦。
+    banner: false
+
+springdoc:
+  api-docs:
+    # 每个微服务保留独立 OpenAPI JSON，后续再通过 Gateway 做聚合。
+    path: /v3/api-docs
+  swagger-ui:
+    # 任务服务独立 Swagger UI，便于直接调试任务接口。
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+    tags-sorter: alpha
+
+app:
+  jwt:
+    # 必须和 java-demo-app、Gateway、notification-service 使用同一个密钥。
+    secret: ${JAVA_DEMO_JWT_SECRET:java-demo-v0-1-local-secret-change-me-32chars}
+    expiration-seconds: ${JAVA_DEMO_JWT_EXPIRATION_SECONDS:7200}
+
+java-demo:
+  services:
+    # v0.5.1 暂时使用静态 REST 地址；v0.6 接入 Nacos 后再迁移为服务发现。
+    user-service-url: ${JAVA_DEMO_USER_SERVICE_URL:http://localhost:8091}
+    notification-service-url: ${JAVA_DEMO_NOTIFICATION_SERVICE_URL:http://localhost:8094}

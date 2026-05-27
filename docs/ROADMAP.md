@@ -9,9 +9,10 @@
 3. 业务始终围绕用户注册、登录、认证、用户管理、审计和通知展开。
 4. Windows 11 作为开发机，Java、Git、Maven、Node.js 使用本地环境，基础设施优先使用 Docker Desktop。
 5. 所有写入和修改都限制在当前项目目录下。
-6. 生成和修改的代码必须补充详细中文注释，便于后续学习、复盘和逐步理解微服务技术栈。
+6. 生成和修改的代码必须补充详细中文注释；后端代码不仅要有类和方法注释，也要在方法内部关键流程、关键分支和关键代码块前补充说明，便于后续学习、复盘和逐步理解微服务技术栈。
 7. 后端服务必须逐步补齐关键运行日志，日志要能输出到控制台、写入项目日志文件，并支持按配置调整级别。
-8. 代码提交、tag 和推送必须由用户手动执行，Codex 不自动执行 Git 提交相关操作。
+8. 后端新增或修改用户可见能力时，必须自动评估 React 和 Vue 两套前端是否需要同步新增或修改页面功能。
+9. 代码提交、tag 和推送必须由用户手动执行，Codex 不自动执行 Git 提交相关操作。
 
 ## 当前环境记录
 
@@ -162,6 +163,7 @@ E:\Code\codex\java-demo
 | Docker 服务容器化策略 | `docs/decisions/0010-docker-service-containerization.md` | Nacos、Redis、MQ、Elasticsearch、Seata、Jenkins 等服务使用独立容器，集群节点也独立容器 |
 | 任务和通知服务边界 | `docs/decisions/0011-task-notification-service-boundary.md` | `v0.5.1` 新增 `task-service` 和 `notification-service`，为后续技术实验提供真实跨服务业务链路 |
 | 后端运行日志策略 | `docs/decisions/0012-backend-runtime-logging.md` | `v0.5.2` 为 `java-demo-app`、`task-service`、`notification-service` 建立控制台日志、文件日志和日志级别配置基线 |
+| 前后端功能联动策略 | `docs/decisions/0013-frontend-backend-feature-sync.md` | `v0.5.3` 起后端用户可见能力变化需要自动评估并同步 React/Vue 前端 |
 | Git 提交策略 | `docs/decisions/0005-manual-git-commit.md` | 用户手动提交、打 tag 和推送，Codex 不自动执行 Git 写操作 |
 | 前端 Node 环境 | `docs/decisions/0006-node-frontend-environment.md` | Node.js 22 作为 React、Vue 前端默认运行时 |
 | 前端组件库 | `docs/decisions/0007-frontend-component-libraries.md` | React 使用 Ant Design，Vue 使用 Element UI 系列组件库 |
@@ -176,6 +178,7 @@ E:\Code\codex\java-demo
 | `v0.5` | 引入 Gateway | 外部流量统一进入网关 |
 | `v0.5.1` | 新增任务和通知微服务 | 在 Gateway 后补齐真实业务服务边界，先使用静态 REST 调用 |
 | `v0.5.2` | 建立后端运行日志基线 | 三个业务服务支持控制台日志、文件日志、日志级别配置和敏感信息保护 |
+| `v0.5.3` | 补齐任务和通知前端 | React 和 Vue 都提供任务管理与通知中心，功能和布局一致，代码风格保持各自特点 |
 | `v0.6` | 接入 Nacos | 服务注册发现和配置中心进入主线，Gateway 和服务间调用从静态地址转向服务名 |
 | `v1.5` 前后 | 强化跨服务一致性 | 基于已有任务、通知和用户服务验证 Seata、链路追踪和真实微服务边界 |
 
@@ -199,6 +202,7 @@ E:\Code\codex\java-demo
 | `v0.5` | 网关入口 | Spring Cloud Gateway、JWT 校验 | 请求统一经过网关 |
 | `v0.5.1` | 任务和通知微服务 | Spring Boot、MyBatis Plus、MySQL、JWT、Gateway 静态路由、REST 服务调用 | 创建任务、分配任务、生成通知、查询我的通知 |
 | `v0.5.2` | 后端运行日志 | SLF4J、Logback、控制台日志、文件日志、日志级别配置 | 用户、任务、通知服务关键流程可在控制台和 `logs` 文件中观察 |
+| `v0.5.3` | 任务和通知前端 | React、TypeScript、Ant Design、Vue、JavaScript、Element Plus | React/Vue 都能在浏览器中完成任务管理和通知中心操作 |
 | `v0.6` | 注册与配置中心 | Nacos | Gateway、用户、任务、通知服务注册；服务名路由和配置读取可用 |
 | `v0.7` | 缓存与限流 | Redis、Redis Cluster 预研 | 用户校验、任务列表、通知未读数缓存；登录和业务接口限流生效 |
 | `v0.8` | 实时通信 | WebSocket | 任务分配和通知未读变化可实时推送到前端 |
@@ -221,11 +225,12 @@ E:\Code\codex\java-demo
 1. 读取 `docs/ROADMAP.md`、`docs/DEVELOPMENT_RULES.md`、`docs/PROGRESS.md` 和当前 milestone 文档。
 2. 确认当前环境和上一版本是否可运行；涉及前端 milestone 时确认 `node -v` 显示 `v22.x.x`。
 3. 实现本 milestone 的唯一核心新增能力。
-4. 为新增或修改的代码补充详细中文注释，重点说明类职责、关键流程、配置含义、异常处理和测试意图。
+4. 为新增或修改的代码补充详细中文注释；后端代码除了类/方法说明外，还要在方法内部关键代码块前说明业务意图、关键分支、服务间调用、日志上下文、异常处理和测试意图。
 5. 涉及后端运行流程时，在请求入口、关键业务状态变化、服务间调用、配置加载和异常处理处补充必要日志，并避免打印敏感信息。
-6. 运行自动化测试、启动验证、接口验证和必要日志验证。
-7. 更新 `README.md`、`docs/PROGRESS.md`，必要时补充 `docs/decisions`。
-8. 如果需要保存版本，Codex 只提示建议提交信息和 tag 名称，由用户手动提交、打 tag 和推送。
+6. 涉及后端用户可见能力变化时，自动判断 React 和 Vue 是否需要同步新增或修改页面；如需要，默认在同一 milestone 中补齐双端前端能力。
+7. 运行自动化测试、启动验证、接口验证、前端构建验证和必要日志验证。
+8. 更新 `README.md`、`docs/PROGRESS.md`，必要时补充 `docs/decisions`。
+9. 如果需要保存版本，Codex 只提示建议提交信息和 tag 名称，由用户手动提交、打 tag 和推送。
 
 涉及 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等基础设施时，优先新增 Docker Compose；镜像由 Docker Desktop 拉取并运行，每个服务或节点使用独立容器。
 
@@ -234,13 +239,13 @@ E:\Code\codex\java-demo
 继续开发下一个版本：
 
 ```text
-请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档，然后实现下一个可运行版本。涉及后端功能时，请在关键入口、业务状态变化、服务间调用、异常处理和配置加载处增加必要日志，日志必须避免打印密码、JWT 完整 token、Authorization header、数据库密码和真实密钥。完成后运行功能验证、日志验证，并更新进度文档。
+请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档，然后实现下一个可运行版本。新增和修改的后端代码必须补充详细中文注释，不仅包括类和方法注释，也要在方法内部关键流程、关键分支、服务间调用、日志上下文、异常处理等代码块前增加说明。涉及后端功能时，请在关键入口、业务状态变化、服务间调用、异常处理和配置加载处增加必要日志，日志必须避免打印密码、JWT 完整 token、Authorization header、数据库密码和真实密钥；如果后端新增或修改了用户可见能力，请自动判断 React 和 Vue 是否需要同步页面功能，必要时在同一版本补齐双端前端。完成后运行功能验证、前端构建验证、日志验证，并更新进度文档。
 ```
 
 开发指定版本：
 
 ```text
-请按照 docs/milestones/v0.1-mvp-login.md 实现指定可运行版本。只修改当前项目目录下的文件；如果该版本涉及后端运行流程，请同步补充关键日志和日志验收记录。完成后更新 docs/PROGRESS.md。
+请按照 docs/milestones/v0.1-mvp-login.md 实现指定可运行版本。只修改当前项目目录下的文件；如果该版本涉及后端代码，请同步补充类/方法注释和方法内部关键代码块注释；如果该版本涉及后端运行流程，请同步补充关键日志和日志验收记录。完成后更新 docs/PROGRESS.md。
 ```
 
 做技术实验：

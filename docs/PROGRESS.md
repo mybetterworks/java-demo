@@ -6,9 +6,11 @@
 
 `v0.5 Gateway JWT` 已实现并完成 Spring Cloud Gateway 模块、网关 JWT 校验过滤器、React/Vue 代理切换、Maven reactor package、前端构建回归、Gateway 真实接口联调和文档更新。
 
-当前已进入 `v0.5.1 Task And Notification Services` 规划阶段。本次文档更新只规划新增 `task-service` 和 `notification-service` 两个微服务，不进行代码开发；后续实现时应先完成最小 MVP，再把它们作为 Nacos、Redis、WebSocket、MQ、Seata、可观测性、Docker/K8s 和 CI/CD 的业务实验载体。
+`v0.5.1 Task And Notification Services` 已完成。当前已补齐 `task-service` 和 `notification-service` 的代码、配置、SQL 初始化脚本、Gateway 静态路由和集成测试代码，并已补跑 Maven `test`、Maven `package`、React/Vue 构建回归和真实 Gateway 任务通知链路联调。
 
-同时已新增 `v0.5.2 Backend Runtime Logging` 规划，作为 `v0.5.1` 和 `v0.6 Nacos` 之间的后端日志基线版本。该版本用于让 `java-demo-app`、`task-service`、`notification-service` 支持控制台日志、项目文件日志和可配置日志级别，便于后续微服务实验时观察运行状态。
+同时已新增 `v0.5.2 Backend Runtime Logging` 规划，作为 `v0.5.1` 和 `v0.6 Nacos` 之间的后端日志基线版本。该版本用于让 `java-demo-app`、`task-service`、`notification-service` 支持控制台日志、项目文件日志和可配置日志级别，便于后续微服务实验时观察运行状态；同时把后端详细中文注释要求进一步明确为类/方法注释与方法内部关键代码块注释并重。
+
+已新增 `v0.5.3 Task And Notification Frontends` 规划，作为任务和通知两个后端微服务的前端承接版本。该版本要求 React 和 Vue 都补齐任务管理与通知中心，双端功能、布局、操作路径保持一致，但代码结构和开发风格继续保留各自框架特点。
 
 已完成：
 
@@ -38,7 +40,7 @@
 | MySQL Docker 基础设施 | 已完成 `infra/docker-compose/mysql/docker-compose.yml` |
 | v0.1 登录闭环 | 已完成注册、登录、JWT、当前用户接口 |
 | v0.1 接口可视化 | 已集成 Springdoc OpenAPI `2.6.0` 和 Swagger UI |
-| 代码注释规范 | 已要求生成和修改的代码必须补充详细中文注释 |
+| 代码注释规范 | 已要求生成和修改的代码必须补充详细中文注释；后端代码不仅需要类/方法注释，也需要方法内部关键代码块注释 |
 | v0.1 中文注释补全 | 已补充 Java、YAML、SQL、Docker Compose 中的中文说明 |
 | v0.2 用户管理 CRUD | 已完成分页、详情、创建、更新、逻辑删除、修改密码 |
 | v0.2 数据模型扩展 | 已新增 `role`、`deleted`、`last_login_at` 字段，并提供启动时轻量迁移 |
@@ -59,22 +61,32 @@
 | React 代理端口调整 | v0.5 已将 Vite 代理目标从后端 `8091` 调整为 Gateway `8092` |
 | Vue 代理端口配置 | v0.5 已将 Vite 代理目标从后端 `8091` 调整为 Gateway `8092`，Vue 开发端口为 `5174` |
 | v0.5 Spring Cloud Gateway | 已新增 `backend/gateway` 模块，默认端口为 `8092` |
-| v0.5 Gateway 路由 | 已将 `/api/**`、OpenAPI JSON 和 Swagger UI 经 Gateway 转发到后端 `8091` |
+| v0.5 Gateway 路由 | 已将登录、用户、OpenAPI JSON 和 Swagger UI 经 Gateway 转发到后端 `8091` |
 | v0.5 Gateway JWT 校验 | 已新增 `JwtGatewayFilter`，白名单放行登录、注册、健康检查和接口文档，用户接口必须携带 Bearer token |
 | v0.5 前端代理切换 | React 和 Vue 的 Vite proxy 已从后端 `8091` 调整为 Gateway `8092` |
 | v0.5 自动化测试 | 已新增网关过滤器测试，覆盖公开路径、无 token、有效 token 和无效 token |
 | v0.5 真实联调 | 已通过 Gateway 注册、登录、无 token 拦截、携带 token 查询当前用户和用户分页 |
 | v0.5.1 milestone 规划 | 已新增 `docs/milestones/v0.5.1-task-notification-services.md`，明确任务服务、通知服务、接口、端口、数据库和后续技术结合点 |
-| v0.5.2 milestone 规划 | 已新增 `docs/milestones/v0.5.2-backend-runtime-logging.md`，明确三个业务服务的控制台日志、文件日志、日志级别配置、关键日志点和敏感信息保护 |
+| v0.5.1 task-service 代码 | 已新增 `backend/task-service`，包含任务 CRUD、我的任务、状态流转、逻辑删除、JWT 校验、Swagger、MyBatis Plus、H2 集成测试和静态 REST 下游调用 |
+| v0.5.1 notification-service 代码 | 已新增 `backend/notification-service`，包含通知创建、我的通知、未读数、单条已读、全部已读、JWT 校验、Swagger、MyBatis Plus 和 H2 集成测试 |
+| v0.5.1 Gateway 路由 | 已新增 `/api/tasks/**` -> `8093`、`/api/notifications/**` -> `8094`，并放行 `/api/tasks/health` 和 `/api/notifications/health` |
+| v0.5.1 MySQL 初始化 | 已新增 `infra/docker-compose/mysql/init/01-create-v051-databases.sql`，用于首次初始化 `java_demo_task` 和 `java_demo_notification` |
+| v0.5.1 自动化测试 | 已通过 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，四个 Maven 模块测试均成功 |
+| v0.5.1 package | 已通过 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，四个 `0.5.1-SNAPSHOT` jar 均已生成 |
+| v0.5.1 真实联调 | 已通过 Gateway `8092` 完成健康检查、JWT 拦截、任务创建、任务查询、状态流转、通知查询、未读数、已读标记和 OpenAPI 验证 |
+| v0.5.1 前端构建回归 | React 和 Vue 均已执行 `npm.cmd run build` 并通过，保留既有 Vite chunk size warning |
+| v0.5.2 milestone 规划 | 已新增 `docs/milestones/v0.5.2-backend-runtime-logging.md`，明确三个业务服务的控制台日志、文件日志、日志级别配置、关键日志点、敏感信息保护和后端关键代码块注释要求 |
 | 后端运行日志策略 | 已采纳 `docs/decisions/0012-backend-runtime-logging.md`，后续后端 milestone 默认需要补充关键运行日志 |
+| v0.5.3 milestone 规划 | 已新增 `docs/milestones/v0.5.3-task-notification-frontends.md`，明确 React/Vue 双端任务管理和通知中心的开发范围、双端一致性和注释要求 |
+| 前后端功能联动策略 | 已采纳 `docs/decisions/0013-frontend-backend-feature-sync.md`，后续后端用户可见能力变化默认需要评估并同步 React/Vue 前端 |
 
 尚未完成：
 
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| v0.5.1 task-service 和 notification-service 代码实现 | 未开始，本次只完成 docs 规划 |
 | v0.5.2 后端运行日志代码实现 | 未开始，需在 v0.5.1 三个业务服务具备后再实施 |
+| v0.5.3 React/Vue 任务通知前端实现 | 未开始，需在 v0.5.1 接口可用、v0.5.2 日志基线完成后实施 |
 | Nacos 和后续微服务基础设施 | 未开始，按后续 milestone 逐步引入 |
 
 ## 环境观察
@@ -117,6 +129,17 @@
 | v0.5 Gateway JWT 验证 | 已通过，注册/登录走 Gateway 成功，不带 token 访问 `/api/users` 返回 `401`，携带 token 可访问 `/api/users/me` 和用户分页 |
 | v0.5 React/Vue 构建回归 | 已通过，`frontend-react` 和 `frontend-vue` 均执行 `npm.cmd run build` 成功 |
 | v0.5 React/Vue 代理联调 | 已通过，React `5173` 和 Vue `5174` 均经 Vite proxy 访问 Gateway `8092`，并完成注册、登录、当前用户和无 token 拦截验证 |
+| v0.5.1 Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；`java-demo-app` 2 个测试、`java-demo-gateway` 6 个测试、`task-service` 1 个测试、`notification-service` 1 个测试均成功 |
+| v0.5.1 Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；已生成 `java-demo-app`、`java-demo-gateway`、`java-demo-task-service`、`java-demo-notification-service` 四个 `0.5.1-SNAPSHOT` jar |
+| v0.5.1 MySQL 容器状态 | 已执行 `docker ps --filter "name=java-demo-mysql"`，确认 `java-demo-mysql` 为 `healthy` |
+| v0.5.1 MySQL database | 已确认 `java_demo`、`java_demo_task`、`java_demo_notification` 均存在，且 `java_demo` 用户具备任务库和通知库权限 |
+| v0.5.1 Gateway 健康检查 | 已通过 Gateway `8092` 访问 `/api/health`、`/api/tasks/health`、`/api/notifications/health` |
+| v0.5.1 Gateway JWT 拦截 | 不带 token 访问 `GET /api/tasks` 和 `GET /api/notifications/my` 均返回 `401` |
+| v0.5.1 Gateway 任务通知链路 | 已通过 Gateway 注册/登录测试用户、创建任务、查询我的任务、更新任务状态、查询通知、查询未读数、单条已读和全部已读 |
+| v0.5.1 Gateway OpenAPI | 已通过 Gateway 访问 `/v3/api-docs`，返回 `200` |
+| v0.5.1 React 构建回归 | 已执行 `frontend-react` 的 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| v0.5.1 Vue 构建回归 | 已执行 `frontend-vue` 的 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| v0.5.1 当前验证状态 | 已完成自动化测试、package、真实 Gateway 联调、前端构建回归和文档更新，本版本可标记为完成 |
 
 注意：当前 Codex 进程的 PATH/JAVA_HOME/Node.js 路径可能仍是旧会话环境。若 `java -version`、`mvn -v` 或 `node -v` 未显示上述版本，重启终端或 Codex 会话后再验证。
 
@@ -324,24 +347,65 @@ v0.4 Vue 项目结构记录：
 | PowerShell 环境 | 当前会话仍存在 `PATH` / `Path` 重复导致 `Start-Process` 异常的问题；本次改用 `.NET ProcessStartInfo` 完成临时进程启动 |
 | 构建提示 | React 和 Vue 均保留既有 Vite chunk size warning，不影响当前版本运行 |
 
+## v0.5.1 验证记录
+
+自动化和构建验证：
+
+| 命令 | 结果 |
+|---|---|
+| `D:\software\apache-maven-3.9.16\bin\mvn.cmd test` | 通过；`java-demo-app` 2 个测试、`java-demo-gateway` 6 个测试、`task-service` 1 个测试、`notification-service` 1 个测试均成功 |
+| `D:\software\apache-maven-3.9.16\bin\mvn.cmd package` | 通过；生成 `java-demo-app-0.5.1-SNAPSHOT.jar`、`java-demo-gateway-0.5.1-SNAPSHOT.jar`、`java-demo-task-service-0.5.1-SNAPSHOT.jar`、`java-demo-notification-service-0.5.1-SNAPSHOT.jar` |
+| `frontend-react` 执行 `npm.cmd run build` | 通过，保留既有 Vite chunk size warning |
+| `frontend-vue` 执行 `npm.cmd run build` | 通过，保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+
+真实 Gateway 联调验收：
+
+| 验收项 | 结果 |
+|---|---|
+| MySQL 容器 | `java-demo-mysql` 为 `healthy` |
+| MySQL database | 已确认 `java_demo`、`java_demo_task`、`java_demo_notification` 均存在 |
+| 直连 `java-demo-app` 健康检查 | `http://127.0.0.1:8091/api/health` 返回 `200` |
+| 直连 `task-service` 健康检查 | `http://127.0.0.1:8093/api/tasks/health` 返回 `200` |
+| 直连 `notification-service` 健康检查 | `http://127.0.0.1:8094/api/notifications/health` 返回 `200` |
+| Gateway 健康检查 | `http://127.0.0.1:8092/api/health`、`/api/tasks/health`、`/api/notifications/health` 均返回 `200` |
+| Gateway 无 token 拦截 | 不带 token 访问 `GET /api/tasks` 和 `GET /api/notifications/my` 均返回 `401` |
+| Gateway 登录链路 | 通过 Gateway 注册并登录测试用户 `v051_20260527115111`，成功签发 JWT |
+| Gateway 任务链路 | 携带 token 创建任务成功，任务 ID 为 `1`；查询我的任务返回 `total=1`；更新状态为 `IN_PROGRESS` 成功 |
+| Gateway 通知链路 | 查询我的通知返回 `total=2`；未读数为 `2`；单条已读和全部已读均成功 |
+| Gateway OpenAPI | `http://127.0.0.1:8092/v3/api-docs` 返回 `200` |
+
+验证说明：
+
+| 项目 | 说明 |
+|---|---|
+| 启动方式 | 本次运行时联调用 `D:\software\jdk-17.0.19\bin\java.exe -jar` 临时启动四个后端 jar |
+| 端口 | `java-demo-app` 使用 `8091`，Gateway 使用 `8092`，`task-service` 使用 `8093`，`notification-service` 使用 `8094` |
+| 临时进程 | 验证结束后已停止本次临时启动的四个 Java 进程，并确认 `8091-8094` 无监听进程 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.5-gateway-jwt.md
-```
-
-建议下一步执行：
-
-```text
 docs/milestones/v0.5.1-task-notification-services.md
 ```
 
-`v0.5.2` 已完成文档规划，但执行顺序应放在 `v0.5.1` 之后：
+下一步尚未开始：
 
 ```text
 docs/milestones/v0.5.2-backend-runtime-logging.md
+```
+
+`v0.5.2` 完成后的下一步：
+
+```text
+docs/milestones/v0.5.3-task-notification-frontends.md
+```
+
+`v0.5.3` 完成后的下一步：
+
+```text
+docs/milestones/v0.6-nacos.md
 ```
 
 ## 端口调整记录
@@ -366,8 +430,8 @@ docs/milestones/v0.5.2-backend-runtime-logging.md
 | Vue 开发服务器 | `5174` | 已配置，未落入占用范围 |
 | Vue Preview | `4174` | 已配置，未落入占用范围 |
 | Spring Cloud Gateway | `8092` | 已配置，v0.5 外部 API 统一入口 |
-| task-service | `8093` | 规划中，v0.5.1 任务服务端口 |
-| notification-service | `8094` | 规划中，v0.5.1 通知服务端口 |
+| task-service | `8093` | 已配置，v0.5.1 任务服务端口 |
+| notification-service | `8094` | 已配置，v0.5.1 通知服务端口 |
 | 后续拆分业务服务 | `8095-8145` 或 `8246+` | 后续按需分配 |
 | 本地 Nginx 非标准 HTTP/HTTPS | `8250` / `8251` | 后续 `v1.6` 如不使用 `80` / `443` 时优先使用 |
 | MySQL Docker | `3306` | 已配置，未落入占用范围 |
@@ -390,6 +454,7 @@ docs/milestones/v0.5.2-backend-runtime-logging.md
 | Gateway JWT 校验 | 不带 token 访问 `/api/users` 返回 `401`，携带 token 可访问 `/api/users/me` 和用户分页 |
 | React/Vue 经 Gateway 联调 | React `5173` 和 Vue `5174` 均已通过 Vite proxy 经 Gateway 完成登录态接口验证 |
 | v0.5.1 端口规划 | task-service 使用 `8093`，notification-service 使用 `8094`；后续其他服务从 `8095-8145` 或 `8246+` 分配 |
+| v0.5.1 端口配置 | `backend/task-service` 已使用 `8093`，`backend/notification-service` 已使用 `8094`，Gateway 已配置对应静态路由 |
 | 验证进程 | 验证结束后已停止本次临时启动的后端、Gateway 和前端进程 |
 
 ## 已采纳执行路线
@@ -402,6 +467,7 @@ docs/milestones/v0.5.2-backend-runtime-logging.md
 | `v0.5` | 引入 Gateway，统一外部入口 |
 | `v0.5.1` | 新增任务和通知服务，形成跨服务业务闭环 |
 | `v0.5.2` | 为用户、任务、通知三个业务服务建立控制台日志、文件日志和日志级别配置基线 |
+| `v0.5.3` | React 和 Vue 都补齐任务管理与通知中心，承接任务/通知微服务的用户可见能力 |
 | `v0.6` | 接入 Nacos，进入服务注册和配置中心阶段 |
 | `v1.5` 前后 | 基于已有用户、任务、通知服务验证 Seata 和链路追踪 |
 
@@ -416,17 +482,16 @@ docs/milestones/v0.5.2-backend-runtime-logging.md
 
 ## 下一步建议
 
-1. 如需保存当前稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 开始 `docs/milestones/v0.5.1-task-notification-services.md`。
-3. 在 v0.5.1 中新增 `task-service` 和 `notification-service`，先通过 Gateway 静态路由和 REST 调用完成任务创建、任务分配、通知生成、通知查询的最小闭环。
-4. v0.5.1 完成后进入 `docs/milestones/v0.5.2-backend-runtime-logging.md`，为 `java-demo-app`、`task-service`、`notification-service` 增加控制台日志、文件日志和可配置日志级别。
-5. v0.5.2 完成后再进入 `docs/milestones/v0.6-nacos.md`，把 Gateway、用户、任务、通知服务接入 Nacos。
-6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
+1. 如需保存当前 `v0.5.1` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
+2. 下一次开发从 `docs/milestones/v0.5.2-backend-runtime-logging.md` 开始，为 `java-demo-app`、`task-service` 和 `notification-service` 补齐运行日志基线。
+3. v0.5.2 完成后进入 `docs/milestones/v0.5.3-task-notification-frontends.md`，在 React 和 Vue 两套前端中补齐任务管理与通知中心。
+4. v0.5.3 完成后再进入 `docs/milestones/v0.6-nacos.md`，把 Gateway、用户、任务、通知服务接入 Nacos。
+5. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档，然后实现下一个可运行版本。涉及后端功能时，请在服务启动、请求入口、业务状态变化、服务间调用、异常处理和配置加载处增加必要日志；日志需要支持控制台输出、文件输出和级别配置，禁止打印密码、JWT 完整 token、Authorization header、数据库密码和真实密钥。完成后运行功能验证、日志验证，并更新文档。
+请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档。当前 v0.5.1 已完成，请从 docs/milestones/v0.5.2-backend-runtime-logging.md 开始实现后端运行日志 milestone；不要重复实现 v0.5.1。v0.5.2 完成后进入 v0.5.3，在 React 和 Vue 两套前端中补齐任务管理和通知中心。新增和修改的后端代码必须补充详细中文注释，不仅包括类和方法注释，也要在方法内部关键流程、关键分支、服务间调用、日志上下文、异常处理等代码块前增加说明。涉及后端用户可见能力变化时，请自动判断是否需要同步 React/Vue 前端。涉及后端功能时，禁止打印密码、JWT 完整 token、Authorization header、数据库密码和真实密钥。
 ```
 
 ## 完成记录
@@ -438,8 +503,9 @@ docs/milestones/v0.5.2-backend-runtime-logging.md
 | `v0.3` | 已完成 | 2026-05-23 | React 管理端、TypeScript、Ant Design、IndexedDB 登录态恢复；提交、tag 和推送由用户手动执行 |
 | `v0.4` | 已完成 | 2026-05-26 | Vue 管理端、JavaScript、Element Plus、localStorage 登录态和最近查询条件；已优化为 Vue 常见项目结构；提交、tag 和推送由用户手动执行 |
 | `v0.5` | 已完成 | 2026-05-26 | Spring Cloud Gateway、网关 JWT 校验、React/Vue 代理切换到 Gateway；提交、tag 和推送由用户手动执行 |
-| `v0.5.1` | 未开始 | - | 任务服务和通知服务 MVP；已完成 milestone 与服务边界文档规划 |
+| `v0.5.1` | 已完成 | 2026-05-27 | 任务服务和通知服务 MVP；已通过 Maven test/package、React/Vue 构建回归和真实 Gateway 任务通知链路联调；提交、tag 和推送由用户手动执行 |
 | `v0.5.2` | 未开始 | - | 后端运行日志基线；已完成 milestone 与日志策略文档规划 |
+| `v0.5.3` | 未开始 | - | 任务和通知前端；已完成 milestone 与前后端联动策略文档规划 |
 | `v0.6` | 未开始 | - | Nacos |
 | `v0.7` | 未开始 | - | Redis |
 | `v0.8` | 未开始 | - | WebSocket |
@@ -476,5 +542,7 @@ docs/milestones/v0.5.2-backend-runtime-logging.md
 | 后续维护 Vue 端时误引入 TypeScript 模板 | Vue 管理端语言策略与学习目标不一致 | `frontend-vue` 继续保持 JavaScript，不生成 `tsconfig` 或 `.ts` / `.tsx` 业务代码 |
 | 当前会话存在 `PATH` / `Path` 重复环境变量 | Maven Wrapper 或 `Start-Process` 可能启动失败 | 本次已使用本地 Maven 3.9.16 完成验证；后续可重启 Codex 会话或清理当前进程环境后再试 Wrapper |
 | 后端日志误打印敏感信息 | 如果把密码、完整 JWT、Authorization header 或数据库密码写入日志，会造成安全风险 | 遵守 `docs/decisions/0012-backend-runtime-logging.md`，日志只打印 userId、业务 ID、错误码、耗时和脱敏摘要 |
+| 后端能力已完成但前端未同步 | 用户只能通过 Swagger 或脚本验证任务/通知，影响全栈学习闭环 | 遵守 `docs/decisions/0013-frontend-backend-feature-sync.md`，后端用户可见能力变化时自动评估并补齐 React/Vue 前端 |
+| React 和 Vue 功能漂移 | 两套前端如果功能、布局或操作路径不一致，会降低对比学习价值 | v0.5.3 开始要求双端菜单、页面结构、字段、操作和错误提示保持一致，代码结构仍保留各自框架特点 |
 | 后续中间件容器边界混乱 | 如果多个服务共用一个容器，后续难以单独扩缩容或集群化 | 遵守 `docs/decisions/0010-docker-service-containerization.md`，每个服务和每个集群节点独立容器 |
 | 中间件范围很大 | 容易一次性复杂化 | 严格按 milestone 单步推进 |

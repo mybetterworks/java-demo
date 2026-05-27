@@ -57,6 +57,30 @@ class JwtGatewayFilterTest {
     }
 
     /**
+     * 测试：任务和通知服务的健康检查属于公开路径，方便 Gateway 路由和后续注册中心探测。
+     */
+    @Test
+    void shouldAllowServiceHealthPathsWithoutToken() {
+        JwtGatewayFilter filter = createFilter();
+
+        MockServerWebExchange taskHealthExchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/tasks/health").build()
+        );
+        AtomicBoolean taskChainCalled = new AtomicBoolean(false);
+        filter.filter(taskHealthExchange, passChain(taskChainCalled)).block();
+        assertThat(taskChainCalled).isTrue();
+        assertThat(taskHealthExchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        MockServerWebExchange notificationHealthExchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/notifications/health").build()
+        );
+        AtomicBoolean notificationChainCalled = new AtomicBoolean(false);
+        filter.filter(notificationHealthExchange, passChain(notificationChainCalled)).block();
+        assertThat(notificationChainCalled).isTrue();
+        assertThat(notificationHealthExchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    /**
      * 测试：受保护路径在没有 Token 的情况下会被拒绝访问，返回 401 未授权。
      */
     @Test
@@ -77,6 +101,23 @@ class JwtGatewayFilterTest {
         assertThat(chainCalled).isFalse();
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(exchange.getResponse().getBodyAsString().block()).contains("Missing bearer token");
+    }
+
+    /**
+     * 测试：新增任务接口仍属于受保护业务接口，不带 Token 时由网关直接拒绝。
+     */
+    @Test
+    void shouldRejectTaskApiWithoutToken() {
+        JwtGatewayFilter filter = createFilter();
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/tasks").build()
+        );
+        AtomicBoolean chainCalled = new AtomicBoolean(false);
+
+        filter.filter(exchange, passChain(chainCalled)).block();
+
+        assertThat(chainCalled).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     /**

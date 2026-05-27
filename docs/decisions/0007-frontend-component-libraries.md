@@ -28,6 +28,7 @@
 | `v0.3 React Frontend` | React 管理端默认引入 Ant Design，登录页、首页、用户列表、用户编辑表单均基于 Ant Design 实现 |
 | `v0.4 Vue Frontend` | Vue 管理端默认引入 Element UI 系列组件库；若使用 Vue 3，则引入 Element Plus |
 | README 和 milestone 文档 | 前端启动、依赖和验收说明需要记录实际使用的组件库 |
+| `v0.5.3 Task And Notification Frontends` | 任务管理和通知中心继续使用对应组件库实现表单、表格、分页、弹窗、标签和反馈 |
 | 后续前端扩展 | WebSocket、MinIO 上传、搜索、趋势图等前端页面应延续对应组件库的交互风格 |
 
 ## 执行约束
@@ -37,3 +38,4 @@
 3. 开发 `v0.4` 时 Vue 组件和页面使用 JavaScript 编写，不为 Element Plus 单独引入 TypeScript 业务代码。
 4. 不同时在同一套前端中混用多个同类大型 UI 组件库，除非新增决策记录说明原因。
 5. 页面实现应保留学习价值，关键组件封装、表单校验、表格分页和接口错误处理需要补充中文注释。
+6. `v0.5.3` 及后续双端页面开发时，React 和 Vue 的功能、布局、操作路径应保持一致，但实现继续分别体现 Ant Design 和 Element Plus 的使用习惯。

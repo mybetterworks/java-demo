@@ -92,4 +92,4 @@ Vue 端刻意不引入 Pinia、Vue Router 或 TypeScript，避免在本阶段把
 
 ## v0.5 Gateway 访问说明
 
-v0.5 开始，Vue 端不再把开发请求直接代理到 Spring Boot 后端 `8091`，而是代理到 Spring Cloud Gateway `8092`。这样登录、当前用户、用户分页、新增、编辑和删除都会先经过网关；网关完成基础 JWT 校验后，再转发到后端。后端 `8091` 仍可用于开发调试，但不作为前端默认入口。
+v0.5 开始，Vue 端不再把开发请求直接代理到 Spring Boot 后端 `8091`，而是代理到 Spring Cloud Gateway `8092`。v0.5.1 新增 `task-service` 和 `notification-service` 后，网关会按路径把 `/api/auth/**`、`/api/users/**` 转发到用户服务，把 `/api/tasks/**` 转发到任务服务，把 `/api/notifications/**` 转发到通知服务。后端 `8091`、任务服务 `8093` 和通知服务 `8094` 仍可用于开发调试，但不作为前端默认入口。

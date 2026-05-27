@@ -1,0 +1,43 @@
+server:
+  # 通知服务端口。根据本机端口规划，避开 7991-8090 和 8146-8245。
+  port: ${NOTIFICATION_SERVER_PORT:8094}
+
+spring:
+  application:
+    # 服务名用于日志、Swagger 标题和后续 Nacos 注册。
+    name: notification-service
+  datasource:
+    # v0.5.1 继续复用 Docker Desktop 中的 MySQL 单实例，但为通知服务单独使用 database。
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/java_demo_notification?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: ${JAVA_DEMO_NOTIFICATION_DB_USERNAME:java_demo}
+    password: ${JAVA_DEMO_NOTIFICATION_DB_PASSWORD:java_demo_pwd}
+  sql:
+    init:
+      # schema.sql 使用 IF NOT EXISTS，重复启动安全；真实生产迁移会在后续版本引入专业迁移工具。
+      mode: always
+
+mybatis-plus:
+  configuration:
+    # 数据库字段使用下划线，Java 字段使用驼峰，通过该配置自动完成映射。
+    map-underscore-to-camel-case: true
+  global-config:
+    # 关闭 MyBatis Plus banner，让多服务本地启动日志更清爽。
+    banner: false
+
+springdoc:
+  api-docs:
+    # 每个微服务保留独立 OpenAPI JSON，后续再通过 Gateway 做聚合。
+    path: /v3/api-docs
+  swagger-ui:
+    # 通知服务独立 Swagger UI，便于直接调试通知接口。
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+    tags-sorter: alpha
+
+app:
+  jwt:
+    # 必须和 java-demo-app、Gateway 使用同一个密钥，否则后端签发的 token 无法在通知服务校验。
+    secret: ${JAVA_DEMO_JWT_SECRET:java-demo-v0-1-local-secret-change-me-32chars}
+    expiration-seconds: ${JAVA_DEMO_JWT_EXPIRATION_SECONDS:7200}

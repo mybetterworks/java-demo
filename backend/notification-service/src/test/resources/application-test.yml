@@ -1,0 +1,19 @@
+server:
+  port: 0
+
+spring:
+  datasource:
+    # H2 使用 MySQL 兼容模式，让 schema.sql 可以尽量贴近真实 MySQL。
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:java_demo_notification_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+
+app:
+  jwt:
+    # 测试密钥长度超过 32 字节，满足 HS256 要求；仅用于本地自动化测试。
+    secret: java-demo-test-secret-change-me-32chars
+    expiration-seconds: 7200
