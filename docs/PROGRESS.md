@@ -1,10 +1,14 @@
 # Project Progress
 
-最后更新：2026-05-26，Asia/Shanghai。
+最后更新：2026-05-27，Asia/Shanghai。
 
 ## 当前状态
 
 `v0.5 Gateway JWT` 已实现并完成 Spring Cloud Gateway 模块、网关 JWT 校验过滤器、React/Vue 代理切换、Maven reactor package、前端构建回归、Gateway 真实接口联调和文档更新。
+
+当前已进入 `v0.5.1 Task And Notification Services` 规划阶段。本次文档更新只规划新增 `task-service` 和 `notification-service` 两个微服务，不进行代码开发；后续实现时应先完成最小 MVP，再把它们作为 Nacos、Redis、WebSocket、MQ、Seata、可观测性、Docker/K8s 和 CI/CD 的业务实验载体。
+
+同时已新增 `v0.5.2 Backend Runtime Logging` 规划，作为 `v0.5.1` 和 `v0.6 Nacos` 之间的后端日志基线版本。该版本用于让 `java-demo-app`、`task-service`、`notification-service` 支持控制台日志、项目文件日志和可配置日志级别，便于后续微服务实验时观察运行状态。
 
 已完成：
 
@@ -18,6 +22,7 @@
 | 服务拆分策略 | 已采纳 `docs/decisions/0002-service-split.md` |
 | 部署策略 | 已采纳 `docs/decisions/0003-deploy-strategy.md` |
 | Docker 服务容器化策略 | 已采纳 `docs/decisions/0010-docker-service-containerization.md`，后续基础设施服务和集群节点均使用独立容器 |
+| 任务和通知服务边界 | 已采纳 `docs/decisions/0011-task-notification-service-boundary.md`，`v0.5.1` 将新增 `task-service` 和 `notification-service` |
 | Maven 本地仓库决策 | 已创建 `docs/decisions/0004-maven-local-repository.md` |
 | Git 手动提交策略 | 已采纳 `docs/decisions/0005-manual-git-commit.md` |
 | 前端组件库策略 | 已采纳 `docs/decisions/0007-frontend-component-libraries.md` |
@@ -59,12 +64,17 @@
 | v0.5 前端代理切换 | React 和 Vue 的 Vite proxy 已从后端 `8091` 调整为 Gateway `8092` |
 | v0.5 自动化测试 | 已新增网关过滤器测试，覆盖公开路径、无 token、有效 token 和无效 token |
 | v0.5 真实联调 | 已通过 Gateway 注册、登录、无 token 拦截、携带 token 查询当前用户和用户分页 |
+| v0.5.1 milestone 规划 | 已新增 `docs/milestones/v0.5.1-task-notification-services.md`，明确任务服务、通知服务、接口、端口、数据库和后续技术结合点 |
+| v0.5.2 milestone 规划 | 已新增 `docs/milestones/v0.5.2-backend-runtime-logging.md`，明确三个业务服务的控制台日志、文件日志、日志级别配置、关键日志点和敏感信息保护 |
+| 后端运行日志策略 | 已采纳 `docs/decisions/0012-backend-runtime-logging.md`，后续后端 milestone 默认需要补充关键运行日志 |
 
 尚未完成：
 
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
+| v0.5.1 task-service 和 notification-service 代码实现 | 未开始，本次只完成 docs 规划 |
+| v0.5.2 后端运行日志代码实现 | 未开始，需在 v0.5.1 三个业务服务具备后再实施 |
 | Nacos 和后续微服务基础设施 | 未开始，按后续 milestone 逐步引入 |
 
 ## 环境观察
@@ -325,7 +335,13 @@ docs/milestones/v0.5-gateway-jwt.md
 建议下一步执行：
 
 ```text
-docs/milestones/v0.6-nacos.md
+docs/milestones/v0.5.1-task-notification-services.md
+```
+
+`v0.5.2` 已完成文档规划，但执行顺序应放在 `v0.5.1` 之后：
+
+```text
+docs/milestones/v0.5.2-backend-runtime-logging.md
 ```
 
 ## 端口调整记录
@@ -350,7 +366,9 @@ docs/milestones/v0.6-nacos.md
 | Vue 开发服务器 | `5174` | 已配置，未落入占用范围 |
 | Vue Preview | `4174` | 已配置，未落入占用范围 |
 | Spring Cloud Gateway | `8092` | 已配置，v0.5 外部 API 统一入口 |
-| 后续拆分业务服务 | `8093-8145` 或 `8246+` | 后续按需分配 |
+| task-service | `8093` | 规划中，v0.5.1 任务服务端口 |
+| notification-service | `8094` | 规划中，v0.5.1 通知服务端口 |
+| 后续拆分业务服务 | `8095-8145` 或 `8246+` | 后续按需分配 |
 | 本地 Nginx 非标准 HTTP/HTTPS | `8250` / `8251` | 后续 `v1.6` 如不使用 `80` / `443` 时优先使用 |
 | MySQL Docker | `3306` | 已配置，未落入占用范围 |
 
@@ -371,6 +389,7 @@ docs/milestones/v0.6-nacos.md
 | Gateway `http://127.0.0.1:8092/v3/api-docs` | `200`，确认接口文档可经 Gateway 访问 |
 | Gateway JWT 校验 | 不带 token 访问 `/api/users` 返回 `401`，携带 token 可访问 `/api/users/me` 和用户分页 |
 | React/Vue 经 Gateway 联调 | React `5173` 和 Vue `5174` 均已通过 Vite proxy 经 Gateway 完成登录态接口验证 |
+| v0.5.1 端口规划 | task-service 使用 `8093`，notification-service 使用 `8094`；后续其他服务从 `8095-8145` 或 `8246+` 分配 |
 | 验证进程 | 验证结束后已停止本次临时启动的后端、Gateway 和前端进程 |
 
 ## 已采纳执行路线
@@ -381,8 +400,10 @@ docs/milestones/v0.6-nacos.md
 |---|---|
 | `v0.1` - `v0.4` | 单体或简单多模块，先完成业务闭环 |
 | `v0.5` | 引入 Gateway，统一外部入口 |
+| `v0.5.1` | 新增任务和通知服务，形成跨服务业务闭环 |
+| `v0.5.2` | 为用户、任务、通知三个业务服务建立控制台日志、文件日志和日志级别配置基线 |
 | `v0.6` | 接入 Nacos，进入服务注册和配置中心阶段 |
-| `v1.5` 前后 | 根据 Seata 和链路追踪需要拆分更多服务 |
+| `v1.5` 前后 | 基于已有用户、任务、通知服务验证 Seata 和链路追踪 |
 
 部署路线：
 
@@ -396,14 +417,16 @@ docs/milestones/v0.6-nacos.md
 ## 下一步建议
 
 1. 如需保存当前稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 开始 `docs/milestones/v0.6-nacos.md`。
-3. 在 v0.6 中引入 Nacos，按 Docker Desktop 容器方式先完成单节点可运行验证，并预留后续集群节点独立容器方案。
-4. 保持当前部署路线：后端、网关和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
+2. 开始 `docs/milestones/v0.5.1-task-notification-services.md`。
+3. 在 v0.5.1 中新增 `task-service` 和 `notification-service`，先通过 Gateway 静态路由和 REST 调用完成任务创建、任务分配、通知生成、通知查询的最小闭环。
+4. v0.5.1 完成后进入 `docs/milestones/v0.5.2-backend-runtime-logging.md`，为 `java-demo-app`、`task-service`、`notification-service` 增加控制台日志、文件日志和可配置日志级别。
+5. v0.5.2 完成后再进入 `docs/milestones/v0.6-nacos.md`，把 Gateway、用户、任务、通知服务接入 Nacos。
+6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档，然后实现下一个可运行版本。完成后运行验证，并更新文档。
+请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档，然后实现下一个可运行版本。涉及后端功能时，请在服务启动、请求入口、业务状态变化、服务间调用、异常处理和配置加载处增加必要日志；日志需要支持控制台输出、文件输出和级别配置，禁止打印密码、JWT 完整 token、Authorization header、数据库密码和真实密钥。完成后运行功能验证、日志验证，并更新文档。
 ```
 
 ## 完成记录
@@ -415,6 +438,8 @@ docs/milestones/v0.6-nacos.md
 | `v0.3` | 已完成 | 2026-05-23 | React 管理端、TypeScript、Ant Design、IndexedDB 登录态恢复；提交、tag 和推送由用户手动执行 |
 | `v0.4` | 已完成 | 2026-05-26 | Vue 管理端、JavaScript、Element Plus、localStorage 登录态和最近查询条件；已优化为 Vue 常见项目结构；提交、tag 和推送由用户手动执行 |
 | `v0.5` | 已完成 | 2026-05-26 | Spring Cloud Gateway、网关 JWT 校验、React/Vue 代理切换到 Gateway；提交、tag 和推送由用户手动执行 |
+| `v0.5.1` | 未开始 | - | 任务服务和通知服务 MVP；已完成 milestone 与服务边界文档规划 |
+| `v0.5.2` | 未开始 | - | 后端运行日志基线；已完成 milestone 与日志策略文档规划 |
 | `v0.6` | 未开始 | - | Nacos |
 | `v0.7` | 未开始 | - | Redis |
 | `v0.8` | 未开始 | - | WebSocket |
@@ -439,14 +464,17 @@ docs/milestones/v0.6-nacos.md
 | 端口 `3306` 可能与本机 MySQL 冲突 | MySQL Docker 容器无法启动 | 暂停本机 MySQL 或调整 compose 端口后记录变更 |
 | 端口 `8091` 可能被其他应用占用 | 后端应用无法启动 | 启动前检查端口，必要时临时调整到 `8250` 等非占用范围端口 |
 | 端口 `8092` 可能被其他应用占用 | Gateway 无法启动，前端默认代理无法访问 API | 启动前检查端口，必要时临时调整 `GATEWAY_SERVER_PORT` 并同步更新前端代理和文档 |
+| 端口 `8093` 可能被其他应用占用 | v0.5.1 task-service 无法启动，Gateway `/api/tasks/**` 路由不可用 | 启动前检查端口，必要时临时调整任务服务端口并同步 Gateway、前端代理和文档 |
+| 端口 `8094` 可能被其他应用占用 | v0.5.1 notification-service 无法启动，任务通知链路不可用 | 启动前检查端口，必要时临时调整通知服务端口并同步 Gateway、服务调用配置和文档 |
 | 端口 `5173` 可能被其他前端项目占用 | React 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口 |
 | 端口 `5174` 可能被其他前端项目占用 | Vue 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口，并同步更新文档 |
-| 占用端口范围 `7991-8090`、`8146-8245` | 新增服务若误用这些端口会启动失败或冲突 | 后续新增服务必须按 `docs/decisions/0008-local-port-allocation.md` 分配端口 |
+| 占用端口范围 `7991-8090`、`8146-8245` | 新增服务若误用这些端口会启动失败或冲突 | 后续新增服务必须按 `docs/decisions/0008-local-port-allocation.md` 分配端口，`8093` 和 `8094` 已预留给 v0.5.1 |
 | PowerShell 旧版本不支持 `-SkipHttpErrorCheck` | 直接验证 4xx 状态时命令参数不可用 | 使用 `try/catch` 捕获 HTTP 4xx 状态 |
 | 当前 Codex 会话可能未刷新 Node.js PATH | `node -v` 可能无法显示 `v22.x.x`，影响前端开发验证 | 进入前端 milestone 前重启终端或 Codex 会话后再验证 Node.js 22 |
 | PowerShell 执行策略阻止 `npm.ps1` | 直接运行 `npm` 可能失败 | 使用 `npm.cmd` 执行安装、启动和构建 |
 | Vite/esbuild moderate audit 提示 | 开发服务器场景存在中等级别安全提示 | 当前不强制破坏性升级，后续可在前端依赖维护任务中处理 |
 | 后续维护 Vue 端时误引入 TypeScript 模板 | Vue 管理端语言策略与学习目标不一致 | `frontend-vue` 继续保持 JavaScript，不生成 `tsconfig` 或 `.ts` / `.tsx` 业务代码 |
 | 当前会话存在 `PATH` / `Path` 重复环境变量 | Maven Wrapper 或 `Start-Process` 可能启动失败 | 本次已使用本地 Maven 3.9.16 完成验证；后续可重启 Codex 会话或清理当前进程环境后再试 Wrapper |
+| 后端日志误打印敏感信息 | 如果把密码、完整 JWT、Authorization header 或数据库密码写入日志，会造成安全风险 | 遵守 `docs/decisions/0012-backend-runtime-logging.md`，日志只打印 userId、业务 ID、错误码、耗时和脱敏摘要 |
 | 后续中间件容器边界混乱 | 如果多个服务共用一个容器，后续难以单独扩缩容或集群化 | 遵守 `docs/decisions/0010-docker-service-containerization.md`，每个服务和每个集群节点独立容器 |
 | 中间件范围很大 | 容易一次性复杂化 | 严格按 milestone 单步推进 |

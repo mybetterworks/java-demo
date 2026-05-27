@@ -1,6 +1,6 @@
 # Java Microservice Learning Roadmap
 
-本项目用于从 0 到 1 学习、验证并逐步搭建 Java 微服务体系。业务范围刻意保持很小：只实现用户管理和系统登录。技术范围会逐步扩展，从最简单可运行版本演进到包含网关、服务注册、消息、缓存、搜索、图数据库、可观测性、容器化和 K8s 的复杂系统。
+本项目用于从 0 到 1 学习、验证并逐步搭建 Java 微服务体系。业务范围刻意保持很小：先实现用户管理和系统登录，再增加任务与通知两个轻量业务域。技术范围会逐步扩展，从最简单可运行版本演进到包含网关、服务注册、消息、缓存、搜索、图数据库、可观测性、容器化和 K8s 的复杂系统。
 
 ## 项目目标
 
@@ -10,11 +10,12 @@
 4. Windows 11 作为开发机，Java、Git、Maven、Node.js 使用本地环境，基础设施优先使用 Docker Desktop。
 5. 所有写入和修改都限制在当前项目目录下。
 6. 生成和修改的代码必须补充详细中文注释，便于后续学习、复盘和逐步理解微服务技术栈。
-7. 代码提交、tag 和推送必须由用户手动执行，Codex 不自动执行 Git 提交相关操作。
+7. 后端服务必须逐步补齐关键运行日志，日志要能输出到控制台、写入项目日志文件，并支持按配置调整级别。
+8. 代码提交、tag 和推送必须由用户手动执行，Codex 不自动执行 Git 提交相关操作。
 
 ## 当前环境记录
 
-记录时间：2026-05-23，时区：Asia/Shanghai。
+记录时间：2026-05-27，时区：Asia/Shanghai。
 
 当前目标开发环境：
 
@@ -26,7 +27,7 @@
 | Node.js | 用户已在 Windows 11 配置 Node.js `22.x` | 作为 React、Vue 等前端项目的默认本地开发和构建运行时 |
 | Docker | Docker Desktop 可用，Server `29.2.1` | 适合承载 MySQL、Nacos、Redis、MQ 等基础设施 |
 | Git | 已初始化 Git 仓库，用户已提交 GitHub | 后续由用户手动提交、打 tag 和推送，Codex 只做只读检查和建议 |
-| 本机占用端口 | `7991-8090`、`8146-8245` | 后续项目端口必须避开这两个范围，当前后端使用 `8091` |
+| 本机占用端口 | `7991-8090`、`8146-8245` | 后续项目端口必须避开这两个范围，当前后端使用 `8091`，Gateway 使用 `8092` |
 
 环境验证提示：
 
@@ -50,7 +51,7 @@
 | Node.js | 使用 Node.js `22.x` 作为默认前端运行时，React、Vue 前端均以该版本为基线 |
 | Docker | 基础设施全部通过 `infra/docker-compose` 管理，使用 Docker Desktop 运行容器；每个服务或集群节点独立容器 |
 | Git | 每个可运行 milestone 完成后，由用户手动提交和打 tag；Codex 不自动提交、不自动打 tag、不自动推送 |
-| 端口 | 后端默认 `8091`，React `5173`，Vue `5174`，后续新增端口避开 `7991-8090` 和 `8146-8245` |
+| 端口 | 后端默认 `8091`，Gateway `8092`，task-service `8093`，notification-service `8094`，React `5173`，Vue `5174`，后续新增端口避开 `7991-8090` 和 `8146-8245` |
 
 具体版本号在开发对应 milestone 前再按官方兼容矩阵确认，避免文档长期存在后版本过时。
 
@@ -78,6 +79,7 @@
 | Spring Cloud | 服务治理、网关、配置、链路扩展 |
 | Spring Cloud Gateway | 统一入口、JWT 校验、路由、限流 |
 | MyBatis Plus | 数据访问、分页、通用 CRUD |
+| SLF4J / Logback | 后端运行日志、控制台输出、文件日志和日志级别配置 |
 
 中间件：
 
@@ -128,6 +130,8 @@ E:\Code\codex\java-demo
 │  ├─ common
 │  ├─ auth-service
 │  ├─ user-service
+│  ├─ task-service
+│  ├─ notification-service
 │  └─ gateway
 ├─ frontend-react
 ├─ frontend-vue
@@ -156,6 +160,8 @@ E:\Code\codex\java-demo
 | 服务拆分策略 | `docs/decisions/0002-service-split.md` | 先单体闭环，再模块化，再微服务拆分 |
 | 部署策略 | `docs/decisions/0003-deploy-strategy.md` | 先本地进程 + Docker 基础设施，再 Docker Compose，最后 Kubernetes 和 Jenkins |
 | Docker 服务容器化策略 | `docs/decisions/0010-docker-service-containerization.md` | Nacos、Redis、MQ、Elasticsearch、Seata、Jenkins 等服务使用独立容器，集群节点也独立容器 |
+| 任务和通知服务边界 | `docs/decisions/0011-task-notification-service-boundary.md` | `v0.5.1` 新增 `task-service` 和 `notification-service`，为后续技术实验提供真实跨服务业务链路 |
+| 后端运行日志策略 | `docs/decisions/0012-backend-runtime-logging.md` | `v0.5.2` 为 `java-demo-app`、`task-service`、`notification-service` 建立控制台日志、文件日志和日志级别配置基线 |
 | Git 提交策略 | `docs/decisions/0005-manual-git-commit.md` | 用户手动提交、打 tag 和推送，Codex 不自动执行 Git 写操作 |
 | 前端 Node 环境 | `docs/decisions/0006-node-frontend-environment.md` | Node.js 22 作为 React、Vue 前端默认运行时 |
 | 前端组件库 | `docs/decisions/0007-frontend-component-libraries.md` | React 使用 Ant Design，Vue 使用 Element UI 系列组件库 |
@@ -168,8 +174,10 @@ E:\Code\codex\java-demo
 |---|---|---|
 | `v0.1` - `v0.4` | 单体或简单多模块 | 先跑通登录、用户管理、前端访问 |
 | `v0.5` | 引入 Gateway | 外部流量统一进入网关 |
-| `v0.6` | 接入 Nacos | 服务注册发现和配置中心进入主线 |
-| `v1.5` 前后 | 拆分更多业务服务 | 为 Seata、链路追踪和真实微服务边界提供验证场景 |
+| `v0.5.1` | 新增任务和通知微服务 | 在 Gateway 后补齐真实业务服务边界，先使用静态 REST 调用 |
+| `v0.5.2` | 建立后端运行日志基线 | 三个业务服务支持控制台日志、文件日志、日志级别配置和敏感信息保护 |
+| `v0.6` | 接入 Nacos | 服务注册发现和配置中心进入主线，Gateway 和服务间调用从静态地址转向服务名 |
+| `v1.5` 前后 | 强化跨服务一致性 | 基于已有任务、通知和用户服务验证 Seata、链路追踪和真实微服务边界 |
 
 部署阶段：
 
@@ -189,20 +197,22 @@ E:\Code\codex\java-demo
 | `v0.3` | React 管理端 | Node.js 22、React、TypeScript、Ant Design、HTTP、IndexedDB | 浏览器完成登录和用户列表查看 |
 | `v0.4` | Vue 管理端 | Node.js 22、Vue、JavaScript、Element UI / Element Plus、HTTP | 第二套前端访问同一后端 API，业务行为与 React 端一致，项目结构体现 Vue 开发习惯 |
 | `v0.5` | 网关入口 | Spring Cloud Gateway、JWT 校验 | 请求统一经过网关 |
-| `v0.6` | 注册与配置中心 | Nacos | 服务注册、配置读取、配置刷新 |
-| `v0.7` | 缓存与限流 | Redis、Redis Cluster 预研 | 登录缓存、验证码或限流生效 |
-| `v0.8` | 实时通信 | WebSocket | 在线通知可推送到前端 |
-| `v0.9` | 文件对象存储 | MinIO | 用户头像上传和访问 |
-| `v1.0` | 异步消息 | RabbitMQ、Kafka 对照 | 登录审计或通知异步消费 |
-| `v1.1` | 全文检索 | Elasticsearch | 用户和审计记录可搜索 |
-| `v1.2` | 时序统计 | InfluxDB | 登录次数、接口耗时趋势入库 |
-| `v1.3` | 图关系查询 | Neo4j | 用户、角色、组织关系可查询 |
-| `v1.4` | MySQL 主从 | MySQL Replication、读写分离 | 写主库、读从库、故障演练 |
-| `v1.5` | 分布式事务 | Seata 3 节点集群 | 跨服务操作可提交或回滚 |
-| `v1.6` | Nginx 与 HTTPS | Nginx 集群、证书、本地域名 | 前端和网关统一 HTTPS 入口 |
-| `v1.7` | 可观测性 | Prometheus、Grafana、SkyWalking、ELK | 指标、链路、日志可查询 |
-| `v1.8` | 容器与 K8s | Docker Compose、Kubernetes | 本地 compose 与 K8s 部署可用 |
-| `v1.9` | CI/CD | Jenkins | 自动构建、测试、镜像、部署 |
+| `v0.5.1` | 任务和通知微服务 | Spring Boot、MyBatis Plus、MySQL、JWT、Gateway 静态路由、REST 服务调用 | 创建任务、分配任务、生成通知、查询我的通知 |
+| `v0.5.2` | 后端运行日志 | SLF4J、Logback、控制台日志、文件日志、日志级别配置 | 用户、任务、通知服务关键流程可在控制台和 `logs` 文件中观察 |
+| `v0.6` | 注册与配置中心 | Nacos | Gateway、用户、任务、通知服务注册；服务名路由和配置读取可用 |
+| `v0.7` | 缓存与限流 | Redis、Redis Cluster 预研 | 用户校验、任务列表、通知未读数缓存；登录和业务接口限流生效 |
+| `v0.8` | 实时通信 | WebSocket | 任务分配和通知未读变化可实时推送到前端 |
+| `v0.9` | 文件对象存储 | MinIO | 用户头像、任务附件上传和访问 |
+| `v1.0` | 异步消息 | RabbitMQ、Kafka 对照 | 任务事件、通知事件和登录审计异步消费 |
+| `v1.1` | 全文检索 | Elasticsearch | 用户、任务、通知和审计记录可搜索 |
+| `v1.2` | 时序统计 | InfluxDB | 登录次数、任务创建量、通知发送量、接口耗时趋势入库 |
+| `v1.3` | 图关系查询 | Neo4j | 用户、角色、组织、任务分配关系可查询 |
+| `v1.4` | MySQL 主从 | MySQL Replication、读写分离 | 用户、任务、通知库验证写主库、读从库和故障演练 |
+| `v1.5` | 分布式事务 | Seata 3 节点集群 | 用户、任务、通知跨服务操作可提交或回滚 |
+| `v1.6` | Nginx 与 HTTPS | Nginx 集群、证书、本地域名 | 前端和多服务网关统一 HTTPS 入口 |
+| `v1.7` | 可观测性 | Prometheus、Grafana、SkyWalking、ELK | Gateway 到用户、任务、通知服务的指标、链路、日志可查询 |
+| `v1.8` | 容器与 K8s | Docker Compose、Kubernetes | 本地 compose 与 K8s 部署多服务系统可用 |
+| `v1.9` | CI/CD | Jenkins | 多后端服务、前端、镜像、部署流水线可用 |
 
 ## 开发节奏
 
@@ -212,9 +222,10 @@ E:\Code\codex\java-demo
 2. 确认当前环境和上一版本是否可运行；涉及前端 milestone 时确认 `node -v` 显示 `v22.x.x`。
 3. 实现本 milestone 的唯一核心新增能力。
 4. 为新增或修改的代码补充详细中文注释，重点说明类职责、关键流程、配置含义、异常处理和测试意图。
-5. 运行自动化测试、启动验证和接口验证。
-6. 更新 `README.md`、`docs/PROGRESS.md`，必要时补充 `docs/decisions`。
-7. 如果需要保存版本，Codex 只提示建议提交信息和 tag 名称，由用户手动提交、打 tag 和推送。
+5. 涉及后端运行流程时，在请求入口、关键业务状态变化、服务间调用、配置加载和异常处理处补充必要日志，并避免打印敏感信息。
+6. 运行自动化测试、启动验证、接口验证和必要日志验证。
+7. 更新 `README.md`、`docs/PROGRESS.md`，必要时补充 `docs/decisions`。
+8. 如果需要保存版本，Codex 只提示建议提交信息和 tag 名称，由用户手动提交、打 tag 和推送。
 
 涉及 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等基础设施时，优先新增 Docker Compose；镜像由 Docker Desktop 拉取并运行，每个服务或节点使用独立容器。
 
@@ -223,13 +234,13 @@ E:\Code\codex\java-demo
 继续开发下一个版本：
 
 ```text
-请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档，然后实现下一个可运行版本。完成后运行验证，并更新进度文档。
+请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档，然后实现下一个可运行版本。涉及后端功能时，请在关键入口、业务状态变化、服务间调用、异常处理和配置加载处增加必要日志，日志必须避免打印密码、JWT 完整 token、Authorization header、数据库密码和真实密钥。完成后运行功能验证、日志验证，并更新进度文档。
 ```
 
 开发指定版本：
 
 ```text
-请按照 docs/milestones/v0.1-mvp-login.md 实现第一个可运行版本。只修改当前项目目录下的文件，完成后更新 docs/PROGRESS.md。
+请按照 docs/milestones/v0.1-mvp-login.md 实现指定可运行版本。只修改当前项目目录下的文件；如果该版本涉及后端运行流程，请同步补充关键日志和日志验收记录。完成后更新 docs/PROGRESS.md。
 ```
 
 做技术实验：

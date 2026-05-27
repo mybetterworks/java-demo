@@ -21,9 +21,11 @@
 2. React 管理端继续使用 `5173`，React preview 使用 `4173`。
 3. `v0.4` Vue 管理端使用 `5174`，Vue preview 使用 `4174`。
 4. `v0.5` Spring Cloud Gateway 建议使用 `8092`。
-5. 后续拆分出的本地业务服务优先使用 `8093-8145` 或 `8246+`。
-6. 如果 Nginx 本地学习阶段不使用 `80` / `443`，非标准 HTTP/HTTPS 建议使用 `8250` / `8251`。
-7. 后续新增端口必须避开 `7991-8090` 和 `8146-8245`。
+5. `v0.5.1` `task-service` 使用 `8093`。
+6. `v0.5.1` `notification-service` 使用 `8094`。
+7. 后续拆分出的本地业务服务优先使用 `8095-8145` 或 `8246+`。
+8. 如果 Nginx 本地学习阶段不使用 `80` / `443`，非标准 HTTP/HTTPS 建议使用 `8250` / `8251`。
+9. 后续新增端口必须避开 `7991-8090` 和 `8146-8245`。
 
 ## 当前端口表
 
@@ -34,6 +36,9 @@
 | React Preview | `4173` | `frontend-react` 生产构建预览 |
 | Vue 开发服务器 | `5174` | `frontend-vue` 本地开发 |
 | Vue Preview | `4174` | `frontend-vue` 生产构建预览 |
+| Spring Cloud Gateway | `8092` | `v0.5` 外部 API 统一入口 |
+| task-service | `8093` | `v0.5.1` 任务服务 |
+| notification-service | `8094` | `v0.5.1` 通知服务 |
 | MySQL Docker | `3306` | 当前 MySQL 单节点 |
 
 ## 验证记录
@@ -62,5 +67,7 @@
 1. 后端地址从 `http://localhost:8080` 调整为 `http://localhost:8091`。
 2. React Vite 代理目标从 `http://localhost:8080` 调整为 `http://localhost:8091`。
 3. Vue Vite 代理目标统一指向 `http://localhost:8091`。
-4. README、PROGRESS 和 milestone 文档中的当前接口示例必须同步改为 `8091`。
-5. 历史验证记录如果提到旧端口，应明确其为历史记录；当前启动和后续开发以本决策为准。
+4. `v0.5` 后前端默认代理目标应指向 Gateway `http://localhost:8092`，后端 `8091` 主要保留为开发调试直连入口。
+5. `v0.5.1` 新增任务和通知服务后，Gateway 需要把 `/api/tasks/**` 路由到 `8093`，把 `/api/notifications/**` 路由到 `8094`。
+6. README、PROGRESS 和 milestone 文档中的当前接口示例必须同步改为当前规划端口。
+7. 历史验证记录如果提到旧端口，应明确其为历史记录；当前启动和后续开发以本决策为准。
