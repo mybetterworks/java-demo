@@ -39,6 +39,8 @@
 5. 先单机可用，再集群演练。
 6. 先 Docker Compose，再 Kubernetes。
 7. Jenkins 最后引入，避免早期流水线掩盖基础问题。
+8. 后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等基础设施服务统一通过 Docker Desktop 下载镜像并运行容器。
+9. 每个独立服务和每个集群节点都必须使用独立容器，便于后续单服务扩展为集群。
 
 ## 开发前检查
 
@@ -88,11 +90,20 @@
 
 ## Docker 规则
 
+已采纳 `docs/decisions/0010-docker-service-containerization.md`。
+
 1. 所有基础设施 compose 文件放在 `infra/docker-compose` 下。
 2. 单机版 compose 与集群版 compose 分开维护。
 3. 默认优先提供轻量单机版本，确认可用后再扩展为集群。
 4. Docker volume 命名要带项目名前缀，避免污染其他项目。
 5. 对外端口必须记录在对应 README 或 milestone 文档中。
+6. 新增基础设施服务必须优先使用 Docker Desktop 容器运行，不在宿主机直接安装 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务。
+7. 每个服务对应一个容器；如果服务做集群，则每个节点对应一个容器，例如 `java-demo-nacos-1`、`java-demo-nacos-2`、`java-demo-nacos-3`。
+8. 不允许把多个中间件合并进一个自定义容器，例如不能把 Redis、RabbitMQ 和 Elasticsearch 打包在同一个容器里。
+9. 如果服务依赖辅助组件，辅助组件也要独立容器化，例如 ELK 中 Elasticsearch、Logstash、Kibana 分开容器，Jenkins controller 和后续 agent 分开容器。
+10. Compose 文件必须记录镜像版本、容器名、端口、volume、network、健康检查或最小验证方式。
+11. 单节点 compose 用于当前 milestone 验证，集群 compose 或集群扩展说明用于后续演练；不要为了当前一步一次性启动过多节点。
+12. 不修改 Docker Desktop 全局配置，所有可追踪配置都写入当前项目目录。
 
 ## 端口规则
 

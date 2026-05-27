@@ -16,6 +16,8 @@
 2. Docker Compose 一键启动应用和中间件。
 3. Kubernetes 集群部署，Jenkins 做 CI/CD。
 
+基础设施容器边界采用 `docs/decisions/0010-docker-service-containerization.md`：后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务都通过 Docker Desktop 下载镜像并运行容器；每个独立服务和每个集群节点都使用独立容器，方便后续按服务扩展成集群。
+
 ## 阶段安排
 
 | 阶段 | 部署形态 | 说明 |
@@ -51,6 +53,8 @@ deploy
 3. Compose 文件按能力拆分，避免一个巨型 compose 难以维护。
 4. K8s YAML 与 Compose 同步描述相同能力，便于对照学习。
 5. Jenkins 最后引入，避免早期流水线掩盖基础问题。
+6. 每个基础设施服务一个独立容器；集群化时每个节点一个独立容器，不把多个中间件塞进同一个容器。
+7. 单节点 compose 和集群 compose 分开维护，确保从最小可运行版本平滑演进到集群演练。
 
 ## 验收
 

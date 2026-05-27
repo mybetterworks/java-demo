@@ -48,7 +48,7 @@
 | Maven | 使用 Maven `3.9.16`，同时引入 `mvnw` 和 `mvnw.cmd` 固化构建入口 |
 | Maven 本地仓库 | 统一配置为 `D:\software\maven_download` |
 | Node.js | 使用 Node.js `22.x` 作为默认前端运行时，React、Vue 前端均以该版本为基线 |
-| Docker | 基础设施全部通过 `infra/docker-compose` 管理 |
+| Docker | 基础设施全部通过 `infra/docker-compose` 管理，使用 Docker Desktop 运行容器；每个服务或集群节点独立容器 |
 | Git | 每个可运行 milestone 完成后，由用户手动提交和打 tag；Codex 不自动提交、不自动打 tag、不自动推送 |
 | 端口 | 后端默认 `8091`，React `5173`，Vue `5174`，后续新增端口避开 `7991-8090` 和 `8146-8245` |
 
@@ -155,6 +155,7 @@ E:\Code\codex\java-demo
 |---|---|---|
 | 服务拆分策略 | `docs/decisions/0002-service-split.md` | 先单体闭环，再模块化，再微服务拆分 |
 | 部署策略 | `docs/decisions/0003-deploy-strategy.md` | 先本地进程 + Docker 基础设施，再 Docker Compose，最后 Kubernetes 和 Jenkins |
+| Docker 服务容器化策略 | `docs/decisions/0010-docker-service-containerization.md` | Nacos、Redis、MQ、Elasticsearch、Seata、Jenkins 等服务使用独立容器，集群节点也独立容器 |
 | Git 提交策略 | `docs/decisions/0005-manual-git-commit.md` | 用户手动提交、打 tag 和推送，Codex 不自动执行 Git 写操作 |
 | 前端 Node 环境 | `docs/decisions/0006-node-frontend-environment.md` | Node.js 22 作为 React、Vue 前端默认运行时 |
 | 前端组件库 | `docs/decisions/0007-frontend-component-libraries.md` | React 使用 Ant Design，Vue 使用 Element UI 系列组件库 |
@@ -175,7 +176,7 @@ E:\Code\codex\java-demo
 | 阶段 | 部署形态 | 说明 |
 |---|---|---|
 | `v0.1` - `v0.4` | 后端/前端本地进程，中间件 Docker | 降低调试成本，优先保证业务闭环 |
-| `v0.5` - `v1.7` | Docker Compose 管理基础设施和部分应用 | 逐步模拟集群依赖 |
+| `v0.5` - `v1.7` | Docker Compose 管理基础设施和部分应用 | 逐步模拟集群依赖；每个服务和集群节点保持独立容器 |
 | `v1.8` | Docker Compose 与 Kubernetes 双形态 | 学习服务编排和集群部署 |
 | `v1.9` | Jenkins 流水线 | 自动构建、测试、镜像和部署 |
 
@@ -214,6 +215,8 @@ E:\Code\codex\java-demo
 5. 运行自动化测试、启动验证和接口验证。
 6. 更新 `README.md`、`docs/PROGRESS.md`，必要时补充 `docs/decisions`。
 7. 如果需要保存版本，Codex 只提示建议提交信息和 tag 名称，由用户手动提交、打 tag 和推送。
+
+涉及 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等基础设施时，优先新增 Docker Compose；镜像由 Docker Desktop 拉取并运行，每个服务或节点使用独立容器。
 
 ## 后续对 Codex 的推荐指令
 

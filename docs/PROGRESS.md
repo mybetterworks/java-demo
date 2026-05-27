@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-`v0.4 Vue Frontend` 已实现并完成 Vue 常见项目结构优化、Vue 前端构建、React 构建回归、后端 Maven package、Vue Vite 代理联调、真实浏览器登录验证和文档更新。
+`v0.5 Gateway JWT` 已实现并完成 Spring Cloud Gateway 模块、网关 JWT 校验过滤器、React/Vue 代理切换、Maven reactor package、前端构建回归、Gateway 真实接口联调和文档更新。
 
 已完成：
 
@@ -17,6 +17,7 @@
 | 技术决策初稿 | 已创建 |
 | 服务拆分策略 | 已采纳 `docs/decisions/0002-service-split.md` |
 | 部署策略 | 已采纳 `docs/decisions/0003-deploy-strategy.md` |
+| Docker 服务容器化策略 | 已采纳 `docs/decisions/0010-docker-service-containerization.md`，后续基础设施服务和集群节点均使用独立容器 |
 | Maven 本地仓库决策 | 已创建 `docs/decisions/0004-maven-local-repository.md` |
 | Git 手动提交策略 | 已采纳 `docs/decisions/0005-manual-git-commit.md` |
 | 前端组件库策略 | 已采纳 `docs/decisions/0007-frontend-component-libraries.md` |
@@ -50,15 +51,21 @@
 | v0.4 前后端联调 | 已通过 Vite 代理、真实后端和真实 MySQL 验证 |
 | v0.4 浏览器验证 | 已通过内置浏览器登录 Vue 管理端，并进入“当前用户”和“用户管理”工作区 |
 | 本地后端端口调整 | 已将后端默认端口从占用范围内的 `8082` 调整为 `8091` |
-| React 代理端口调整 | 已将 Vite 代理目标调整为 `http://localhost:8091` |
-| Vue 代理端口配置 | 已将 Vite 代理目标配置为 `http://localhost:8091`，Vue 开发端口为 `5174` |
+| React 代理端口调整 | v0.5 已将 Vite 代理目标从后端 `8091` 调整为 Gateway `8092` |
+| Vue 代理端口配置 | v0.5 已将 Vite 代理目标从后端 `8091` 调整为 Gateway `8092`，Vue 开发端口为 `5174` |
+| v0.5 Spring Cloud Gateway | 已新增 `backend/gateway` 模块，默认端口为 `8092` |
+| v0.5 Gateway 路由 | 已将 `/api/**`、OpenAPI JSON 和 Swagger UI 经 Gateway 转发到后端 `8091` |
+| v0.5 Gateway JWT 校验 | 已新增 `JwtGatewayFilter`，白名单放行登录、注册、健康检查和接口文档，用户接口必须携带 Bearer token |
+| v0.5 前端代理切换 | React 和 Vue 的 Vite proxy 已从后端 `8091` 调整为 Gateway `8092` |
+| v0.5 自动化测试 | 已新增网关过滤器测试，覆盖公开路径、无 token、有效 token 和无效 token |
+| v0.5 真实联调 | 已通过 Gateway 注册、登录、无 token 拦截、携带 token 查询当前用户和用户分页 |
 
 尚未完成：
 
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| 网关和微服务基础设施 | 未开始，按后续 milestone 逐步引入 |
+| Nacos 和后续微服务基础设施 | 未开始，按后续 milestone 逐步引入 |
 
 ## 环境观察
 
@@ -68,9 +75,10 @@
 | Maven | 目标版本 Maven `3.9.16`，路径 `D:\software\apache-maven-3.9.16` |
 | Maven 本地仓库 | `D:\software\maven_download` |
 | Node.js | 目标版本 Node.js `22.x`，用于 React TypeScript 和 Vue JavaScript 前端开发 |
-| Docker | Docker Desktop 可用，MySQL `8.4` 单节点容器启动验证通过 |
+| Docker | Docker Desktop 可用，MySQL `8.4` 单节点容器启动验证通过；后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务按“服务/节点独立容器”推进 |
 | Git | 已初始化 Git 仓库，用户已提交 GitHub；后续提交、tag 和推送由用户手动执行 |
 | 本机占用端口 | `7991-8090`、`8146-8245`；当前项目端口规划已避开 |
+| Gateway | Spring Cloud Gateway `2023.0.3` 已接入，默认端口 `8092` |
 
 当前会话验证说明：
 
@@ -81,18 +89,24 @@
 | 临时设置 `JAVA_HOME=D:\software\jdk-17.0.19` 后执行 Maven | 已确认 Maven 可使用 Java `17.0.19` |
 | 本次执行 `.\mvnw.cmd test` | 当前 PowerShell 会话中 Maven Wrapper 启动失败，报 `Cannot start maven from wrapper`；已改用用户配置的本地 Maven 3.9.16 完成同等验证 |
 | 执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test` | 已通过，`AuthFlowIntegrationTest` 和 `UserManagementIntegrationTest` 覆盖 v0.1/v0.2 核心链路 |
-| 执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package` | 已通过，生成 `backend/app/target/java-demo-app-0.4.0-SNAPSHOT.jar` |
+| 执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package` | 已通过，生成 `backend/app/target/java-demo-app-0.5.0-SNAPSHOT.jar` 和 `backend/gateway/target/java-demo-gateway-0.5.0-SNAPSHOT.jar` |
 | 访问 `GET /v3/api-docs` | 已确认返回 OpenAPI JSON |
 | 访问 `GET /swagger-ui.html` | 已确认返回 Swagger UI 页面 |
 | Node.js 22 | 已确认当前会话 `node -v` 为 `v22.22.3` |
 | npm | PowerShell 执行 `npm.ps1` 受本机策略限制，已使用 `npm.cmd` 完成安装和构建 |
 | 端口扫描 | 已确认当前显式配置端口中，只有旧后端 `8082`/历史文档 `8080` 落入占用范围；当前配置已改为 `8091` |
 | 后端 `8091` 运行验证 | 已通过，`GET http://127.0.0.1:8091/api/health`、`/v3/api-docs`、`/swagger-ui.html` 均返回 `200` |
-| React `5173` 代理验证 | 已通过，`GET http://127.0.0.1:5173`、`/api/health`、`/v3/api-docs` 均返回 `200`，确认 Vite 已代理到后端 `8091` |
+| React `5173` 代理验证 | 历史验证已通过；v0.5 当前 Vite 代理目标已调整为 Gateway `8092` |
 | Vue `5174` 代理验证 | 已通过，`GET http://127.0.0.1:5174`、`/api/health`、登录、用户分页、新增、编辑和删除均可用 |
 | Vue 浏览器登录验证 | 已通过，使用内置浏览器登录 Vue 管理端、进入首页，并切换到用户管理工作区 |
 | Vue 结构优化构建验证 | 已通过，调整为 Vue 常见结构后再次执行 `frontend-vue` 的 `npm.cmd run build` 成功 |
 | Vue 结构优化浏览器验证 | 已通过，调整为 `layouts`、`views`、`composables` 后仍可登录、查看首页并进入用户管理 |
+| v0.5 网关模块测试 | 已通过，`JwtGatewayFilterTest` 4 个用例覆盖公开路径、无 token、有效 token、无效 token |
+| v0.5 Maven reactor package | 已通过，`java-demo-app` 和 `java-demo-gateway` 均生成 `0.5.0-SNAPSHOT` jar |
+| v0.5 Gateway `8092` 运行验证 | 已通过，`GET http://127.0.0.1:8092/api/health` 和 `/v3/api-docs` 均返回 `200` |
+| v0.5 Gateway JWT 验证 | 已通过，注册/登录走 Gateway 成功，不带 token 访问 `/api/users` 返回 `401`，携带 token 可访问 `/api/users/me` 和用户分页 |
+| v0.5 React/Vue 构建回归 | 已通过，`frontend-react` 和 `frontend-vue` 均执行 `npm.cmd run build` 成功 |
+| v0.5 React/Vue 代理联调 | 已通过，React `5173` 和 Vue `5174` 均经 Vite proxy 访问 Gateway `8092`，并完成注册、登录、当前用户和无 token 拦截验证 |
 
 注意：当前 Codex 进程的 PATH/JAVA_HOME/Node.js 路径可能仍是旧会话环境。若 `java -version`、`mvn -v` 或 `node -v` 未显示上述版本，重启终端或 Codex 会话后再验证。
 
@@ -261,18 +275,57 @@ v0.4 Vue 项目结构记录：
 | `frontend-vue/src/api` | 后端请求封装 | 统一处理 API 调用和错误 |
 | `frontend-vue/src/storage` | 本地持久化 | 封装 localStorage，保存登录态和最近查询条件 |
 
+## v0.5 验证记录
+
+自动化和构建验证：
+
+| 命令 | 结果 |
+|---|---|
+| `D:\software\apache-maven-3.9.16\bin\mvn.cmd -pl backend/gateway test` | 通过，`JwtGatewayFilterTest` 4 个用例成功 |
+| `D:\software\apache-maven-3.9.16\bin\mvn.cmd package` | 通过，后端 2 个集成测试和网关 4 个测试全部成功 |
+| `frontend-react` 执行 `npm.cmd run build` | 通过，React TypeScript 类型检查和 Vite 生产构建成功 |
+| `frontend-vue` 执行 `npm.cmd run build` | 通过，Vue 3、JavaScript、Element Plus 和 Vite 生产构建成功 |
+
+真实联调验收：
+
+| 验收项 | 结果 |
+|---|---|
+| 后端 `http://127.0.0.1:8091/api/health` | `200` |
+| Gateway `http://127.0.0.1:8092/api/health` | `200`，确认 Gateway 可转发到后端 |
+| Gateway `http://127.0.0.1:8092/v3/api-docs` | `200`，确认 OpenAPI JSON 经 Gateway 可访问 |
+| 通过 Gateway 注册测试用户 | `200`，验证用户 `gateway_v05_20260526153518` |
+| 通过 Gateway 登录测试用户 | `200`，成功签发 JWT |
+| 通过 Gateway 不带 token 访问 `GET /api/users` | `401`，由网关拦截 |
+| 通过 Gateway 携带 token 访问 `GET /api/users/me` | `200`，返回当前登录用户 |
+| 通过 Gateway 携带 token 访问用户分页 | `200`，分页查询可用 |
+| 直连后端不带 token 访问 `GET /api/users` | `401`，确认后端自身认证防线仍保留 |
+| React 通过 Vite proxy 访问 Gateway | `200`，验证用户 `react_v05_20260526155149`，无 token 访问用户接口返回 `401` |
+| Vue 通过 Vite proxy 访问 Gateway | `200`，验证用户 `vue_v05_20260526155150`，无 token 访问用户接口返回 `401` |
+
+验证说明：
+
+| 项目 | 说明 |
+|---|---|
+| 后端端口 | `8091`，v0.5 后主要作为开发调试直连端口 |
+| Gateway 端口 | `8092`，v0.5 外部 API 统一入口 |
+| MySQL | 复用 Docker Desktop 中已运行且 healthy 的 `java-demo-mysql` 容器 |
+| 启动方式 | 本次运行时联调用 `D:\software\jdk-17.0.19\bin\java.exe -jar` 临时启动后端和 Gateway |
+| 临时进程 | 验证结束后已停止本次临时启动的后端、Gateway、React dev server 和 Vue dev server 进程 |
+| PowerShell 环境 | 当前会话仍存在 `PATH` / `Path` 重复导致 `Start-Process` 异常的问题；本次改用 `.NET ProcessStartInfo` 完成临时进程启动 |
+| 构建提示 | React 和 Vue 均保留既有 Vite chunk size warning，不影响当前版本运行 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.4-vue-frontend.md
+docs/milestones/v0.5-gateway-jwt.md
 ```
 
 建议下一步执行：
 
 ```text
-docs/milestones/v0.5-gateway-jwt.md
+docs/milestones/v0.6-nacos.md
 ```
 
 ## 端口调整记录
@@ -296,7 +349,7 @@ docs/milestones/v0.5-gateway-jwt.md
 | React Preview | `4173` | 已配置，未落入占用范围 |
 | Vue 开发服务器 | `5174` | 已配置，未落入占用范围 |
 | Vue Preview | `4174` | 已配置，未落入占用范围 |
-| Spring Cloud Gateway | `8092` | 后续 `v0.5` 建议端口 |
+| Spring Cloud Gateway | `8092` | 已配置，v0.5 外部 API 统一入口 |
 | 后续拆分业务服务 | `8093-8145` 或 `8246+` | 后续按需分配 |
 | 本地 Nginx 非标准 HTTP/HTTPS | `8250` / `8251` | 后续 `v1.6` 如不使用 `80` / `443` 时优先使用 |
 | MySQL Docker | `3306` | 已配置，未落入占用范围 |
@@ -309,12 +362,16 @@ docs/milestones/v0.5-gateway-jwt.md
 | 后端 `http://127.0.0.1:8091/v3/api-docs` | `200`，标题为 `Java Demo API` |
 | 后端 `http://127.0.0.1:8091/swagger-ui.html` | `200` |
 | React `http://127.0.0.1:5173` | `200` |
-| React 代理 `http://127.0.0.1:5173/api/health` | `200`，确认请求可转发到后端 `8091` |
+| React 代理 `http://127.0.0.1:5173/api/health` | `200`，历史验证可转发到后端；v0.5 当前代理目标已调整为 Gateway `8092` |
 | React 代理 `http://127.0.0.1:5173/v3/api-docs` | `200`，标题为 `Java Demo API` |
 | Vue `http://127.0.0.1:5174` | `200` |
-| Vue 代理 `http://127.0.0.1:5174/api/health` | `200`，确认请求可转发到后端 `8091` |
+| Vue 代理 `http://127.0.0.1:5174/api/health` | `200`，历史验证可转发到后端；v0.5 当前代理目标已调整为 Gateway `8092` |
 | Vue 代理登录和用户管理接口 | `200`，已验证登录、当前用户、分页、新增、编辑和逻辑删除 |
-| 验证进程 | 验证结束后已停止本次临时启动的后端和前端进程 |
+| Gateway `http://127.0.0.1:8092/api/health` | `200`，确认 Gateway 可转发到后端 `8091` |
+| Gateway `http://127.0.0.1:8092/v3/api-docs` | `200`，确认接口文档可经 Gateway 访问 |
+| Gateway JWT 校验 | 不带 token 访问 `/api/users` 返回 `401`，携带 token 可访问 `/api/users/me` 和用户分页 |
+| React/Vue 经 Gateway 联调 | React `5173` 和 Vue `5174` 均已通过 Vite proxy 经 Gateway 完成登录态接口验证 |
+| 验证进程 | 验证结束后已停止本次临时启动的后端、Gateway 和前端进程 |
 
 ## 已采纳执行路线
 
@@ -332,16 +389,16 @@ docs/milestones/v0.5-gateway-jwt.md
 | 阶段 | 部署形态 |
 |---|---|
 | `v0.1` - `v0.4` | 本地进程 + Docker 基础设施 |
-| `v0.5` - `v1.7` | Docker Compose 管理基础设施和部分应用 |
+| `v0.5` - `v1.7` | Docker Compose 管理基础设施和部分应用；基础设施服务和集群节点保持独立容器 |
 | `v1.8` | Docker Compose 与 Kubernetes 双部署 |
 | `v1.9` | Jenkins CI/CD |
 
 ## 下一步建议
 
 1. 如需保存当前稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 开始 `docs/milestones/v0.5-gateway-jwt.md`。
-3. 在 v0.5 中引入 Spring Cloud Gateway，建议端口使用 `8092`，继续避开本机占用范围 `7991-8090`、`8146-8245`。
-4. 保持当前部署路线：后端、网关和前端先用本地进程，MySQL 继续使用 Docker Desktop。
+2. 开始 `docs/milestones/v0.6-nacos.md`。
+3. 在 v0.6 中引入 Nacos，按 Docker Desktop 容器方式先完成单节点可运行验证，并预留后续集群节点独立容器方案。
+4. 保持当前部署路线：后端、网关和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
@@ -357,7 +414,7 @@ docs/milestones/v0.5-gateway-jwt.md
 | `v0.2` | 已完成 | 2026-05-22 | 用户管理 CRUD、分页、逻辑删除、改密、字段迁移；提交、tag 和推送由用户手动执行 |
 | `v0.3` | 已完成 | 2026-05-23 | React 管理端、TypeScript、Ant Design、IndexedDB 登录态恢复；提交、tag 和推送由用户手动执行 |
 | `v0.4` | 已完成 | 2026-05-26 | Vue 管理端、JavaScript、Element Plus、localStorage 登录态和最近查询条件；已优化为 Vue 常见项目结构；提交、tag 和推送由用户手动执行 |
-| `v0.5` | 未开始 | - | Spring Cloud Gateway |
+| `v0.5` | 已完成 | 2026-05-26 | Spring Cloud Gateway、网关 JWT 校验、React/Vue 代理切换到 Gateway；提交、tag 和推送由用户手动执行 |
 | `v0.6` | 未开始 | - | Nacos |
 | `v0.7` | 未开始 | - | Redis |
 | `v0.8` | 未开始 | - | WebSocket |
@@ -381,6 +438,7 @@ docs/milestones/v0.5-gateway-jwt.md
 | Maven 直接运行时可能读取旧 `JAVA_HOME` | Maven 可能使用 Java 8 而不是 Java 17 | 确保 `JAVA_HOME=D:\software\jdk-17.0.19` |
 | 端口 `3306` 可能与本机 MySQL 冲突 | MySQL Docker 容器无法启动 | 暂停本机 MySQL 或调整 compose 端口后记录变更 |
 | 端口 `8091` 可能被其他应用占用 | 后端应用无法启动 | 启动前检查端口，必要时临时调整到 `8250` 等非占用范围端口 |
+| 端口 `8092` 可能被其他应用占用 | Gateway 无法启动，前端默认代理无法访问 API | 启动前检查端口，必要时临时调整 `GATEWAY_SERVER_PORT` 并同步更新前端代理和文档 |
 | 端口 `5173` 可能被其他前端项目占用 | React 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口 |
 | 端口 `5174` 可能被其他前端项目占用 | Vue 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口，并同步更新文档 |
 | 占用端口范围 `7991-8090`、`8146-8245` | 新增服务若误用这些端口会启动失败或冲突 | 后续新增服务必须按 `docs/decisions/0008-local-port-allocation.md` 分配端口 |
@@ -390,4 +448,5 @@ docs/milestones/v0.5-gateway-jwt.md
 | Vite/esbuild moderate audit 提示 | 开发服务器场景存在中等级别安全提示 | 当前不强制破坏性升级，后续可在前端依赖维护任务中处理 |
 | 后续维护 Vue 端时误引入 TypeScript 模板 | Vue 管理端语言策略与学习目标不一致 | `frontend-vue` 继续保持 JavaScript，不生成 `tsconfig` 或 `.ts` / `.tsx` 业务代码 |
 | 当前会话存在 `PATH` / `Path` 重复环境变量 | Maven Wrapper 或 `Start-Process` 可能启动失败 | 本次已使用本地 Maven 3.9.16 完成验证；后续可重启 Codex 会话或清理当前进程环境后再试 Wrapper |
+| 后续中间件容器边界混乱 | 如果多个服务共用一个容器，后续难以单独扩缩容或集群化 | 遵守 `docs/decisions/0010-docker-service-containerization.md`，每个服务和每个集群节点独立容器 |
 | 中间件范围很大 | 容易一次性复杂化 | 严格按 milestone 单步推进 |

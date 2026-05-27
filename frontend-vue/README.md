@@ -13,15 +13,21 @@
 | 开发服务器 | Vite |
 | 开发端口 | `5174` |
 | Preview 端口 | `4174` |
-| 后端代理 | `/api` 与 `/v3/api-docs` 转发到 `http://localhost:8091` |
+| 后端代理 | `/api` 与 `/v3/api-docs` 转发到 Gateway `http://localhost:8092` |
 
 ## 启动方式
 
-先确认 MySQL 和后端已启动：
+先确认 MySQL 已启动：
 
 ```powershell
 docker compose -f infra\docker-compose\mysql\docker-compose.yml up -d
+```
+
+再分别在两个终端启动后端和 Gateway：
+
+```powershell
 .\mvnw.cmd -pl backend/app spring-boot:run
+.\mvnw.cmd -pl backend/gateway spring-boot:run
 ```
 
 再启动 Vue 管理端：
@@ -83,3 +89,7 @@ Vue 端保持和 React 端相同的业务功能与操作路径，但目录组织
 | 目的 | 练习类型约束和大型组件生态 | 对比 Vue 单文件组件、模板语法和组合式逻辑 |
 
 Vue 端刻意不引入 Pinia、Vue Router 或 TypeScript，避免在本阶段把“第二套前端实现”扩展成多项新技术同时学习。当前使用与 React 端相同的轻量 view state 完成首页和用户管理切换；后续如果页面数量增多，再单独通过 milestone 引入路由或状态管理。
+
+## v0.5 Gateway 访问说明
+
+v0.5 开始，Vue 端不再把开发请求直接代理到 Spring Boot 后端 `8091`，而是代理到 Spring Cloud Gateway `8092`。这样登录、当前用户、用户分页、新增、编辑和删除都会先经过网关；网关完成基础 JWT 校验后，再转发到后端。后端 `8091` 仍可用于开发调试，但不作为前端默认入口。
