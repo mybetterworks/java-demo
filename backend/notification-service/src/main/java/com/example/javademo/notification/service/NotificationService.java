@@ -64,6 +64,7 @@ public class NotificationService {
         message.setCreatedAt(now);
         notificationMapper.insert(message);
 
+        // 通知正文可能来自用户输入，日志只记录可定位链路的 ID 和业务类型。
         log.info("Notification created, notificationId={}, receiverUserId={}, bizType={}, bizId={}, operatorUserId={}",
                 message.getId(), message.getReceiverUserId(), message.getBizType(), message.getBizId(), currentUser.getId());
         return NotificationResponse.from(message);
@@ -85,6 +86,8 @@ public class NotificationService {
         List<NotificationResponse> records = page.getRecords().stream()
                 .map(NotificationResponse::from)
                 .toList();
+        log.debug("My notifications queried, userId={}, current={}, size={}, readStatus={}, total={}",
+                currentUser.getId(), page.getCurrent(), page.getSize(), normalizedReadStatus, page.getTotal());
         return new PageResponse<>(page.getCurrent(), page.getSize(), page.getTotal(), page.getPages(), records);
     }
 
@@ -92,9 +95,11 @@ public class NotificationService {
      * 查询当前用户未读通知数。
      */
     public long countMyUnread(AuthUser currentUser) {
-        return notificationMapper.selectCount(Wrappers.<NotificationMessage>lambdaQuery()
+        long unreadCount = notificationMapper.selectCount(Wrappers.<NotificationMessage>lambdaQuery()
                 .eq(NotificationMessage::getReceiverUserId, currentUser.getId())
                 .eq(NotificationMessage::getReadStatus, UNREAD));
+        log.debug("Unread notifications counted, userId={}, unreadCount={}", currentUser.getId(), unreadCount);
+        return unreadCount;
     }
 
     /**
@@ -110,7 +115,10 @@ public class NotificationService {
             message.setReadStatus(READ);
             message.setReadAt(LocalDateTime.now());
             notificationMapper.updateById(message);
+            // 单条已读是用户可见状态变化，记录通知 ID 和接收人即可，不记录通知正文。
             log.info("Notification marked read, notificationId={}, receiverUserId={}", message.getId(), currentUser.getId());
+        } else {
+            log.debug("Notification already read, notificationId={}, receiverUserId={}", message.getId(), currentUser.getId());
         }
         return NotificationResponse.from(message);
     }
@@ -125,6 +133,7 @@ public class NotificationService {
                 .eq(NotificationMessage::getReadStatus, UNREAD));
         LocalDateTime now = LocalDateTime.now();
         for (NotificationMessage message : unreadMessages) {
+            // 批量已读逐条更新，当前数据量较小；后续如需优化可改为批量 SQL。
             message.setReadStatus(READ);
             message.setReadAt(now);
             notificationMapper.updateById(message);
@@ -142,6 +151,7 @@ public class NotificationService {
                 .eq(NotificationMessage::getReceiverUserId, currentUser.getId())
                 .last("LIMIT 1"));
         if (message == null) {
+            log.warn("Notification lookup failed, notificationId={}, operatorUserId={}", id, currentUser.getId());
             throw BusinessException.notFound("Notification does not exist");
         }
         return message;

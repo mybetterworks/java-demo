@@ -22,6 +22,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
+        // 通知业务异常通常是通知不存在、非本人操作或参数不合法，记录摘要即可。
         log.warn("Notification service business exception, code={}, message={}", exception.getCode(), exception.getMessage());
         return ResponseEntity
                 .status(exception.getStatus())
@@ -32,6 +33,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException exception) {
         FieldError fieldError = exception.getBindingResult().getFieldError();
         String message = fieldError == null ? "Invalid request" : fieldError.getField() + " " + fieldError.getDefaultMessage();
+        // 不打印完整通知请求体，避免通知正文或后续附件信息进入日志。
         log.warn("Notification request validation failed, message={}", message);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
@@ -40,6 +42,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
+        // 未预期异常需要堆栈帮助排查，但前端仍只接收稳定的统一错误响应。
         log.error("Unexpected notification service exception", exception);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)

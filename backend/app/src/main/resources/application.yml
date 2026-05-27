@@ -45,3 +45,22 @@ app:
     secret: ${JAVA_DEMO_JWT_SECRET:java-demo-v0-1-local-secret-change-me-32chars}
     # JWT 有效期，单位秒；默认 2 小时。
     expiration-seconds: ${JAVA_DEMO_JWT_EXPIRATION_SECONDS:7200}
+
+logging:
+  file:
+    # v0.5.2 建立本地文件日志基线；logs 目录属于运行产物，已由 .gitignore 忽略。
+    name: ${JAVA_DEMO_APP_LOG_FILE:logs/java-demo-app.log}
+  logback:
+    rollingpolicy:
+      # 本地学习环境限制单个日志文件大小，避免长时间联调时日志无限增长。
+      max-file-size: ${JAVA_DEMO_LOG_MAX_FILE_SIZE:10MB}
+      # 保留最近 7 个滚动文件，后续接入 ELK 前先保持轻量可控。
+      max-history: ${JAVA_DEMO_LOG_MAX_HISTORY:7}
+  level:
+    # root 和业务包级别都支持环境变量覆盖，便于验证 DEBUG/WARN 切换。
+    root: ${JAVA_DEMO_LOG_LEVEL_ROOT:INFO}
+    com.example.javademo.app: ${JAVA_DEMO_APP_LOG_LEVEL:INFO}
+  pattern:
+    # 日志中包含服务名、线程和 requestId；未进入 HTTP 请求时 requestId 会显示为 no-request。
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [java-demo-app] [%thread] [requestId=%X{requestId:-no-request}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [java-demo-app] [%thread] [requestId=%X{requestId:-no-request}] %logger{36} - %msg%n"

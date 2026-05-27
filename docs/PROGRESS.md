@@ -8,7 +8,7 @@
 
 `v0.5.1 Task And Notification Services` 已完成。当前已补齐 `task-service` 和 `notification-service` 的代码、配置、SQL 初始化脚本、Gateway 静态路由和集成测试代码，并已补跑 Maven `test`、Maven `package`、React/Vue 构建回归和真实 Gateway 任务通知链路联调。
 
-同时已新增 `v0.5.2 Backend Runtime Logging` 规划，作为 `v0.5.1` 和 `v0.6 Nacos` 之间的后端日志基线版本。该版本用于让 `java-demo-app`、`task-service`、`notification-service` 支持控制台日志、项目文件日志和可配置日志级别，便于后续微服务实验时观察运行状态；同时把后端详细中文注释要求进一步明确为类/方法注释与方法内部关键代码块注释并重。
+`v0.5.2 Backend Runtime Logging` 已完成。当前 `java-demo-app`、`task-service`、`notification-service` 已支持控制台日志、项目文件日志、`requestId`、可配置日志级别、服务间 requestId 透传和敏感信息保护，便于后续前端联调、Nacos、缓存、消息和可观测性实验时观察运行状态。
 
 已新增 `v0.5.3 Task And Notification Frontends` 规划，作为任务和通知两个后端微服务的前端承接版本。该版本要求 React 和 Vue 都补齐任务管理与通知中心，双端功能、布局、操作路径保持一致，但代码结构和开发风格继续保留各自框架特点。
 
@@ -77,6 +77,12 @@
 | v0.5.1 前端构建回归 | React 和 Vue 均已执行 `npm.cmd run build` 并通过，保留既有 Vite chunk size warning |
 | v0.5.2 milestone 规划 | 已新增 `docs/milestones/v0.5.2-backend-runtime-logging.md`，明确三个业务服务的控制台日志、文件日志、日志级别配置、关键日志点、敏感信息保护和后端关键代码块注释要求 |
 | 后端运行日志策略 | 已采纳 `docs/decisions/0012-backend-runtime-logging.md`，后续后端 milestone 默认需要补充关键运行日志 |
+| v0.5.2 运行日志配置 | 三个业务服务已配置 `logging.file.name`、滚动策略、root 和业务包日志级别环境变量、包含 `requestId` 的控制台/文件日志格式 |
+| v0.5.2 请求日志 | 三个业务服务已新增请求日志过滤器，生成或复用 `X-Request-Id`，记录请求开始、结束、状态码和耗时，并在请求结束清理 MDC |
+| v0.5.2 启动日志 | 三个业务服务已新增启动摘要日志，记录服务名、端口、profile、日志文件、日志级别和脱敏配置摘要 |
+| v0.5.2 业务日志 | `java-demo-app` 已补充注册、登录、JWT、用户管理和异常日志；`task-service` 已补充任务、服务间调用和异常日志；`notification-service` 已补充通知、未读数、已读和异常日志 |
+| v0.5.2 服务间 requestId | `task-service` 调用用户服务和通知服务时已透传 `X-Request-Id`，便于跨日志文件串联同一次业务链路 |
+| v0.5.2 验证 | 已通过 Maven test/package、React/Vue 构建回归、真实 Gateway 联调、DEBUG/WARN 日志级别验证、文件日志验证和敏感信息检查 |
 | v0.5.3 milestone 规划 | 已新增 `docs/milestones/v0.5.3-task-notification-frontends.md`，明确 React/Vue 双端任务管理和通知中心的开发范围、双端一致性和注释要求 |
 | 前后端功能联动策略 | 已采纳 `docs/decisions/0013-frontend-backend-feature-sync.md`，后续后端用户可见能力变化默认需要评估并同步 React/Vue 前端 |
 
@@ -85,8 +91,7 @@
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| v0.5.2 后端运行日志代码实现 | 未开始，需在 v0.5.1 三个业务服务具备后再实施 |
-| v0.5.3 React/Vue 任务通知前端实现 | 未开始，需在 v0.5.1 接口可用、v0.5.2 日志基线完成后实施 |
+| v0.5.3 React/Vue 任务通知前端实现 | 未开始，需在 v0.5.2 日志基线完成后实施 |
 | Nacos 和后续微服务基础设施 | 未开始，按后续 milestone 逐步引入 |
 
 ## 环境观察
@@ -140,6 +145,16 @@
 | v0.5.1 React 构建回归 | 已执行 `frontend-react` 的 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
 | v0.5.1 Vue 构建回归 | 已执行 `frontend-vue` 的 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
 | v0.5.1 当前验证状态 | 已完成自动化测试、package、真实 Gateway 联调、前端构建回归和文档更新，本版本可标记为完成 |
+| v0.5.2 Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；四个后端模块测试均成功 |
+| v0.5.2 Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；已生成四个 `0.5.2-SNAPSHOT` jar |
+| v0.5.2 React 构建回归 | 已执行 `frontend-react` 的 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| v0.5.2 Vue 构建回归 | 已执行 `frontend-vue` 的 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| v0.5.2 真实 Gateway 联调 | 已使用临时端口 `8252-8255` 启动四个 `0.5.2` jar，经 Gateway 完成注册、登录、任务创建、任务查询、状态流转、通知查询、未读数和 OpenAPI 验证 |
+| v0.5.2 文件日志验证 | 已验证 `logs/v052-java-demo-app-debug.log`、`logs/v052-task-service-debug.log`、`logs/v052-notification-service-debug.log` 均包含启动摘要、请求日志、`requestId` 和关键业务日志 |
+| v0.5.2 DEBUG 级别验证 | 已验证三个业务服务业务包设置为 `DEBUG` 后可看到当前用户、我的任务、未读通知数等调试日志 |
+| v0.5.2 WARN 级别验证 | 已验证 `JAVA_DEMO_LOG_LEVEL_ROOT=WARN` 和 `JAVA_DEMO_APP_LOG_LEVEL=WARN` 下普通 INFO 请求日志不输出，认证失败 WARN 日志仍输出 |
+| v0.5.2 敏感信息检查 | 已确认本次日志文件中未出现登录密码、完整 JWT 或 `Authorization` 字样 |
+| v0.5.2 临时端口 | 验证结束后已停止本次临时启动进程，`8252-8255` 无监听进程；未停止用户 IntelliJ 正在占用的 `8091-8094` 进程 |
 
 注意：当前 Codex 进程的 PATH/JAVA_HOME/Node.js 路径可能仍是旧会话环境。若 `java -version`、`mvn -v` 或 `node -v` 未显示上述版本，重启终端或 Codex 会话后再验证。
 
@@ -382,21 +397,46 @@ v0.4 Vue 项目结构记录：
 | 端口 | `java-demo-app` 使用 `8091`，Gateway 使用 `8092`，`task-service` 使用 `8093`，`notification-service` 使用 `8094` |
 | 临时进程 | 验证结束后已停止本次临时启动的四个 Java 进程，并确认 `8091-8094` 无监听进程 |
 
+## v0.5.2 验证记录
+
+自动化和构建验证：
+
+| 命令 | 结果 |
+|---|---|
+| `D:\software\apache-maven-3.9.16\bin\mvn.cmd test` | 通过；四个后端模块测试均成功 |
+| `D:\software\apache-maven-3.9.16\bin\mvn.cmd package` | 通过；生成 `java-demo-app-0.5.2-SNAPSHOT.jar`、`java-demo-gateway-0.5.2-SNAPSHOT.jar`、`java-demo-task-service-0.5.2-SNAPSHOT.jar`、`java-demo-notification-service-0.5.2-SNAPSHOT.jar` |
+| `frontend-react` 执行 `npm.cmd run build` | 通过，保留既有 Vite chunk size warning |
+| `frontend-vue` 执行 `npm.cmd run build` | 通过，保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+
+真实 Gateway 和日志验收：
+
+| 验收项 | 结果 |
+|---|---|
+| 临时端口 | 因用户 IntelliJ 进程正在占用 `8091-8094`，本次使用 `8252-8255` 启动四个 `0.5.2` jar；未停止用户进程 |
+| Gateway 业务链路 | 通过临时 Gateway `8253` 完成注册、登录、当前用户、任务创建、我的任务、状态流转、通知查询、未读数和 OpenAPI 验证 |
+| 文件日志 | 已验证 `logs/v052-java-demo-app-debug.log`、`logs/v052-task-service-debug.log`、`logs/v052-notification-service-debug.log` 均生成并写入关键日志 |
+| requestId | 已通过外部请求头 `X-Request-Id: v052-debug-chain` 验证三个业务服务日志都包含同一 `requestId`；`task-service` 服务间调用会继续透传该值 |
+| DEBUG 级别 | 已验证三个业务服务业务包 DEBUG 日志可输出当前用户、我的任务和未读通知数等调试信息 |
+| WARN 级别 | 已单独启动 `java-demo-app`，设置 `JAVA_DEMO_LOG_LEVEL_ROOT=WARN` 和 `JAVA_DEMO_APP_LOG_LEVEL=WARN`，确认普通 INFO 请求日志不输出，认证失败 WARN 日志仍输出 |
+| 敏感信息检查 | 已检查本次日志文件，不包含登录密码、完整 JWT 或 `Authorization` 字样 |
+| 进程清理 | 本次临时启动的 Java 进程已停止，`8252-8255` 无监听进程 |
+
+前端联动判断：
+
+| 项目 | 结论 |
+|---|---|
+| React/Vue 页面改动 | 不需要；`v0.5.2` 是后端内部运行日志能力，不新增或改变用户可见接口、字段、状态或页面操作 |
+| 前端回归验证 | 已执行 React 和 Vue 生产构建，确认现有前端不受影响 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.5.1-task-notification-services.md
-```
-
-下一步尚未开始：
-
-```text
 docs/milestones/v0.5.2-backend-runtime-logging.md
 ```
 
-`v0.5.2` 完成后的下一步：
+下一步尚未开始：
 
 ```text
 docs/milestones/v0.5.3-task-notification-frontends.md
@@ -406,6 +446,12 @@ docs/milestones/v0.5.3-task-notification-frontends.md
 
 ```text
 docs/milestones/v0.6-nacos.md
+```
+
+`v0.6` 完成后的下一步：
+
+```text
+docs/milestones/v0.7-redis-cache-rate-limit.md
 ```
 
 ## 端口调整记录
@@ -482,16 +528,16 @@ docs/milestones/v0.6-nacos.md
 
 ## 下一步建议
 
-1. 如需保存当前 `v0.5.1` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 下一次开发从 `docs/milestones/v0.5.2-backend-runtime-logging.md` 开始，为 `java-demo-app`、`task-service` 和 `notification-service` 补齐运行日志基线。
-3. v0.5.2 完成后进入 `docs/milestones/v0.5.3-task-notification-frontends.md`，在 React 和 Vue 两套前端中补齐任务管理与通知中心。
-4. v0.5.3 完成后再进入 `docs/milestones/v0.6-nacos.md`，把 Gateway、用户、任务、通知服务接入 Nacos。
+1. 如需保存当前 `v0.5.2` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
+2. 下一次开发从 `docs/milestones/v0.5.3-task-notification-frontends.md` 开始，在 React 和 Vue 两套前端中补齐任务管理与通知中心。
+3. v0.5.3 完成后再进入 `docs/milestones/v0.6-nacos.md`，把 Gateway、用户、任务、通知服务接入 Nacos。
+4. v0.6 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流。
 5. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档。当前 v0.5.1 已完成，请从 docs/milestones/v0.5.2-backend-runtime-logging.md 开始实现后端运行日志 milestone；不要重复实现 v0.5.1。v0.5.2 完成后进入 v0.5.3，在 React 和 Vue 两套前端中补齐任务管理和通知中心。新增和修改的后端代码必须补充详细中文注释，不仅包括类和方法注释，也要在方法内部关键流程、关键分支、服务间调用、日志上下文、异常处理等代码块前增加说明。涉及后端用户可见能力变化时，请自动判断是否需要同步 React/Vue 前端。涉及后端功能时，禁止打印密码、JWT 完整 token、Authorization header、数据库密码和真实密钥。
+请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档。当前 v0.5.2 已完成，请从 docs/milestones/v0.5.3-task-notification-frontends.md 开始实现任务和通知前端 milestone；不要重复实现 v0.5.2。React 和 Vue 两套前端都需要补齐任务管理与通知中心，双端功能、布局、操作路径、筛选项、表格字段、操作按钮和错误提示尽量保持一致，但代码结构继续保留各自框架特点。新增前端代码必须补充详细中文注释，说明 API 封装、页面状态、表单校验、表格分页、本地缓存和错误处理。完成后运行前端构建、必要后端验证和真实联调，并更新文档。
 ```
 
 ## 完成记录
@@ -504,7 +550,7 @@ docs/milestones/v0.6-nacos.md
 | `v0.4` | 已完成 | 2026-05-26 | Vue 管理端、JavaScript、Element Plus、localStorage 登录态和最近查询条件；已优化为 Vue 常见项目结构；提交、tag 和推送由用户手动执行 |
 | `v0.5` | 已完成 | 2026-05-26 | Spring Cloud Gateway、网关 JWT 校验、React/Vue 代理切换到 Gateway；提交、tag 和推送由用户手动执行 |
 | `v0.5.1` | 已完成 | 2026-05-27 | 任务服务和通知服务 MVP；已通过 Maven test/package、React/Vue 构建回归和真实 Gateway 任务通知链路联调；提交、tag 和推送由用户手动执行 |
-| `v0.5.2` | 未开始 | - | 后端运行日志基线；已完成 milestone 与日志策略文档规划 |
+| `v0.5.2` | 已完成 | 2026-05-27 | 后端运行日志基线；三个业务服务已支持控制台日志、文件日志、requestId、日志级别配置和敏感信息保护；提交、tag 和推送由用户手动执行 |
 | `v0.5.3` | 未开始 | - | 任务和通知前端；已完成 milestone 与前后端联动策略文档规划 |
 | `v0.6` | 未开始 | - | Nacos |
 | `v0.7` | 未开始 | - | Redis |

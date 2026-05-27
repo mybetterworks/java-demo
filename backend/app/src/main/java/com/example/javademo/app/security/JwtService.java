@@ -6,6 +6,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -25,6 +27,9 @@ public class JwtService {
 
     /** 自定义声明字段，用于在 token 中保存用户名，subject 则保存用户 ID。 */
     private static final String USERNAME_CLAIM = "username";
+
+    /** JWT 日志只记录签发用户、过期时间和失败类型，绝不打印 token 或签名密钥。 */
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
     private final JwtProperties jwtProperties;
     private final SecretKey signingKey;
@@ -53,13 +58,16 @@ public class JwtService {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(jwtProperties.getExpirationSeconds());
 
-        return Jwts.builder()
+        String token = Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim(USERNAME_CLAIM, username)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(signingKey, Jwts.SIG.HS256)
                 .compact();
+        // DEBUG 日志只记录 token 元数据，不能记录 token 字符串本身。
+        log.debug("JWT created, userId={}, username={}, expiresAt={}", userId, username, expiresAt);
+        return token;
     }
 
     /**
@@ -80,8 +88,11 @@ public class JwtService {
                     .getPayload();
             Long userId = Long.valueOf(claims.getSubject());
             String username = claims.get(USERNAME_CLAIM, String.class);
+            log.debug("JWT parsed, userId={}, username={}", userId, username);
             return new AuthUser(userId, username);
         } catch (JwtException | IllegalArgumentException exception) {
+            // 解析失败时只记录异常类型，避免把可能包含 token 内容的信息写入日志。
+            log.warn("JWT parse failed, reason={}", exception.getClass().getSimpleName());
             throw BusinessException.unauthorized("Invalid or expired token");
         }
     }

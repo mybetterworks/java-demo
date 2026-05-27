@@ -4,13 +4,13 @@
 
 ## 当前版本
 
-当前已完成 `v0.5.1 Task And Notification Services`。在 `v0.5 Gateway JWT` 统一入口基础上，已新增 `task-service` 与 `notification-service`，并完成 Maven 自动化测试、package、React/Vue 构建回归和真实 Gateway 联调验证。
+当前已完成 `v0.5.2 Backend Runtime Logging`。在 `v0.5.1 Task And Notification Services` 的三个业务服务基础上，已为 `java-demo-app`、`task-service` 和 `notification-service` 增加控制台日志、项目内文件日志、`requestId`、可配置日志级别和敏感信息保护。
 
-后续已规划 `v0.5.2 Backend Runtime Logging` 和 `v0.5.3 Task And Notification Frontends`。`v0.5.2` 用于补齐三个业务后端服务的控制台日志、文件日志和日志级别配置，并进一步明确后端代码注释要求：新增和修改的后端代码不仅要有类/方法注释，也要在方法内部关键流程、关键分支、服务间调用、日志上下文、异常处理等代码块前增加中文说明。`v0.5.3` 用于在 React 和 Vue 两套前端中补齐任务管理与通知中心，并保持双端功能、布局和操作路径一致。
+下一步规划为 `v0.5.3 Task And Notification Frontends`。该版本用于在 React 和 Vue 两套前端中补齐任务管理与通知中心，并保持双端功能、布局和操作路径一致。
 
 | 项目 | 内容 |
 |---|---|
-| 核心能力 | 注册、登录、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、React 管理端、Vue 管理端 |
+| 核心能力 | 注册、登录、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、后端运行日志、React 管理端、Vue 管理端 |
 | 后端 | Spring Boot `3.3.5` |
 | 网关 | Spring Cloud Gateway `2023.0.3`，默认端口 `8092` |
 | 任务服务 | `task-service`，默认端口 `8093` |
@@ -18,6 +18,7 @@
 | ORM | MyBatis Plus `3.5.7` |
 | 数据库 | MySQL `8.4` Docker 单节点 |
 | 认证 | JWT |
+| 日志 | SLF4J + Logback，控制台日志、`logs/*.log` 文件日志、`requestId`、可配置级别 |
 | 接口文档 | Springdoc OpenAPI `2.6.0`、Swagger UI |
 | 前端 | React `18`、TypeScript、Ant Design `5`；Vue `3`、JavaScript、Element Plus |
 | 前端缓存 | React 端使用 IndexedDB；Vue 端使用 localStorage |
@@ -152,7 +153,7 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 
 当前集成测试代码覆盖注册、重复注册、登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
 
-`v0.5.1` 已使用本地 Maven `D:\software\apache-maven-3.9.16\bin\mvn.cmd` 补跑 `test` 和 `package` 并通过；Maven 本地仓库继续使用 `D:\software\maven_download`。
+`v0.5.2` 已使用本地 Maven `D:\software\apache-maven-3.9.16\bin\mvn.cmd` 执行 `test` 和 `package` 并通过；Maven 本地仓库继续使用 `D:\software\maven_download`。
 
 ## 启动后端
 
@@ -165,7 +166,7 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.5.1-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.5.2-SNAPSHOT.jar
 ```
 
 后端默认端口：
@@ -192,7 +193,7 @@ D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.5.1
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\gateway\target\java-demo-gateway-0.5.1-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\gateway\target\java-demo-gateway-0.5.2-SNAPSHOT.jar
 ```
 
 Gateway 默认端口：
@@ -218,8 +219,8 @@ Gateway 当前使用静态地址转发到用户服务 `8091`、任务服务 `809
 或运行已打包 jar：
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\task-service\target\java-demo-task-service-0.5.1-SNAPSHOT.jar
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\notification-service\target\java-demo-notification-service-0.5.1-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\task-service\target\java-demo-task-service-0.5.2-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\notification-service\target\java-demo-notification-service-0.5.2-SNAPSHOT.jar
 ```
 
 服务地址：
@@ -494,6 +495,41 @@ http://localhost:8092/v3/api-docs
 | `JAVA_DEMO_NOTIFICATION_SERVICE_URI` | `http://localhost:8094` | Gateway 转发到通知服务的静态地址 |
 | `JAVA_DEMO_USER_SERVICE_URL` | `http://localhost:8091` | task-service 调用用户服务的静态地址 |
 | `JAVA_DEMO_NOTIFICATION_SERVICE_URL` | `http://localhost:8094` | task-service 调用通知服务的静态地址 |
+| `JAVA_DEMO_LOG_LEVEL_ROOT` | `INFO` | 三个业务服务的 root 日志级别 |
+| `JAVA_DEMO_APP_LOG_LEVEL` | `INFO` | `java-demo-app` 业务包日志级别 |
+| `JAVA_DEMO_TASK_LOG_LEVEL` | `INFO` | `task-service` 业务包日志级别 |
+| `JAVA_DEMO_NOTIFICATION_LOG_LEVEL` | `INFO` | `notification-service` 业务包日志级别 |
+| `JAVA_DEMO_APP_LOG_FILE` | `logs/java-demo-app.log` | `java-demo-app` 文件日志路径 |
+| `JAVA_DEMO_TASK_LOG_FILE` | `logs/task-service.log` | `task-service` 文件日志路径 |
+| `JAVA_DEMO_NOTIFICATION_LOG_FILE` | `logs/notification-service.log` | `notification-service` 文件日志路径 |
+| `JAVA_DEMO_LOG_MAX_FILE_SIZE` | `10MB` | 单个滚动日志文件最大体积 |
+| `JAVA_DEMO_LOG_MAX_HISTORY` | `7` | 滚动日志保留数量 |
+
+## 后端日志
+
+`v0.5.2` 已为三个业务服务建立本地日志基线：
+
+| 服务 | 默认日志文件 | 关键日志 |
+|---|---|---|
+| `java-demo-app` | `logs/java-demo-app.log` | 服务启动摘要、请求入口/完成、注册、登录、JWT 解析、用户管理、异常处理 |
+| `task-service` | `logs/task-service.log` | 服务启动摘要、请求入口/完成、任务创建、查询、状态流转、服务间调用、异常处理 |
+| `notification-service` | `logs/notification-service.log` | 服务启动摘要、请求入口/完成、通知创建、查询、未读数、已读标记、异常处理 |
+
+日志格式包含服务名、线程和 `requestId`。外部请求可以传入 `X-Request-Id`；未传时业务服务会自动生成。`task-service` 调用 `java-demo-app` 和 `notification-service` 时会透传当前 `requestId`，便于在多个日志文件中串起同一次任务/通知链路。
+
+本项目日志规则要求：不打印明文密码、密码哈希、完整 JWT、Authorization header、数据库密码或真实密钥。调试时可以临时开启业务包 DEBUG：
+
+```powershell
+$env:JAVA_DEMO_APP_LOG_LEVEL='DEBUG'
+$env:JAVA_DEMO_TASK_LOG_LEVEL='DEBUG'
+$env:JAVA_DEMO_NOTIFICATION_LOG_LEVEL='DEBUG'
+```
+
+如果只想观察告警和错误，可以设置：
+
+```powershell
+$env:JAVA_DEMO_LOG_LEVEL_ROOT='WARN'
+```
 
 ## 数据库升级
 
@@ -572,6 +608,21 @@ http://localhost:8092/v3/api-docs
 | React 构建回归 | 已执行 `npm.cmd run build`，通过；保留既有 chunk size warning |
 | Vue 构建回归 | 已执行 `npm.cmd run build`，通过；保留既有 chunk size warning 和 VueUse 注释提示 |
 
+本次 `v0.5.2` 验证内容：
+
+| 项目 | 状态 |
+|---|---|
+| Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；四个后端模块测试均成功 |
+| Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；已生成四个 `0.5.2-SNAPSHOT` 可执行 jar |
+| React 构建回归 | 已执行 `npm.cmd run build`，通过；保留既有 chunk size warning |
+| Vue 构建回归 | 已执行 `npm.cmd run build`，通过；保留既有 chunk size warning 和 VueUse 注释提示 |
+| 真实 Gateway 联调 | 使用临时端口 `8252-8255` 启动四个 `0.5.2` jar，避免影响 IntelliJ 中占用 `8091-8094` 的服务；通过 Gateway 完成注册、登录、任务创建、任务查询、状态流转、通知查询、未读数和 OpenAPI 验证 |
+| 文件日志 | 已验证 `logs/v052-java-demo-app-debug.log`、`logs/v052-task-service-debug.log`、`logs/v052-notification-service-debug.log` 均写入启动摘要、请求日志、`requestId` 和关键业务日志 |
+| DEBUG 级别 | 已验证 `JAVA_DEMO_APP_LOG_LEVEL=DEBUG`、`JAVA_DEMO_TASK_LOG_LEVEL=DEBUG`、`JAVA_DEMO_NOTIFICATION_LOG_LEVEL=DEBUG` 下可看到当前用户、我的任务、未读通知数等调试日志 |
+| WARN 级别 | 已验证 `JAVA_DEMO_LOG_LEVEL_ROOT=WARN` 和 `JAVA_DEMO_APP_LOG_LEVEL=WARN` 下，普通 INFO 请求日志不输出，认证失败 WARN 日志仍输出 |
+| 敏感信息检查 | 已确认本次日志文件中未出现登录密码、完整 JWT 或 `Authorization` 字样 |
+| 临时端口释放 | 验证结束后已停止本次临时启动的 Java 进程，`8252-8255` 无监听进程 |
+
 ## 下一步
 
-下一步进入 `v0.5.2 Backend Runtime Logging`，为 `java-demo-app`、`task-service` 和 `notification-service` 建立控制台日志、文件日志和日志级别配置基线；随后进入 `v0.5.3 Task And Notification Frontends`，在 React 和 Vue 两套前端中补齐任务管理与通知中心；再之后进入 `v0.6 Nacos`。
+下一步进入 `v0.5.3 Task And Notification Frontends`，在 React 和 Vue 两套前端中补齐任务管理与通知中心；再之后进入 `v0.6 Nacos`。

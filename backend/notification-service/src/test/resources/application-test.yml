@@ -17,3 +17,8 @@ app:
     # 测试密钥长度超过 32 字节，满足 HS256 要求；仅用于本地自动化测试。
     secret: java-demo-test-secret-change-me-32chars
     expiration-seconds: 7200
+
+logging:
+  file:
+    # 测试日志写入 target，避免和真实运行日志混在一起。
+    name: target/test-logs/notification-service-test.log

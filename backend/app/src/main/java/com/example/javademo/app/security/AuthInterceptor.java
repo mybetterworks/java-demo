@@ -5,6 +5,8 @@ import com.example.javademo.app.common.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -24,6 +26,9 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     /** HTTP Authorization 头中 Bearer token 的标准前缀。 */
     private static final String BEARER_PREFIX = "Bearer ";
+
+    /** 认证日志只记录失败原因摘要和用户 ID，禁止打印 Authorization header 或完整 JWT。 */
+    private static final Logger log = LoggerFactory.getLogger(AuthInterceptor.class);
 
     private final JwtService jwtService;
     private final ObjectMapper objectMapper;
@@ -47,15 +52,23 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+            // 缺少 token 是可预期认证失败，记录路径和方法即可，不记录任何请求头原文。
+            log.warn("Authentication failed, reason=missing_bearer_token, method={}, path={}",
+                    request.getMethod(), request.getRequestURI());
             writeUnauthorized(response, "Missing bearer token");
             return false;
         }
 
         try {
             String token = authorization.substring(BEARER_PREFIX.length());
-            CurrentUserContext.set(jwtService.parseToken(token));
+            AuthUser authUser = jwtService.parseToken(token);
+            CurrentUserContext.set(authUser);
+            log.debug("Authentication succeeded, userId={}, username={}", authUser.getId(), authUser.getUsername());
             return true;
         } catch (BusinessException exception) {
+            // token 解析失败时只记录统一错误摘要，不把 token 片段写入日志文件。
+            log.warn("Authentication failed, reason={}, method={}, path={}",
+                    exception.getMessage(), request.getMethod(), request.getRequestURI());
             writeUnauthorized(response, exception.getMessage());
             return false;
         }

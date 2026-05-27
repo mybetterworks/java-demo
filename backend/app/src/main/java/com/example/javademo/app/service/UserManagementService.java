@@ -13,6 +13,8 @@ import com.example.javademo.app.dto.UserProfileResponse;
 import com.example.javademo.app.entity.User;
 import com.example.javademo.app.mapper.UserMapper;
 import com.example.javademo.app.security.PasswordService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,9 @@ import java.util.List;
  */
 @Service
 public class UserManagementService {
+
+    /** 用户管理日志不记录密码或 passwordHash，只记录管理动作和目标用户摘要。 */
+    private static final Logger log = LoggerFactory.getLogger(UserManagementService.class);
 
     /** 启用状态，允许登录。 */
     private static final int STATUS_ENABLED = 1;
@@ -80,6 +85,8 @@ public class UserManagementService {
         List<UserProfileResponse> records = page.getRecords().stream()
                 .map(UserProfileResponse::from)
                 .toList();
+        log.debug("User page queried, current={}, size={}, usernameKeyword={}, status={}, total={}",
+                safeCurrent, safeSize, normalizedUsername, normalizedStatus, page.getTotal());
         return new PageResponse<>(page.getCurrent(), page.getSize(), page.getTotal(), page.getPages(), records);
     }
 
@@ -90,6 +97,7 @@ public class UserManagementService {
      */
     public UserProfileResponse getUser(Long id) {
         User user = getExistingUser(id);
+        log.debug("User detail loaded, userId={}, username={}", user.getId(), user.getUsername());
         return UserProfileResponse.from(user);
     }
 
@@ -103,6 +111,8 @@ public class UserManagementService {
     public UserProfileResponse createUser(CreateUserRequest request) {
         String username = normalizeUsername(request.getUsername());
         if (findByUsername(username) != null) {
+            // 管理端创建用户和注册一样需要防重，日志只记录用户名，不记录密码。
+            log.warn("Managed user creation rejected, reason=username_exists, username={}", username);
             throw BusinessException.conflict("Username already exists");
         }
 
@@ -117,6 +127,8 @@ public class UserManagementService {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         userMapper.insert(user);
+        log.info("Managed user created, userId={}, username={}, status={}, role={}",
+                user.getId(), user.getUsername(), user.getStatus(), user.getRole());
         return UserProfileResponse.from(user);
     }
 
@@ -149,6 +161,8 @@ public class UserManagementService {
 
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(user);
+        log.info("Managed user updated, userId={}, nicknameChanged={}, status={}, role={}",
+                user.getId(), request.getNickname() != null, user.getStatus(), user.getRole());
         return UserProfileResponse.from(user);
     }
 
@@ -162,6 +176,7 @@ public class UserManagementService {
     public void deleteUser(Long id) {
         getExistingUser(id);
         userMapper.deleteById(id);
+        log.info("Managed user deleted logically, userId={}", id);
     }
 
     /**
@@ -176,14 +191,18 @@ public class UserManagementService {
         user.setPasswordHash(passwordService.hash(request.getPassword()));
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(user);
+        // 改密日志只记录目标用户 ID，不打印明文密码或 BCrypt 哈希。
+        log.info("Managed user password changed, userId={}", id);
     }
 
     private User getExistingUser(Long id) {
         if (id == null || id <= 0) {
+            log.warn("User lookup rejected, reason=invalid_user_id, userId={}", id);
             throw BusinessException.badRequest("User id must be positive");
         }
         User user = userMapper.selectById(id);
         if (user == null) {
+            log.warn("User lookup failed, reason=user_not_found, userId={}", id);
             throw BusinessException.notFound("User does not exist");
         }
         return user;

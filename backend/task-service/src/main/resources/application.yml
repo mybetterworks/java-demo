@@ -47,3 +47,21 @@ java-demo:
     # v0.5.1 暂时使用静态 REST 地址；v0.6 接入 Nacos 后再迁移为服务发现。
     user-service-url: ${JAVA_DEMO_USER_SERVICE_URL:http://localhost:8091}
     notification-service-url: ${JAVA_DEMO_NOTIFICATION_SERVICE_URL:http://localhost:8094}
+
+logging:
+  file:
+    # v0.5.2 建立任务服务文件日志，后续前端和 Nacos 联调时可直接观察任务链路。
+    name: ${JAVA_DEMO_TASK_LOG_FILE:logs/task-service.log}
+  logback:
+    rollingpolicy:
+      # 控制本地日志体积，避免长时间任务/通知联调把项目目录撑大。
+      max-file-size: ${JAVA_DEMO_LOG_MAX_FILE_SIZE:10MB}
+      max-history: ${JAVA_DEMO_LOG_MAX_HISTORY:7}
+  level:
+    # 支持统一 root 级别和任务服务业务包级别独立调试。
+    root: ${JAVA_DEMO_LOG_LEVEL_ROOT:INFO}
+    com.example.javademo.task: ${JAVA_DEMO_TASK_LOG_LEVEL:INFO}
+  pattern:
+    # requestId 来自请求日志过滤器，服务间调用失败时可以用它串起同一次接口请求。
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [task-service] [%thread] [requestId=%X{requestId:-no-request}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [task-service] [%thread] [requestId=%X{requestId:-no-request}] %logger{36} - %msg%n"

@@ -5,6 +5,8 @@ import com.example.javademo.task.common.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -23,6 +25,8 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
+    private static final Logger log = LoggerFactory.getLogger(AuthInterceptor.class);
+
     private final JwtService jwtService;
     private final ObjectMapper objectMapper;
 
@@ -39,15 +43,23 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+            // 任务接口必须携带 token；这里只记录失败摘要，避免把 Authorization 头写入日志。
+            log.warn("Task authentication failed, reason=missing_bearer_token, method={}, path={}",
+                    request.getMethod(), request.getRequestURI());
             writeUnauthorized(response, "Missing bearer token");
             return false;
         }
 
         try {
             String token = authorization.substring(BEARER_PREFIX.length()).trim();
-            CurrentUserContext.set(jwtService.parseToken(token));
+            AuthUser authUser = jwtService.parseToken(token);
+            CurrentUserContext.set(authUser);
+            log.debug("Task authentication succeeded, userId={}, username={}", authUser.getId(), authUser.getUsername());
             return true;
         } catch (BusinessException exception) {
+            // token 无效或过期时记录统一原因，不记录 token 内容。
+            log.warn("Task authentication failed, reason={}, method={}, path={}",
+                    exception.getMessage(), request.getMethod(), request.getRequestURI());
             writeUnauthorized(response, exception.getMessage());
             return false;
         }

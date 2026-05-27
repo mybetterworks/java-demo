@@ -11,6 +11,8 @@ import com.example.javademo.app.mapper.UserMapper;
 import com.example.javademo.app.security.AuthUser;
 import com.example.javademo.app.security.JwtService;
 import com.example.javademo.app.security.PasswordService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,9 @@ import java.time.LocalDateTime;
  */
 @Service
 public class UserAccountService {
+
+    /** 账号业务日志只记录用户 ID、用户名和结果摘要，不打印密码或密码哈希。 */
+    private static final Logger log = LoggerFactory.getLogger(UserAccountService.class);
 
     /** 当前版本约定 1 表示账号启用，后续可以扩展禁用、锁定、待激活等状态。 */
     private static final int STATUS_ENABLED = 1;
@@ -59,6 +64,8 @@ public class UserAccountService {
     public UserProfileResponse register(RegisterRequest request) {
         String username = normalizeUsername(request.getUsername());
         if (findByUsername(username) != null) {
+            // 重复注册属于可预期业务失败，日志只记录规范化后的用户名。
+            log.warn("User registration rejected, reason=username_exists, username={}", username);
             throw BusinessException.conflict("Username already exists");
         }
 
@@ -73,6 +80,7 @@ public class UserAccountService {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         userMapper.insert(user);
+        log.info("User registered, userId={}, username={}", user.getId(), user.getUsername());
         return UserProfileResponse.from(user);
     }
 
@@ -89,6 +97,8 @@ public class UserAccountService {
         String username = normalizeUsername(request.getUsername());
         User user = findByUsername(username);
         if (user == null || user.getStatus() == null || user.getStatus() != STATUS_ENABLED || !passwordService.matches(request.getPassword(), user.getPasswordHash())) {
+            // 登录失败时统一输出摘要，不区分用户不存在还是密码错误，避免日志侧信道放大账号枚举风险。
+            log.warn("User login rejected, username={}, reason=invalid_credentials_or_disabled", username);
             throw BusinessException.unauthorized("Invalid username or password");
         }
 
@@ -98,6 +108,7 @@ public class UserAccountService {
         userMapper.updateById(user);
 
         String token = jwtService.createToken(user.getId(), user.getUsername());
+        log.info("User login succeeded, userId={}, username={}", user.getId(), user.getUsername());
         return new LoginResponse("Bearer", token, jwtService.getExpirationSeconds(), UserProfileResponse.from(user));
     }
 
@@ -112,8 +123,10 @@ public class UserAccountService {
     public UserProfileResponse getProfile(AuthUser currentUser) {
         User user = userMapper.selectById(currentUser.getId());
         if (user == null || user.getStatus() == null || user.getStatus() != STATUS_ENABLED) {
+            log.warn("Current user profile rejected, userId={}, reason=missing_or_disabled", currentUser.getId());
             throw BusinessException.notFound("Current user does not exist");
         }
+        log.debug("Current user profile loaded, userId={}, username={}", user.getId(), user.getUsername());
         return UserProfileResponse.from(user);
     }
 

@@ -6,6 +6,7 @@ import com.example.javademo.task.config.ServiceClientProperties;
 import com.example.javademo.task.security.AuthUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +28,9 @@ public class UserServiceClient {
 
     private static final Logger log = LoggerFactory.getLogger(UserServiceClient.class);
 
+    /** 与请求日志过滤器保持一致，服务间调用时透传该值，便于跨服务日志串联。 */
+    private static final String REQUEST_ID_HEADER = "X-Request-Id";
+
     private final RestTemplate restTemplate;
     private final ServiceClientProperties properties;
 
@@ -46,8 +50,11 @@ public class UserServiceClient {
         String url = trimTrailingSlash(properties.getUserServiceUrl()) + "/api/users/" + userId;
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(currentUser.getAccessToken());
+        attachRequestId(headers);
+        long startTime = System.currentTimeMillis();
 
         try {
+            // 服务间调用日志只记录业务 ID 和操作者 ID，不输出 token 或 Authorization header。
             log.info("Calling user service to validate assignee, assigneeUserId={}, operatorUserId={}", userId, currentUser.getId());
             ResponseEntity<ApiResponse<UserProfileResponse>> response = restTemplate.exchange(
                     url,
@@ -60,6 +67,8 @@ public class UserServiceClient {
             if (body == null || body.getCode() != 0 || body.getData() == null || body.getData().getId() == null) {
                 throw BusinessException.downstream("User service returned invalid response");
             }
+            log.info("User service validation succeeded, assigneeUserId={}, status={}, durationMs={}",
+                    userId, response.getStatusCode().value(), System.currentTimeMillis() - startTime);
             return body.getData();
         } catch (HttpStatusCodeException exception) {
             if (exception.getStatusCode().value() == 404) {
@@ -73,6 +82,19 @@ public class UserServiceClient {
         } catch (RestClientException exception) {
             log.warn("User service call failed, assigneeUserId={}, reason={}", userId, exception.getClass().getSimpleName());
             throw BusinessException.downstream("User service is unavailable");
+        }
+    }
+
+    /**
+     * 透传当前请求的 requestId。
+     *
+     * <p>task-service 同步调用 java-demo-app 时，透传 requestId 可以让两个服务的文件日志按同一请求串起来；
+     * 如果当前线程没有 requestId，则保持为空，不额外生成新的链路标识。</p>
+     */
+    private void attachRequestId(HttpHeaders headers) {
+        String requestId = MDC.get("requestId");
+        if (requestId != null && !requestId.isBlank()) {
+            headers.set(REQUEST_ID_HEADER, requestId);
         }
     }
 

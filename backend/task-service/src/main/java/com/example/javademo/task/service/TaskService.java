@@ -62,6 +62,7 @@ public class TaskService {
     public TaskResponse createTask(CreateTaskRequest request, AuthUser currentUser) {
         Long assigneeUserId = request.getAssigneeUserId() == null ? currentUser.getId() : request.getAssigneeUserId();
         validatePositiveUserId(assigneeUserId);
+        // 创建任务前先调用用户服务确认负责人存在，避免任务表保存无效用户 ID。
         userServiceClient.requireUser(assigneeUserId, currentUser);
 
         LocalDateTime now = LocalDateTime.now();
@@ -78,6 +79,7 @@ public class TaskService {
         task.setUpdatedAt(now);
         taskMapper.insert(task);
 
+        // 当前版本同步创建通知，日志中通过同一个 requestId 观察 task-service 和 notification-service。
         notificationServiceClient.createTaskNotification(
                 assigneeUserId,
                 "你有一个新任务",
@@ -104,7 +106,10 @@ public class TaskService {
         }
         queryWrapper.orderByDesc(TaskItem::getUpdatedAt)
                 .orderByDesc(TaskItem::getId);
-        return page(queryWrapper, current, size);
+        PageResponse<TaskResponse> page = page(queryWrapper, current, size);
+        log.debug("My tasks queried, userId={}, current={}, size={}, status={}, total={}",
+                currentUser.getId(), page.getCurrent(), page.getSize(), status, page.getTotal());
+        return page;
     }
 
     /**
@@ -120,14 +125,20 @@ public class TaskService {
         }
         queryWrapper.orderByDesc(TaskItem::getUpdatedAt)
                 .orderByDesc(TaskItem::getId);
-        return page(queryWrapper, current, size);
+        PageResponse<TaskResponse> page = page(queryWrapper, current, size);
+        log.debug("Task page queried, current={}, size={}, status={}, assigneeUserId={}, total={}",
+                page.getCurrent(), page.getSize(), status, assigneeUserId, page.getTotal());
+        return page;
     }
 
     /**
      * 查询任务详情。
      */
     public TaskResponse getTask(Long id) {
-        return TaskResponse.from(getExistingTask(id));
+        TaskItem task = getExistingTask(id);
+        log.debug("Task detail loaded, taskId={}, status={}, assigneeUserId={}",
+                task.getId(), task.getStatus(), task.getAssigneeUserId());
+        return TaskResponse.from(task);
     }
 
     /**
@@ -146,6 +157,7 @@ public class TaskService {
         }
         if (request.getAssigneeUserId() != null) {
             validatePositiveUserId(request.getAssigneeUserId());
+            // 负责人变更会影响通知接收人，先校验用户存在再更新任务记录。
             userServiceClient.requireUser(request.getAssigneeUserId(), currentUser);
             task.setAssigneeUserId(request.getAssigneeUserId());
         }
@@ -159,6 +171,7 @@ public class TaskService {
         taskMapper.updateById(task);
 
         if (!oldAssigneeUserId.equals(task.getAssigneeUserId())) {
+            // 负责人发生变化时补发任务通知，便于新负责人在后续前端页面看到提醒。
             notificationServiceClient.createTaskNotification(
                     task.getAssigneeUserId(),
                     "任务负责人已变更",
@@ -178,11 +191,13 @@ public class TaskService {
     @Transactional
     public TaskResponse updateStatus(Long id, UpdateTaskStatusRequest request, AuthUser currentUser) {
         TaskItem task = getExistingTask(id);
+        String oldStatus = task.getStatus();
         String nextStatus = resolveStatus(request.getStatus());
         if (!nextStatus.equals(task.getStatus())) {
             task.setStatus(nextStatus);
             task.setUpdatedAt(LocalDateTime.now());
             taskMapper.updateById(task);
+            // 状态变化是任务业务最关键的状态事件，需要同步通知负责人并记录旧状态和新状态。
             notificationServiceClient.createTaskNotification(
                     task.getAssigneeUserId(),
                     "任务状态已更新",
@@ -190,8 +205,11 @@ public class TaskService {
                     task,
                     currentUser
             );
-            log.info("Task status updated, taskId={}, status={}, operatorUserId={}",
-                    task.getId(), nextStatus, currentUser.getId());
+            log.info("Task status updated, taskId={}, oldStatus={}, newStatus={}, operatorUserId={}",
+                    task.getId(), oldStatus, nextStatus, currentUser.getId());
+        } else {
+            log.debug("Task status unchanged, taskId={}, status={}, operatorUserId={}",
+                    task.getId(), task.getStatus(), currentUser.getId());
         }
         return TaskResponse.from(task);
     }
@@ -207,7 +225,9 @@ public class TaskService {
     }
 
     private PageResponse<TaskResponse> page(LambdaQueryWrapper<TaskItem> queryWrapper, Long current, Long size) {
-        IPage<TaskItem> page = taskMapper.selectPage(new Page<>(normalizeCurrent(current), normalizeSize(size)), queryWrapper);
+        long safeCurrent = normalizeCurrent(current);
+        long safeSize = normalizeSize(size);
+        IPage<TaskItem> page = taskMapper.selectPage(new Page<>(safeCurrent, safeSize), queryWrapper);
         List<TaskResponse> records = page.getRecords().stream()
                 .map(TaskResponse::from)
                 .toList();

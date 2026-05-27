@@ -17,3 +17,8 @@ app:
     secret: java-demo-test-secret-change-me-32chars
     # 与本地运行配置保持一致，便于测试断言登录响应。
     expiration-seconds: 7200
+
+logging:
+  file:
+    # 测试日志写入 target，避免自动化测试污染项目根目录 logs 运行目录。
+    name: target/test-logs/java-demo-app-test.log

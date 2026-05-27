@@ -41,3 +41,21 @@ app:
     # 必须和 java-demo-app、Gateway 使用同一个密钥，否则后端签发的 token 无法在通知服务校验。
     secret: ${JAVA_DEMO_JWT_SECRET:java-demo-v0-1-local-secret-change-me-32chars}
     expiration-seconds: ${JAVA_DEMO_JWT_EXPIRATION_SECONDS:7200}
+
+logging:
+  file:
+    # v0.5.2 建立通知服务文件日志，便于观察任务服务同步写通知是否成功。
+    name: ${JAVA_DEMO_NOTIFICATION_LOG_FILE:logs/notification-service.log}
+  logback:
+    rollingpolicy:
+      # 限制本地滚动日志大小和保留数量，当前阶段不提前引入 ELK。
+      max-file-size: ${JAVA_DEMO_LOG_MAX_FILE_SIZE:10MB}
+      max-history: ${JAVA_DEMO_LOG_MAX_HISTORY:7}
+  level:
+    # 支持统一 root 级别和通知服务业务包级别独立调试。
+    root: ${JAVA_DEMO_LOG_LEVEL_ROOT:INFO}
+    com.example.javademo.notification: ${JAVA_DEMO_NOTIFICATION_LOG_LEVEL:INFO}
+  pattern:
+    # requestId 会跟随一次 HTTP 请求写入 MDC，排查通知读写链路时更容易定位。
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [notification-service] [%thread] [requestId=%X{requestId:-no-request}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [notification-service] [%thread] [requestId=%X{requestId:-no-request}] %logger{36} - %msg%n"

@@ -27,6 +27,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
+        // 业务异常属于可预期错误，记录 code 和摘要即可，不输出请求体或敏感字段。
+        log.warn("Application business exception, code={}, status={}, message={}",
+                exception.getCode(), exception.getStatus().value(), exception.getMessage());
         return ResponseEntity
                 .status(exception.getStatus())
                 .body(ApiResponse.fail(exception.getCode(), exception.getMessage()));
@@ -42,6 +45,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException exception) {
         FieldError fieldError = exception.getBindingResult().getFieldError();
         String message = fieldError == null ? "Invalid request" : fieldError.getField() + " " + fieldError.getDefaultMessage();
+        // 参数校验失败只记录字段和摘要，不打印完整请求体，避免密码等表单内容进入日志。
+        log.warn("Application request validation failed, message={}", message);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.fail(400, message));
@@ -55,6 +60,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<ApiResponse<Void>> handleDuplicateKeyException(DuplicateKeyException exception) {
+        // 唯一索引冲突通常由并发注册或创建用户触发，记录异常类型即可。
+        log.warn("Application duplicate key conflict, reason={}", exception.getClass().getSimpleName());
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.fail(409, "Username already exists"));

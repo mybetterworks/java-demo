@@ -23,3 +23,8 @@ java-demo:
     # 集成测试使用 MockRestServiceServer 拦截这两个静态地址，不需要真实启动下游服务。
     user-service-url: http://java-demo-app
     notification-service-url: http://notification-service
+
+logging:
+  file:
+    # 测试日志写入 target，真实运行验证再写入项目 logs 目录。
+    name: target/test-logs/task-service-test.log
