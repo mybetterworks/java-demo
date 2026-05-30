@@ -1,9 +1,11 @@
-import type { AuthSession, RecentUsersQuery } from '../types';
+import type { AuthSession, RecentNotificationsQuery, RecentTasksQuery, RecentUsersQuery } from '../types';
 
 const DB_NAME = 'java_demo_react_admin';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const AUTH_STORE = 'auth_session';
 const QUERY_STORE = 'recent_users_query';
+const TASK_QUERY_STORE = 'recent_tasks_query';
+const NOTIFICATION_QUERY_STORE = 'recent_notifications_query';
 
 /**
  * v0.3 只使用原生 IndexedDB API，避免为了两个简单缓存再引入第三方库。
@@ -22,6 +24,12 @@ function openDatabase(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(QUERY_STORE)) {
         db.createObjectStore(QUERY_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(TASK_QUERY_STORE)) {
+        db.createObjectStore(TASK_QUERY_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(NOTIFICATION_QUERY_STORE)) {
+        db.createObjectStore(NOTIFICATION_QUERY_STORE, { keyPath: 'id' });
       }
     };
 
@@ -69,5 +77,23 @@ export const recentUsersQueryStore = {
   },
   put(query: RecentUsersQuery) {
     return runStore<IDBValidKey>(QUERY_STORE, 'readwrite', (store) => store.put(query));
+  }
+};
+
+export const recentTasksQueryStore = {
+  get() {
+    return runStore<RecentTasksQuery | undefined>(TASK_QUERY_STORE, 'readonly', (store) => store.get('recent'));
+  },
+  put(query: RecentTasksQuery) {
+    return runStore<IDBValidKey>(TASK_QUERY_STORE, 'readwrite', (store) => store.put(query));
+  }
+};
+
+export const recentNotificationsQueryStore = {
+  get() {
+    return runStore<RecentNotificationsQuery | undefined>(NOTIFICATION_QUERY_STORE, 'readonly', (store) => store.get('recent'));
+  },
+  put(query: RecentNotificationsQuery) {
+    return runStore<IDBValidKey>(NOTIFICATION_QUERY_STORE, 'readwrite', (store) => store.put(query));
   }
 };

@@ -3,7 +3,7 @@ import type { MenuProps } from 'antd';
 import type { ReactNode } from 'react';
 import type { UserProfile } from '../types';
 
-type ViewKey = 'dashboard' | 'users';
+type ViewKey = 'dashboard' | 'users' | 'tasks' | 'notifications';
 
 interface AppShellProps {
   currentUser: UserProfile;
@@ -15,14 +15,17 @@ interface AppShellProps {
 
 const menuItems: MenuProps['items'] = [
   { key: 'dashboard', label: '首页概览' },
-  { key: 'users', label: '用户管理' }
+  { key: 'users', label: '用户管理' },
+  { key: 'tasks', label: '任务管理' },
+  { key: 'notifications', label: '通知中心' }
 ];
 
 /**
  * 管理端统一布局。
  *
  * 当前没有引入 react-router，先用轻量 view state 完成页面切换。
- * 等 v0.3 稳定后，如果页面继续增多，再单独引入路由库会更自然。
+ * v0.5.3 页面增加到四个，但仍然可以用 view state 讲清楚“菜单 -> 页面组件”的最小闭环；
+ * 等后续页面继续增多或需要浏览器地址栏路由时，再单独引入路由库会更自然。
  */
 export function AppShell({ currentUser, activeView, onViewChange, onLogout, children }: AppShellProps) {
   return (
@@ -48,7 +51,7 @@ export function AppShell({ currentUser, activeView, onViewChange, onLogout, chil
         <Layout.Header className="app-header">
           <div>
             <Typography.Text className="header-eyebrow">Microservice Learning Console</Typography.Text>
-            <Typography.Title level={3}>用户与认证练习台</Typography.Title>
+            <Typography.Title level={3}>用户、任务与通知练习台</Typography.Title>
           </div>
           <Space>
             <Avatar className="user-avatar">{currentUser.nickname?.slice(0, 1) || currentUser.username.slice(0, 1)}</Avatar>

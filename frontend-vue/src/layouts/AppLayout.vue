@@ -12,6 +12,8 @@
       <el-menu class="app-menu" :default-active="activeView" @select="handleSelect">
         <el-menu-item index="dashboard">首页概览</el-menu-item>
         <el-menu-item index="users">用户管理</el-menu-item>
+        <el-menu-item index="tasks">任务管理</el-menu-item>
+        <el-menu-item index="notifications">通知中心</el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -19,7 +21,7 @@
       <el-header class="app-header">
         <div>
           <p class="header-eyebrow">Microservice Learning Console</p>
-          <h2>用户与认证练习台</h2>
+          <h2>用户、任务与通知练习台</h2>
         </div>
 
         <div class="header-actions">
@@ -60,6 +62,7 @@ const emit = defineEmits(['view-change', 'logout']);
 /**
  * Vue 项目习惯把页面骨架放在 layouts 目录。
  * 该组件只负责管理端外壳、菜单和头部用户信息，不处理 API、登录态或页面业务。
+ * v0.5.3 新增任务管理和通知中心菜单，菜单名与 React 端保持一致，便于两套前端对比学习。
  */
 const avatarText = computed(() => {
   return (props.currentUser.nickname || props.currentUser.username || 'U').slice(0, 1);

@@ -62,6 +62,79 @@ export interface UsersQuery {
   status?: number | null;
 }
 
+export type TaskScope = 'my' | 'all';
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface TaskItem {
+  id: number;
+  title: string;
+  description?: string | null;
+  creatorUserId: number;
+  assigneeUserId: number;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueTime?: string | null;
+  deleted: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface TasksQuery {
+  current: number;
+  size: number;
+  scope: TaskScope;
+  status?: TaskStatus | null;
+  assigneeUserId?: number | null;
+}
+
+export interface CreateTaskRequest {
+  title: string;
+  description?: string;
+  assigneeUserId?: number;
+  priority?: TaskPriority;
+  dueTime?: string;
+}
+
+export interface UpdateTaskRequest {
+  title?: string;
+  description?: string;
+  assigneeUserId?: number;
+  priority?: TaskPriority;
+  dueTime?: string;
+}
+
+export interface UpdateTaskStatusRequest {
+  status: TaskStatus;
+}
+
+export interface NotificationItem {
+  id: number;
+  receiverUserId: number;
+  title: string;
+  content: string;
+  type: string;
+  bizType: string;
+  bizId?: number | null;
+  readStatus: number;
+  createdAt?: string | null;
+  readAt?: string | null;
+}
+
+export interface NotificationsQuery {
+  current: number;
+  size: number;
+  readStatus?: number | null;
+}
+
+export interface UnreadCountResponse {
+  count: number;
+}
+
+export interface MarkAllReadResponse {
+  count: number;
+}
+
 export interface AuthSession {
   id: 'current';
   tokenType: string;
@@ -73,5 +146,13 @@ export interface AuthSession {
 }
 
 export interface RecentUsersQuery extends UsersQuery {
+  id: 'recent';
+}
+
+export interface RecentTasksQuery extends TasksQuery {
+  id: 'recent';
+}
+
+export interface RecentNotificationsQuery extends NotificationsQuery {
   id: 'recent';
 }

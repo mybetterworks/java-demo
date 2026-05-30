@@ -207,6 +207,18 @@ body {
   gap: 12px;
 }
 
+.full-width-control {
+  width: 100%;
+}
+
+.table-subtext {
+  display: inline-block;
+  max-width: 460px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;

@@ -4,13 +4,13 @@
 
 ## 当前版本
 
-当前已完成 `v0.5.2 Backend Runtime Logging`。在 `v0.5.1 Task And Notification Services` 的三个业务服务基础上，已为 `java-demo-app`、`task-service` 和 `notification-service` 增加控制台日志、项目内文件日志、`requestId`、可配置日志级别和敏感信息保护。
+当前已完成 `v0.5.3 Task And Notification Frontends`。在 `v0.5.1 Task And Notification Services` 和 `v0.5.2 Backend Runtime Logging` 的基础上，React 与 Vue 两套前端都已补齐“任务管理”和“通知中心”，可以通过浏览器完成任务查询、创建、编辑、状态流转、详情查看、逻辑删除、通知查询、未读数、单条已读和全部已读。
 
-下一步规划为 `v0.5.3 Task And Notification Frontends`。该版本用于在 React 和 Vue 两套前端中补齐任务管理与通知中心，并保持双端功能、布局和操作路径一致。
+下一步规划为 `v0.6 Nacos`。该版本用于把 Gateway、用户服务、任务服务和通知服务接入 Nacos，验证服务注册发现和配置中心能力。
 
 | 项目 | 内容 |
 |---|---|
-| 核心能力 | 注册、登录、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、后端运行日志、React 管理端、Vue 管理端 |
+| 核心能力 | 注册、登录、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、后端运行日志、React 任务/通知管理端、Vue 任务/通知管理端 |
 | 后端 | Spring Boot `3.3.5` |
 | 网关 | Spring Cloud Gateway `2023.0.3`，默认端口 `8092` |
 | 任务服务 | `task-service`，默认端口 `8093` |
@@ -153,7 +153,7 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 
 当前集成测试代码覆盖注册、重复注册、登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
 
-`v0.5.2` 已使用本地 Maven `D:\software\apache-maven-3.9.16\bin\mvn.cmd` 执行 `test` 和 `package` 并通过；Maven 本地仓库继续使用 `D:\software\maven_download`。
+`v0.5.3` 已使用本地 Maven `D:\software\apache-maven-3.9.16\bin\mvn.cmd` 执行 `test` 和 `package` 并通过；Maven 本地仓库继续使用 `D:\software\maven_download`。本版本未修改后端业务代码，因此后端 jar 版本仍为 `0.5.2-SNAPSHOT`。
 
 ## 启动后端
 
@@ -335,16 +335,17 @@ Vue 管理端保持与 React 管理端一致的业务功能和操作路径，但
 | `frontend-vue/src/api` | 后端请求封装 |
 | `frontend-vue/src/storage` | localStorage 持久化封装 |
 
-`v0.5.3` 已规划的前端扩展：
+`v0.5.3` 已完成的前端扩展：
 
 | 前端能力 | 说明 |
 |---|---|
-| React 任务管理 | 使用 TypeScript + Ant Design，支持任务查询、创建、编辑、状态流转和删除 |
-| React 通知中心 | 使用 TypeScript + Ant Design，支持通知查询、未读数、单条已读和全部已读 |
-| Vue 任务管理 | 使用 JavaScript + Element Plus，延续 `views`、`composables`、`api`、`storage` 分层 |
-| Vue 通知中心 | 使用 JavaScript + Element Plus，功能和操作路径与 React 保持一致 |
-| 双端一致性 | React 和 Vue 菜单名称、页面布局、筛选项、表格字段、操作按钮和错误提示应尽量一致 |
-| 代码注释 | 新增前端代码需要补充详细中文注释，说明 API 封装、页面状态、表单校验、表格分页、本地缓存和错误处理 |
+| React 任务管理 | 使用 TypeScript + Ant Design，已支持任务范围筛选、状态筛选、负责人筛选、分页查询、创建、编辑、详情、状态流转和逻辑删除 |
+| React 通知中心 | 使用 TypeScript + Ant Design，已支持通知筛选、分页查询、未读数、单条已读和全部已读 |
+| Vue 任务管理 | 使用 JavaScript + Element Plus，延续 `views`、`composables`、`api`、`storage` 分层，业务路径与 React 保持一致 |
+| Vue 通知中心 | 使用 JavaScript + Element Plus，已支持与 React 一致的通知列表、未读数和已读操作 |
+| 双端一致性 | React 和 Vue 菜单名称、页面布局、筛选项、表格字段、操作按钮、空数据与错误提示尽量保持一致 |
+| 本地查询缓存 | React 使用 IndexedDB 保存任务/通知最近查询条件；Vue 使用 localStorage 保存同类查询条件 |
+| 代码注释 | 新增前端代码已补充中文注释，说明 API 封装、页面状态、表单校验、表格分页、本地缓存和错误处理 |
 
 ## API
 
@@ -623,6 +624,20 @@ $env:JAVA_DEMO_LOG_LEVEL_ROOT='WARN'
 | 敏感信息检查 | 已确认本次日志文件中未出现登录密码、完整 JWT 或 `Authorization` 字样 |
 | 临时端口释放 | 验证结束后已停止本次临时启动的 Java 进程，`8252-8255` 无监听进程 |
 
+本次 `v0.5.3` 验证内容：
+
+| 项目 | 状态 |
+|---|---|
+| Node.js | 已执行 `node -v`，当前为 `v22.22.3` |
+| Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；四个后端模块测试均成功 |
+| Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；本版本未改后端业务代码，生成 jar 仍为 `0.5.2-SNAPSHOT` |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| 真实 Gateway API 联调 | 使用临时端口 `8252-8255` 启动四个后端 jar，经 Gateway `8253` 完成健康检查、JWT 拦截、注册登录、任务创建、任务详情、状态流转、通知查询、未读数、单条已读和全部已读 |
+| React 浏览器联调 | 使用 `VITE_API_BASE_URL=http://localhost:8253` 启动 React `5173`，已登录测试用户 `v053_20260527151910`，进入任务管理并通过页面创建任务，通知中心可看到通知和已读操作 |
+| Vue 浏览器联调 | 使用 `VITE_API_BASE_URL=http://localhost:8253` 启动 Vue `5174`，已登录同一测试用户，进入任务管理并通过页面创建任务，通知中心可看到通知和已读操作 |
+| 临时进程清理 | 验证结束后已停止本次临时启动的后端和前端进程，`8252-8255`、`5173`、`5174` 无监听进程 |
+
 ## 下一步
 
-下一步进入 `v0.5.3 Task And Notification Frontends`，在 React 和 Vue 两套前端中补齐任务管理与通知中心；再之后进入 `v0.6 Nacos`。
+下一步进入 `v0.6 Nacos`，把 Gateway、用户服务、任务服务和通知服务接入 Nacos，验证服务注册发现和配置中心能力。

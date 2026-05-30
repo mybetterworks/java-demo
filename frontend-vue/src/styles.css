@@ -270,6 +270,19 @@ body {
   gap: 12px;
 }
 
+.toolbar-copy {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
 .form-actions,
 .table-actions {
   display: flex;
@@ -277,12 +290,46 @@ body {
 }
 
 .status-select,
-.dialog-select {
+.dialog-select,
+.query-select {
   width: 150px;
+}
+
+.query-number,
+.dialog-number {
+  width: 170px;
 }
 
 .users-table {
   width: 100%;
+}
+
+.tasks-table,
+.notifications-table {
+  width: 100%;
+}
+
+.field-help {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.notification-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.notification-cell span {
+  max-width: 460px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-cell .unread {
+  color: var(--ink);
 }
 
 .pagination-row {

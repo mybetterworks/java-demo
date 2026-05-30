@@ -1,5 +1,7 @@
 const SESSION_KEY = 'java-demo-vue-auth-session';
 const RECENT_QUERY_KEY = 'java-demo-vue-recent-users-query';
+const RECENT_TASKS_QUERY_KEY = 'java-demo-vue-recent-tasks-query';
+const RECENT_NOTIFICATIONS_QUERY_KEY = 'java-demo-vue-recent-notifications-query';
 
 function readJson(key) {
   const raw = localStorage.getItem(key);
@@ -19,7 +21,7 @@ function readJson(key) {
  * Vue 端本地存储封装。
  *
  * React 端使用 IndexedDB；Vue 端为了保持 JavaScript 示例轻量，底层使用 localStorage。
- * 但这里刻意暴露 `authSessionStore` 和 `recentUsersQueryStore` 两个 store 对象，
+ * 但这里刻意把会话、用户查询、任务查询和通知查询都封装成 store 对象，
  * 方法名也保持 get/put/clear，与 React 端 storage/indexedDb.ts 的调用方式尽量一致。
  */
 export const authSessionStore = {
@@ -40,5 +42,23 @@ export const recentUsersQueryStore = {
   },
   async put(query) {
     localStorage.setItem(RECENT_QUERY_KEY, JSON.stringify(query));
+  }
+};
+
+export const recentTasksQueryStore = {
+  async get() {
+    return readJson(RECENT_TASKS_QUERY_KEY);
+  },
+  async put(query) {
+    localStorage.setItem(RECENT_TASKS_QUERY_KEY, JSON.stringify(query));
+  }
+};
+
+export const recentNotificationsQueryStore = {
+  async get() {
+    return readJson(RECENT_NOTIFICATIONS_QUERY_KEY);
+  },
+  async put(query) {
+    localStorage.setItem(RECENT_NOTIFICATIONS_QUERY_KEY, JSON.stringify(query));
   }
 };
