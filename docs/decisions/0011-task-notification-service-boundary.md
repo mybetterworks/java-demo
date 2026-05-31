@@ -73,6 +73,8 @@ frontend-react / frontend-vue
 | `v0.5.2` | 为用户、任务、通知三个业务服务建立控制台日志、文件日志和日志级别配置基线 |
 | `v0.5.3` | React 和 Vue 都新增任务管理与通知中心，承接任务/通知服务的用户可见能力 |
 | `v0.6` | 三个业务服务和 Gateway 接入 Nacos，静态地址改为服务发现 |
+| `v0.6.1` | `task-service` 通过 OpenFeign 调用用户服务和通知服务，替代手写 REST |
+| `v0.6.2` | `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC，通知链路继续保留 Feign |
 | `v0.7` | 用 Redis 缓存用户校验结果、任务列表和通知未读数 |
 | `v0.8` | 通知服务通过 WebSocket 实时推送任务和通知变化 |
 | `v1.0` | 任务事件通过 MQ 异步驱动通知创建 |

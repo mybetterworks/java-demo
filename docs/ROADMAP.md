@@ -79,6 +79,8 @@
 | Spring Boot | 后端服务基础框架 |
 | Spring Cloud | 服务治理、网关、配置、链路扩展 |
 | Spring Cloud Gateway | 统一入口、JWT 校验、路由、限流 |
+| OpenFeign | Spring Cloud 体系内的声明式 HTTP 服务调用 |
+| Dubbo | 后端内部强类型 RPC 调用，对比 Feign 学习服务调用边界 |
 | MyBatis Plus | 数据访问、分页、通用 CRUD |
 | SLF4J / Logback | 后端运行日志、控制台输出、文件日志和日志级别配置 |
 
@@ -164,6 +166,8 @@ E:\Code\codex\java-demo
 | 任务和通知服务边界 | `docs/decisions/0011-task-notification-service-boundary.md` | `v0.5.1` 新增 `task-service` 和 `notification-service`，为后续技术实验提供真实跨服务业务链路 |
 | 后端运行日志策略 | `docs/decisions/0012-backend-runtime-logging.md` | `v0.5.2` 为 `java-demo-app`、`task-service`、`notification-service` 建立控制台日志、文件日志和日志级别配置基线 |
 | 前后端功能联动策略 | `docs/decisions/0013-frontend-backend-feature-sync.md` | `v0.5.3` 起后端用户可见能力变化需要自动评估并同步 React/Vue 前端 |
+| 服务调用演进策略 | `docs/decisions/0014-service-invocation-evolution.md` | `v0.6.1` 使用 OpenFeign 改造普通同步 HTTP 调用，`v0.6.2` 只选择用户校验链路引入 Dubbo RPC，通知链路后续演进为 MQ |
+| 登录风险验证策略 | `docs/decisions/0015-login-risk-slider-captcha.md` | `v0.5.4` 增加登录失败风险判断，5 分钟内失败 3 次后要求账号密码 + 滑块验证码 |
 | Git 提交策略 | `docs/decisions/0005-manual-git-commit.md` | 用户手动提交、打 tag 和推送，Codex 不自动执行 Git 写操作 |
 | 前端 Node 环境 | `docs/decisions/0006-node-frontend-environment.md` | Node.js 22 作为 React、Vue 前端默认运行时 |
 | 前端组件库 | `docs/decisions/0007-frontend-component-libraries.md` | React 使用 Ant Design，Vue 使用 Element UI 系列组件库 |
@@ -179,7 +183,10 @@ E:\Code\codex\java-demo
 | `v0.5.1` | 新增任务和通知微服务 | 在 Gateway 后补齐真实业务服务边界，先使用静态 REST 调用 |
 | `v0.5.2` | 建立后端运行日志基线 | 三个业务服务支持控制台日志、文件日志、日志级别配置和敏感信息保护 |
 | `v0.5.3` | 补齐任务和通知前端 | React 和 Vue 都提供任务管理与通知中心，功能和布局一致，代码风格保持各自特点 |
+| `v0.5.4` | 增强登录风险验证 | 5 分钟内登录失败 3 次后，登录需要账号密码和滑块验证码 |
 | `v0.6` | 接入 Nacos | 服务注册发现和配置中心进入主线，Gateway 和服务间调用从静态地址转向服务名 |
+| `v0.6.1` | 引入 OpenFeign | `task-service` 内部普通同步调用从手写 REST 改为声明式 HTTP 客户端 |
+| `v0.6.2` | 引入 Dubbo RPC | 只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo，用于对比 Feign 和 RPC |
 | `v1.5` 前后 | 强化跨服务一致性 | 基于已有任务、通知和用户服务验证 Seata、链路追踪和真实微服务边界 |
 
 部署阶段：
@@ -203,7 +210,10 @@ E:\Code\codex\java-demo
 | `v0.5.1` | 任务和通知微服务 | Spring Boot、MyBatis Plus、MySQL、JWT、Gateway 静态路由、REST 服务调用 | 创建任务、分配任务、生成通知、查询我的通知 |
 | `v0.5.2` | 后端运行日志 | SLF4J、Logback、控制台日志、文件日志、日志级别配置 | 用户、任务、通知服务关键流程可在控制台和 `logs` 文件中观察 |
 | `v0.5.3` | 任务和通知前端 | React、TypeScript、Ant Design、Vue、JavaScript、Element Plus | React/Vue 都能在浏览器中完成任务管理和通知中心操作 |
+| `v0.5.4` | 登录滑块验证码 | 登录失败计数、滑块验证码、React/Vue 登录页联动 | 5 分钟内失败 3 次后，必须完成滑块验证码才能登录 |
 | `v0.6` | 注册与配置中心 | Nacos | Gateway、用户、任务、通知服务注册；服务名路由和配置读取可用 |
+| `v0.6.1` | 声明式服务调用 | OpenFeign、Nacos、Spring Cloud LoadBalancer | `task-service` 通过 Feign 调用用户服务和通知服务 |
+| `v0.6.2` | RPC 服务调用 | Dubbo、Nacos、RPC 接口契约 | `task-service` 通过 Dubbo 调用用户校验，通知链路继续保留 Feign |
 | `v0.7` | 缓存与限流 | Redis、Redis Cluster 预研 | 用户校验、任务列表、通知未读数缓存；登录和业务接口限流生效 |
 | `v0.8` | 实时通信 | WebSocket | 任务分配和通知未读变化可实时推送到前端 |
 | `v0.9` | 文件对象存储 | MinIO | 用户头像、任务附件上传和访问 |

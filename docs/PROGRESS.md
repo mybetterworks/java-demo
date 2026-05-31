@@ -1,6 +1,6 @@
 # Project Progress
 
-最后更新：2026-05-27，Asia/Shanghai。
+最后更新：2026-05-31，Asia/Shanghai。
 
 ## 当前状态
 
@@ -10,7 +10,11 @@
 
 `v0.5.2 Backend Runtime Logging` 已完成。当前 `java-demo-app`、`task-service`、`notification-service` 已支持控制台日志、项目文件日志、`requestId`、可配置日志级别、服务间 requestId 透传和敏感信息保护，便于后续前端联调、Nacos、缓存、消息和可观测性实验时观察运行状态。
 
-已新增 `v0.5.3 Task And Notification Frontends` 规划，作为任务和通知两个后端微服务的前端承接版本。该版本要求 React 和 Vue 都补齐任务管理与通知中心，双端功能、布局、操作路径保持一致，但代码结构和开发风格继续保留各自框架特点。
+`v0.5.3 Task And Notification Frontends` 已完成。React 和 Vue 两套前端都已补齐任务管理与通知中心，双端功能、布局、操作路径保持一致，但代码结构和开发风格继续保留各自框架特点。该版本已完成后端回归、前端构建和真实 Gateway 联调验证。
+
+已新增 `v0.5.4 Login Slider Captcha` 规划，作为任务通知前端闭环后的登录安全增强版本。该版本要求同一登录主体 5 分钟内登录失败 3 次后，后续登录必须提交账号密码和滑块验证码，并同步 React/Vue 登录页的验证码展示、错误提示和重试流程。
+
+已新增 `v0.6.1 OpenFeign Service Calls` 和 `v0.6.2 Dubbo RPC User Validation` 规划。`v0.6.1` 在 Nacos 之后把 `task-service -> java-demo-app`、`task-service -> notification-service` 从手写 REST 改为 OpenFeign；`v0.6.2` 只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC，通知链路继续保留 Feign，后续再由 `v1.0 MQ` 异步化。
 
 已完成：
 
@@ -83,16 +87,25 @@
 | v0.5.2 业务日志 | `java-demo-app` 已补充注册、登录、JWT、用户管理和异常日志；`task-service` 已补充任务、服务间调用和异常日志；`notification-service` 已补充通知、未读数、已读和异常日志 |
 | v0.5.2 服务间 requestId | `task-service` 调用用户服务和通知服务时已透传 `X-Request-Id`，便于跨日志文件串联同一次业务链路 |
 | v0.5.2 验证 | 已通过 Maven test/package、React/Vue 构建回归、真实 Gateway 联调、DEBUG/WARN 日志级别验证、文件日志验证和敏感信息检查 |
+| v0.5.3 任务通知前端实现 | 已完成 React/Vue 双端任务管理和通知中心，支持任务查询、创建、编辑、详情、状态流转、逻辑删除、通知查询、未读数、单条已读和全部已读 |
+| v0.5.3 验证 | 已完成 Maven test/package、React/Vue 构建、真实 Gateway API 联调、React 浏览器联调和 Vue 浏览器联调 |
 | v0.5.3 milestone 规划 | 已新增 `docs/milestones/v0.5.3-task-notification-frontends.md`，明确 React/Vue 双端任务管理和通知中心的开发范围、双端一致性和注释要求 |
 | 前后端功能联动策略 | 已采纳 `docs/decisions/0013-frontend-backend-feature-sync.md`，后续后端用户可见能力变化默认需要评估并同步 React/Vue 前端 |
+| v0.5.4 milestone 规划 | 已新增 `docs/milestones/v0.5.4-login-slider-captcha.md`，明确 5 分钟内登录失败 3 次后要求账号密码 + 滑块验证码的最小实现范围 |
+| 登录风险验证策略 | 已采纳 `docs/decisions/0015-login-risk-slider-captcha.md`，明确失败计数维度、验证码状态、安全日志边界和后续 Redis 迁移方向 |
+| 服务调用演进策略 | 已采纳 `docs/decisions/0014-service-invocation-evolution.md`，明确 REST、OpenFeign、Dubbo 和 MQ 在项目中的调用边界 |
+| v0.6.1 milestone 规划 | 已新增 `docs/milestones/v0.6.1-openfeign-service-calls.md`，明确 `task-service` 通过 OpenFeign 调用用户服务和通知服务 |
+| v0.6.2 milestone 规划 | 已新增 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，明确只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC |
 
 尚未完成：
 
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| v0.5.3 React/Vue 任务通知前端实现 | 未开始，需在 v0.5.2 日志基线完成后实施 |
-| Nacos 和后续微服务基础设施 | 未开始，按后续 milestone 逐步引入 |
+| v0.5.4 登录滑块验证码实现 | 未开始，当前准备开发该版本 |
+| Nacos 和后续微服务基础设施 | 未开始，需在 v0.5.4 登录风险验证完成后按后续 milestone 逐步引入 |
+| v0.6.1 OpenFeign 服务调用改造 | 未开始，需在 v0.6 Nacos 完成后实施 |
+| v0.6.2 Dubbo RPC 用户校验改造 | 未开始，需在 v0.6.1 OpenFeign 完成后实施 |
 
 ## 环境观察
 
@@ -428,27 +441,65 @@ v0.4 Vue 项目结构记录：
 | React/Vue 页面改动 | 不需要；`v0.5.2` 是后端内部运行日志能力，不新增或改变用户可见接口、字段、状态或页面操作 |
 | 前端回归验证 | 已执行 React 和 Vue 生产构建，确认现有前端不受影响 |
 
+## v0.5.3 验证记录
+
+自动化、构建和联调验证：
+
+| 验证项 | 结果 |
+|---|---|
+| Node.js | 已执行 `node -v`，当前为 `v22.22.3` |
+| Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；四个后端模块测试均成功 |
+| Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；本版本未改后端业务代码，生成 jar 仍为 `0.5.2-SNAPSHOT` |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| 真实 Gateway API 联调 | 使用临时端口 `8252-8255` 启动四个后端 jar，经 Gateway `8253` 完成健康检查、JWT 拦截、注册登录、任务创建、任务详情、状态流转、通知查询、未读数、单条已读和全部已读 |
+| React 浏览器联调 | 使用 `VITE_API_BASE_URL=http://localhost:8253` 启动 React `5173`，已登录测试用户 `v053_20260527151910`，进入任务管理并通过页面创建任务，通知中心可看到通知和已读操作 |
+| Vue 浏览器联调 | 使用 `VITE_API_BASE_URL=http://localhost:8253` 启动 Vue `5174`，已登录同一测试用户，进入任务管理并通过页面创建任务，通知中心可看到通知和已读操作 |
+| 临时进程清理 | 验证结束后已停止本次临时启动的后端和前端进程，`8252-8255`、`5173`、`5174` 无监听进程 |
+
+前端联动完成情况：
+
+| 项目 | 结论 |
+|---|---|
+| React 任务管理 | 已支持任务范围筛选、状态筛选、负责人筛选、分页查询、创建、编辑、详情、状态流转和逻辑删除 |
+| React 通知中心 | 已支持通知筛选、分页查询、未读数、单条已读和全部已读 |
+| Vue 任务管理 | 已使用 JavaScript + Element Plus 补齐与 React 一致的任务管理能力 |
+| Vue 通知中心 | 已支持与 React 一致的通知列表、未读数和已读操作 |
+| 双端一致性 | React 和 Vue 菜单名称、页面布局、筛选项、表格字段、操作按钮、空数据与错误提示保持一致 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.5.2-backend-runtime-logging.md
+docs/milestones/v0.5.3-task-notification-frontends.md
 ```
 
 下一步尚未开始：
 
 ```text
-docs/milestones/v0.5.3-task-notification-frontends.md
+docs/milestones/v0.5.4-login-slider-captcha.md
 ```
 
-`v0.5.3` 完成后的下一步：
+`v0.5.4` 完成后的下一步：
 
 ```text
 docs/milestones/v0.6-nacos.md
 ```
 
 `v0.6` 完成后的下一步：
+
+```text
+docs/milestones/v0.6.1-openfeign-service-calls.md
+```
+
+`v0.6.1` 完成后的下一步：
+
+```text
+docs/milestones/v0.6.2-dubbo-rpc-user-validation.md
+```
+
+`v0.6.2` 完成后的下一步：
 
 ```text
 docs/milestones/v0.7-redis-cache-rate-limit.md
@@ -514,7 +565,10 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | `v0.5.1` | 新增任务和通知服务，形成跨服务业务闭环 |
 | `v0.5.2` | 为用户、任务、通知三个业务服务建立控制台日志、文件日志和日志级别配置基线 |
 | `v0.5.3` | React 和 Vue 都补齐任务管理与通知中心，承接任务/通知微服务的用户可见能力 |
+| `v0.5.4` | 增强登录风险验证，5 分钟内登录失败 3 次后要求账号密码 + 滑块验证码，并同步 React/Vue 登录页 |
 | `v0.6` | 接入 Nacos，进入服务注册和配置中心阶段 |
+| `v0.6.1` | 使用 OpenFeign 改造 `task-service` 到用户服务和通知服务的普通同步 HTTP 调用 |
+| `v0.6.2` | 使用 Dubbo RPC 改造 `task-service -> java-demo-app` 用户校验链路，通知链路继续保留 Feign |
 | `v1.5` 前后 | 基于已有用户、任务、通知服务验证 Seata 和链路追踪 |
 
 部署路线：
@@ -528,16 +582,18 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 
 ## 下一步建议
 
-1. 如需保存当前 `v0.5.2` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 下一次开发从 `docs/milestones/v0.5.3-task-notification-frontends.md` 开始，在 React 和 Vue 两套前端中补齐任务管理与通知中心。
-3. v0.5.3 完成后再进入 `docs/milestones/v0.6-nacos.md`，把 Gateway、用户、任务、通知服务接入 Nacos。
-4. v0.6 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流。
-5. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
+1. 如需保存当前 `v0.5.3` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
+2. 下一次开发从 `docs/milestones/v0.5.4-login-slider-captcha.md` 开始，为登录流程增加失败计数和滑块验证码风险验证。
+3. v0.5.4 完成后再进入 `docs/milestones/v0.6-nacos.md`，把 Gateway、用户、任务、通知服务接入 Nacos。
+4. v0.6 完成后进入 `docs/milestones/v0.6.1-openfeign-service-calls.md`，把 `task-service -> java-demo-app` 和 `task-service -> notification-service` 从手写 REST 改为 OpenFeign。
+5. v0.6.1 完成后进入 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC。
+6. v0.6.2 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流，并迁移 v0.5.4 的登录失败计数和验证码状态。
+7. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档。当前 v0.5.2 已完成，请从 docs/milestones/v0.5.3-task-notification-frontends.md 开始实现任务和通知前端 milestone；不要重复实现 v0.5.2。React 和 Vue 两套前端都需要补齐任务管理与通知中心，双端功能、布局、操作路径、筛选项、表格字段、操作按钮和错误提示尽量保持一致，但代码结构继续保留各自框架特点。新增前端代码必须补充详细中文注释，说明 API 封装、页面状态、表单校验、表格分页、本地缓存和错误处理。完成后运行前端构建、必要后端验证和真实联调，并更新文档。
+请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.5.4-login-slider-captcha.md。当前 v0.5.3 已完成，请从 v0.5.4 开始实现登录滑块验证码，不要重复实现任务和通知前端。v0.5.4 要求同一登录主体 5 分钟内登录失败 3 次后，后续登录必须提交账号密码和滑块验证码；请扩展 java-demo-app 登录流程，新增滑块验证码挑战和校验能力，并同步 React/Vue 登录页的验证码展示、校验、错误提示和登录重试流程。新增前端和后端代码必须补充详细中文注释，日志禁止打印密码、完整 JWT、Authorization header、验证码答案、验证码 token 或真实密钥。完成后运行后端测试、React/Vue 构建、真实 Gateway 登录联调，并更新 README 和 docs/PROGRESS.md。
 ```
 
 ## 完成记录
@@ -551,8 +607,11 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | `v0.5` | 已完成 | 2026-05-26 | Spring Cloud Gateway、网关 JWT 校验、React/Vue 代理切换到 Gateway；提交、tag 和推送由用户手动执行 |
 | `v0.5.1` | 已完成 | 2026-05-27 | 任务服务和通知服务 MVP；已通过 Maven test/package、React/Vue 构建回归和真实 Gateway 任务通知链路联调；提交、tag 和推送由用户手动执行 |
 | `v0.5.2` | 已完成 | 2026-05-27 | 后端运行日志基线；三个业务服务已支持控制台日志、文件日志、requestId、日志级别配置和敏感信息保护；提交、tag 和推送由用户手动执行 |
-| `v0.5.3` | 未开始 | - | 任务和通知前端；已完成 milestone 与前后端联动策略文档规划 |
+| `v0.5.3` | 已完成 | 2026-05-31 | 任务和通知前端；React/Vue 已补齐任务管理与通知中心，并通过 Maven test/package、前端构建和真实 Gateway 联调 |
+| `v0.5.4` | 未开始 | - | 登录滑块验证码；已完成 milestone 与登录风险验证策略文档规划 |
 | `v0.6` | 未开始 | - | Nacos |
+| `v0.6.1` | 未开始 | - | OpenFeign 服务调用；已完成 milestone 与服务调用演进策略文档规划 |
+| `v0.6.2` | 未开始 | - | Dubbo RPC 用户校验；已完成 milestone 与服务调用演进策略文档规划 |
 | `v0.7` | 未开始 | - | Redis |
 | `v0.8` | 未开始 | - | WebSocket |
 | `v0.9` | 未开始 | - | MinIO |
@@ -590,5 +649,6 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | 后端日志误打印敏感信息 | 如果把密码、完整 JWT、Authorization header 或数据库密码写入日志，会造成安全风险 | 遵守 `docs/decisions/0012-backend-runtime-logging.md`，日志只打印 userId、业务 ID、错误码、耗时和脱敏摘要 |
 | 后端能力已完成但前端未同步 | 用户只能通过 Swagger 或脚本验证任务/通知，影响全栈学习闭环 | 遵守 `docs/decisions/0013-frontend-backend-feature-sync.md`，后端用户可见能力变化时自动评估并补齐 React/Vue 前端 |
 | React 和 Vue 功能漂移 | 两套前端如果功能、布局或操作路径不一致，会降低对比学习价值 | v0.5.3 开始要求双端菜单、页面结构、字段、操作和错误提示保持一致，代码结构仍保留各自框架特点 |
+| v0.5.4 单机登录风险状态不适合多实例 | 如果登录失败计数、验证码 challenge 和验证 token 只保存在单机内存，多实例部署时会出现状态不一致 | v0.5.4 明确作为 MVP 单机方案，v0.7 Redis 再迁移为 Redis TTL 状态存储 |
 | 后续中间件容器边界混乱 | 如果多个服务共用一个容器，后续难以单独扩缩容或集群化 | 遵守 `docs/decisions/0010-docker-service-containerization.md`，每个服务和每个集群节点独立容器 |
 | 中间件范围很大 | 容易一次性复杂化 | 严格按 milestone 单步推进 |

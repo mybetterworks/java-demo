@@ -6,7 +6,15 @@
 
 当前已完成 `v0.5.3 Task And Notification Frontends`。在 `v0.5.1 Task And Notification Services` 和 `v0.5.2 Backend Runtime Logging` 的基础上，React 与 Vue 两套前端都已补齐“任务管理”和“通知中心”，可以通过浏览器完成任务查询、创建、编辑、状态流转、详情查看、逻辑删除、通知查询、未读数、单条已读和全部已读。
 
-下一步规划为 `v0.6 Nacos`。该版本用于把 Gateway、用户服务、任务服务和通知服务接入 Nacos，验证服务注册发现和配置中心能力。
+下一步准备开发 `v0.5.4 Login Slider Captcha`。该版本用于增强登录风险验证：同一登录主体 5 分钟内登录失败 3 次后，后续登录必须提交账号密码和滑块验证码；React 和 Vue 登录页也要同步支持验证码触发、展示、校验、错误提示和登录重试流程。
+
+| 版本 | 规划内容 | 状态 |
+|---|---|---|
+| `v0.5.3` | React/Vue 任务管理和通知中心 | 已完成 |
+| `v0.5.4` | 登录失败风险判断和滑块验证码 | 准备开发 |
+| `v0.6` | Nacos 服务注册发现和配置中心 | 尚未实现 |
+| `v0.6.1` | `task-service` 使用 OpenFeign 调用用户服务和通知服务 | 已完成 milestone 规划，尚未实现 |
+| `v0.6.2` | `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC | 已完成 milestone 规划，尚未实现 |
 
 | 项目 | 内容 |
 |---|---|
@@ -19,6 +27,8 @@
 | 数据库 | MySQL `8.4` Docker 单节点 |
 | 认证 | JWT |
 | 日志 | SLF4J + Logback，控制台日志、`logs/*.log` 文件日志、`requestId`、可配置级别 |
+| 下一步安全能力 | `v0.5.4` 登录滑块验证码：5 分钟内登录失败 3 次后要求账号密码 + 滑块验证码 |
+| 已规划服务调用能力 | `v0.6.1` OpenFeign；`v0.6.2` Dubbo RPC 用户校验 |
 | 接口文档 | Springdoc OpenAPI `2.6.0`、Swagger UI |
 | 前端 | React `18`、TypeScript、Ant Design `5`；Vue `3`、JavaScript、Element Plus |
 | 前端缓存 | React 端使用 IndexedDB；Vue 端使用 localStorage |
@@ -153,7 +163,7 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 
 当前集成测试代码覆盖注册、重复注册、登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
 
-`v0.5.3` 已使用本地 Maven `D:\software\apache-maven-3.9.16\bin\mvn.cmd` 执行 `test` 和 `package` 并通过；Maven 本地仓库继续使用 `D:\software\maven_download`。本版本未修改后端业务代码，因此后端 jar 版本仍为 `0.5.2-SNAPSHOT`。
+`v0.5.3` 已使用本地 Maven `D:\software\apache-maven-3.9.16\bin\mvn.cmd` 执行 `test` 和 `package` 并通过；Maven 本地仓库继续使用 `D:\software\maven_download`。本版本主要补齐前端能力，未修改后端业务代码，因此后端 jar 版本仍为 `0.5.2-SNAPSHOT`。后续 `v0.5.4` 会修改登录风险验证链路。
 
 ## 启动后端
 
@@ -341,11 +351,22 @@ Vue 管理端保持与 React 管理端一致的业务功能和操作路径，但
 |---|---|
 | React 任务管理 | 使用 TypeScript + Ant Design，已支持任务范围筛选、状态筛选、负责人筛选、分页查询、创建、编辑、详情、状态流转和逻辑删除 |
 | React 通知中心 | 使用 TypeScript + Ant Design，已支持通知筛选、分页查询、未读数、单条已读和全部已读 |
-| Vue 任务管理 | 使用 JavaScript + Element Plus，延续 `views`、`composables`、`api`、`storage` 分层，业务路径与 React 保持一致 |
+| Vue 任务管理 | 使用 JavaScript + Element Plus，已延续 `views`、`composables`、`api`、`storage` 分层，业务路径与 React 保持一致 |
 | Vue 通知中心 | 使用 JavaScript + Element Plus，已支持与 React 一致的通知列表、未读数和已读操作 |
 | 双端一致性 | React 和 Vue 菜单名称、页面布局、筛选项、表格字段、操作按钮、空数据与错误提示尽量保持一致 |
 | 本地查询缓存 | React 使用 IndexedDB 保存任务/通知最近查询条件；Vue 使用 localStorage 保存同类查询条件 |
 | 代码注释 | 新增前端代码已补充中文注释，说明 API 封装、页面状态、表单校验、表格分页、本地缓存和错误处理 |
+
+`v0.5.4` 规划中的登录安全扩展：
+
+| 能力 | 说明 |
+|---|---|
+| 登录失败计数 | 同一登录主体 5 分钟内登录失败达到 3 次后进入风险验证状态 |
+| 滑块验证码 | 后续登录必须提交账号密码和滑块验证码，验证码通过后才能继续登录 |
+| 统计维度 | MVP 推荐使用 `username + clientIp`，兼顾账号级风险和共享 IP 场景 |
+| 前端联动 | React 和 Vue 登录页都要支持验证码触发、展示、校验、错误提示和登录重试 |
+| 状态存储 | `v0.5.4` 可先使用单机 MVP 状态存储，`v0.7 Redis` 再迁移到 Redis TTL |
+| 安全日志 | 记录失败计数、验证码触发和校验结果，但禁止打印密码、完整 JWT、Authorization header、验证码答案或验证码 token |
 
 ## API
 
@@ -389,6 +410,15 @@ Vue 管理端保持与 React 管理端一致的业务功能和操作路径，但
 | `GET` | `/api/notifications/my/unread-count` | 查询当前用户未读通知数 | 是 |
 | `PUT` | `/api/notifications/{id}/read` | 标记单条通知已读 | 是 |
 | `PUT` | `/api/notifications/read-all` | 当前用户通知全部已读 | 是 |
+
+`v0.5.4` 规划新增的登录风险验证接口尚未实现，后续开发时以 milestone 文档为准：
+
+| 方法 | 路径 | 说明 | 是否需要 JWT |
+|---|---|---|---|
+| `POST` | `/api/auth/captcha/slider` | 生成滑块验证码 challenge | 否 |
+| `POST` | `/api/auth/captcha/slider/verify` | 校验滑块验证码，返回一次性验证结果或 token | 否 |
+
+`POST /api/auth/login` 在 `v0.5.4` 后需要支持风险验证语义：5 分钟内登录失败 3 次后，如果请求未携带有效验证码结果，后端应返回类似 `CAPTCHA_REQUIRED` 的错误码或业务状态，前端据此展示滑块验证码。
 
 注册请求：
 
@@ -518,7 +548,7 @@ http://localhost:8092/v3/api-docs
 
 日志格式包含服务名、线程和 `requestId`。外部请求可以传入 `X-Request-Id`；未传时业务服务会自动生成。`task-service` 调用 `java-demo-app` 和 `notification-service` 时会透传当前 `requestId`，便于在多个日志文件中串起同一次任务/通知链路。
 
-本项目日志规则要求：不打印明文密码、密码哈希、完整 JWT、Authorization header、数据库密码或真实密钥。调试时可以临时开启业务包 DEBUG：
+本项目日志规则要求：不打印明文密码、密码哈希、完整 JWT、Authorization header、数据库密码、验证码答案、验证码 token 或真实密钥。调试时可以临时开启业务包 DEBUG：
 
 ```powershell
 $env:JAVA_DEMO_APP_LOG_LEVEL='DEBUG'
@@ -640,4 +670,17 @@ $env:JAVA_DEMO_LOG_LEVEL_ROOT='WARN'
 
 ## 下一步
 
-下一步进入 `v0.6 Nacos`，把 Gateway、用户服务、任务服务和通知服务接入 Nacos，验证服务注册发现和配置中心能力。
+下一步进入 `v0.5.4 Login Slider Captcha`，为登录流程增加基础风险验证能力：同一登录主体 5 分钟内登录失败 3 次后，后续登录需要提交账号密码和滑块验证码。
+
+`v0.5.4` 开发重点：
+
+| 重点 | 说明 |
+|---|---|
+| 后端登录风险判断 | 扩展 `java-demo-app` 登录流程，记录登录失败次数、5 分钟窗口和 3 次阈值 |
+| 滑块验证码接口 | 新增验证码 challenge 生成和校验能力，并提供一次性验证结果或 token |
+| React 登录页 | 支持验证码触发、展示、校验、错误提示和登录重试 |
+| Vue 登录页 | 与 React 保持一致的验证码交互和错误处理 |
+| 日志与安全 | 记录失败计数、验证码触发和校验结果，但禁止打印密码、完整 JWT、Authorization header、验证码答案或验证码 token |
+| 后续衔接 | `v0.7 Redis` 再把登录失败计数、验证码 challenge 和验证码 token 迁移到 Redis TTL |
+
+`v0.5.4` 完成后再进入 `v0.6 Nacos`，把 Gateway、用户服务、任务服务和通知服务接入 Nacos，验证服务注册发现和配置中心能力。
