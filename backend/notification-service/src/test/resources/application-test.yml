@@ -2,6 +2,15 @@ server:
   port: 0
 
 spring:
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+        register-enabled: false
+      config:
+        enabled: false
+        import-check:
+          enabled: false
   datasource:
     # H2 使用 MySQL 兼容模式，让 schema.sql 可以尽量贴近真实 MySQL。
     driver-class-name: org.h2.Driver

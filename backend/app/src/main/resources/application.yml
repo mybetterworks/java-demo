@@ -1,39 +1,50 @@
 server:
-  # 本地后端默认端口。7991-8090、8146-8245 已被本机环境占用，因此默认使用 8091。
-  # 如需临时覆盖，可启动时传入 --server.port=8250 或设置环境变量 SERVER_PORT。
   port: ${SERVER_PORT:8091}
 
 spring:
   application:
-    # 应用名称，后续接入 Nacos、链路追踪和日志采集时会作为服务标识。
     name: java-demo-app
+  config:
+    import:
+      - optional:nacos:java-demo-common.yml
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${JAVA_DEMO_NACOS_DISCOVERY_ENABLED:true}
+        register-enabled: ${JAVA_DEMO_NACOS_REGISTER_ENABLED:true}
+        server-addr: ${JAVA_DEMO_NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${JAVA_DEMO_NACOS_NAMESPACE:public}
+        group: ${JAVA_DEMO_NACOS_DISCOVERY_GROUP:DEFAULT_GROUP}
+      config:
+        enabled: ${JAVA_DEMO_NACOS_CONFIG_ENABLED:true}
+        server-addr: ${JAVA_DEMO_NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${JAVA_DEMO_NACOS_NAMESPACE:public}
+        group: ${JAVA_DEMO_NACOS_CONFIG_GROUP:DEFAULT_GROUP}
+        encode: UTF-8
+        file-extension: yml
+        refresh-enabled: true
+        import-check:
+          enabled: false
   datasource:
-    # v0.1 运行环境连接 Docker Desktop 中的 MySQL 单节点。
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # allowPublicKeyRetrieval=true 便于本地 MySQL 8 首次连接；生产环境应结合 SSL 和账号权限重新评估。
     url: jdbc:mysql://localhost:3306/java_demo?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
-    # 数据库账号支持环境变量覆盖，避免把真实密码写入代码仓库。
     username: ${JAVA_DEMO_DB_USERNAME:java_demo}
     password: ${JAVA_DEMO_DB_PASSWORD:java_demo_pwd}
   sql:
     init:
-      # 每次启动都尝试执行 schema.sql；脚本使用 IF NOT EXISTS，因此重复启动是安全的。
       mode: always
 
 mybatis-plus:
   configuration:
-    # 数据库字段使用下划线，Java 字段使用驼峰，通过该配置自动完成映射。
     map-underscore-to-camel-case: true
   global-config:
-    # 关闭 MyBatis Plus 启动 banner，让本地日志更聚焦业务启动信息。
     banner: false
 
 springdoc:
   api-docs:
-    # OpenAPI JSON 地址，测试和前端工具都可以读取该接口描述。
     path: /v3/api-docs
   swagger-ui:
-    # Swagger UI 页面入口，用于浏览器可视化查看和调试后端接口。
     path: /swagger-ui.html
     display-request-duration: true
     operations-sorter: method
@@ -41,26 +52,19 @@ springdoc:
 
 app:
   jwt:
-    # 本地默认 JWT 密钥仅用于学习环境；真实环境必须通过 JAVA_DEMO_JWT_SECRET 覆盖。
     secret: ${JAVA_DEMO_JWT_SECRET:java-demo-v0-1-local-secret-change-me-32chars}
-    # JWT 有效期，单位秒；默认 2 小时。
     expiration-seconds: ${JAVA_DEMO_JWT_EXPIRATION_SECONDS:7200}
 
 logging:
   file:
-    # v0.5.2 建立本地文件日志基线；logs 目录属于运行产物，已由 .gitignore 忽略。
     name: ${JAVA_DEMO_APP_LOG_FILE:logs/java-demo-app.log}
   logback:
     rollingpolicy:
-      # 本地学习环境限制单个日志文件大小，避免长时间联调时日志无限增长。
       max-file-size: ${JAVA_DEMO_LOG_MAX_FILE_SIZE:10MB}
-      # 保留最近 7 个滚动文件，后续接入 ELK 前先保持轻量可控。
       max-history: ${JAVA_DEMO_LOG_MAX_HISTORY:7}
   level:
-    # root 和业务包级别都支持环境变量覆盖，便于验证 DEBUG/WARN 切换。
     root: ${JAVA_DEMO_LOG_LEVEL_ROOT:INFO}
     com.example.javademo.app: ${JAVA_DEMO_APP_LOG_LEVEL:INFO}
   pattern:
-    # 日志中包含服务名、线程和 requestId；未进入 HTTP 请求时 requestId 会显示为 no-request。
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [java-demo-app] [%thread] [requestId=%X{requestId:-no-request}] %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [java-demo-app] [%thread] [requestId=%X{requestId:-no-request}] %logger{36} - %msg%n"

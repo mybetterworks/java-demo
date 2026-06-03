@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 /**
  * 用户服务启动日志记录器。
  *
- * <p>该组件在 Spring Boot 启动完成后输出日志基线配置摘要，帮助学习者确认当前服务名、
- * 端口、日志文件和数据库目标是否符合预期。摘要会主动避免输出数据库密码等敏感信息。</p>
+ * <p>v0.6 接入 Nacos 后，除了保留原有日志文件、端口和数据源摘要，还需要额外记录注册中心与配置中心地址、
+ * 当前配置来源和配置标签，便于排查“服务已启动但没有注册上去”或“读取到的仍是本地默认配置”等问题。</p>
  */
 @Component
 public class RuntimeLoggingStartupLogger implements ApplicationRunner {
@@ -24,36 +24,32 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
         this.environment = environment;
     }
 
-    /**
-     * 输出服务启动后的运行日志配置摘要。
-     *
-     * <p>这里只读取 Spring Environment 中已经解析好的配置值，不做额外文件读写；日志级别本身仍由
-     * application.yml 和环境变量控制。</p>
-     */
     @Override
     public void run(ApplicationArguments args) {
-        log.info("Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, appLevel={}, datasource={}",
+        log.info(
+                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, appLevel={}, datasource={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
                 environment.getProperty("spring.application.name", "java-demo-app"),
                 environment.getProperty("local.server.port", environment.getProperty("server.port", "unknown")),
                 resolveProfiles(),
                 environment.getProperty("logging.file.name", "logs/java-demo-app.log"),
                 environment.getProperty("logging.level.root", "INFO"),
                 environment.getProperty("logging.level.com.example.javademo.app", "INFO"),
-                sanitizeConfigValue(environment.getProperty("spring.datasource.url", "not-configured")));
+                sanitizeConfigValue(environment.getProperty("spring.datasource.url", "not-configured")),
+                environment.getProperty("spring.cloud.nacos.discovery.enabled", "true"),
+                environment.getProperty("spring.cloud.nacos.config.enabled", "true"),
+                sanitizeConfigValue(environment.getProperty("spring.cloud.nacos.discovery.server-addr", "not-configured")),
+                environment.getProperty("java-demo.runtime.config-source", "local"),
+                environment.getProperty("java-demo.runtime.config-label", "not-configured")
+        );
     }
 
-    /**
-     * 解析当前激活 profile；没有显式 profile 时用 default 标识 Spring Boot 默认配置。
-     */
     private String resolveProfiles() {
         String[] activeProfiles = environment.getActiveProfiles();
         return activeProfiles.length == 0 ? "default" : String.join(",", activeProfiles);
     }
 
     /**
-     * 对可能携带密码的配置值做兜底脱敏。
-     *
-     * <p>当前 JDBC URL 没有密码，但这里保留脱敏逻辑，是为了后续切换连接串形式时不误把密码写入日志。</p>
+     * 对可能携带凭据的配置值做兜底脱敏。
      */
     private String sanitizeConfigValue(String value) {
         if (value == null || value.isBlank()) {

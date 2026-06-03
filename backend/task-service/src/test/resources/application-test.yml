@@ -2,6 +2,15 @@ server:
   port: 0
 
 spring:
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+        register-enabled: false
+      config:
+        enabled: false
+        import-check:
+          enabled: false
   datasource:
     # H2 使用 MySQL 兼容模式，让 schema.sql 可以尽量贴近真实 MySQL。
     driver-class-name: org.h2.Driver
@@ -20,9 +29,10 @@ app:
 
 java-demo:
   services:
-    # 集成测试使用 MockRestServiceServer 拦截这两个静态地址，不需要真实启动下游服务。
+    # 集成测试使用 MockRestServiceServer 拦截这两个地址，不需要真实启动下游服务。
     user-service-url: http://java-demo-app
     notification-service-url: http://notification-service
+    discovery-enabled: false
 
 logging:
   file:

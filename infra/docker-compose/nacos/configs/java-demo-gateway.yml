@@ -1,0 +1,3 @@
+java-demo:
+  runtime:
+    service-role: gateway

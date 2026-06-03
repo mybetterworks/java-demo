@@ -1,4 +1,14 @@
 spring:
+  cloud:
+    nacos:
+      # 自动化测试不依赖真实 Nacos，避免单元/集成测试被外部基础设施绑定。
+      discovery:
+        enabled: false
+        register-enabled: false
+      config:
+        enabled: false
+        import-check:
+          enabled: false
   datasource:
     # 测试环境使用 H2 内存数据库，避免单元/集成测试依赖 Docker MySQL。
     driver-class-name: org.h2.Driver
@@ -8,14 +18,13 @@ spring:
     password:
   sql:
     init:
-      # 每次测试启动都初始化表结构，保证测试之间相互隔离。
+      # 每次测试启动都会初始化表结构，保证测试之间互相隔离。
       mode: always
 
 app:
   jwt:
     # 测试专用密钥，长度满足 HS256 要求，不用于真实环境。
     secret: java-demo-test-secret-change-me-32chars
-    # 与本地运行配置保持一致，便于测试断言登录响应。
     expiration-seconds: 7200
 
 logging:

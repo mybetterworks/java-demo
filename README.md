@@ -4,18 +4,20 @@
 
 ## 当前版本
 
-当前已完成 `v0.5.5 Login Image Puzzle Captcha`。在 `v0.5.4 Login Slider Captcha` 的登录风险验证闭环基础上，验证码已升级为固定背景图 + 随机拼图缺口：后端随机生成缺口坐标并只在服务端内存保存答案，React 和 Vue 登录页负责展示背景缺口图、拼图块拖动、轨迹采集、验证码校验和携带一次性 `captchaToken` 登录重试。
+当前已完成 `v0.6 Nacos`。Gateway、`java-demo-app`、`task-service` 和 `notification-service` 已接入 Nacos 服务注册发现与配置中心：Gateway 默认通过 `lb://java-demo-app`、`lb://task-service`、`lb://notification-service` 路由到后端服务，`task-service` 也已通过服务名调用用户服务和通知服务；四个服务的健康检查均会返回 `configSource=nacos` 和 `configLabel=v0.6-default`，便于确认当前配置来源。
 
-下一步进入 `v0.6 Nacos`，把 Gateway、用户服务、任务服务和通知服务接入服务注册发现与配置中心。后续回归登录链路时，需要继续确认 `v0.5.5` 的固定背景图随机拼图验证码可用。
+下一步进入 `v0.6.1 OpenFeign`，把 `task-service -> java-demo-app` 和 `task-service -> notification-service` 的手写 REST 调用改为声明式 Feign 客户端；后续回归时仍需继续确认 `v0.5.5` 的固定背景图随机拼图验证码可用。
 
 | 版本 | 规划内容 | 状态 |
 |---|---|---|
 | `v0.5.3` | React/Vue 任务管理和通知中心 | 已完成 |
 | `v0.5.4` | 登录失败风险判断和滑块验证码 | 已完成 |
 | `v0.5.5` | 固定背景图随机拼图滑块验证码 | 已完成 |
-| `v0.6` | Nacos 服务注册发现和配置中心 | 下一步 |
+| `v0.6` | Nacos 服务注册发现和配置中心 | 已完成 |
 | `v0.6.1` | `task-service` 使用 OpenFeign 调用用户服务和通知服务 | 已完成 milestone 规划，尚未实现 |
 | `v0.6.2` | `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC | 已完成 milestone 规划，尚未实现 |
+
+补充说明：当前实际版本已更新为 `v0.6 Nacos`，下一步进入 `v0.6.1 OpenFeign`。
 
 | 项目 | 内容 |
 |---|---|
@@ -29,8 +31,8 @@
 | 认证 | JWT |
 | 日志 | SLF4J + Logback，控制台日志、`logs/*.log` 文件日志、`requestId`、可配置级别 |
 | 登录安全能力 | `v0.5.5` 已实现登录拼图滑块验证码：5 分钟内登录失败 3 次后要求账号密码 + 固定背景图随机拼图验证码；后端保存真实答案并校验坐标、耗时、基础轨迹和一次性状态 |
-| 下一步基础设施能力 | `v0.6` Nacos 服务注册发现和配置中心 |
-| 已规划服务调用能力 | `v0.6.1` OpenFeign；`v0.6.2` Dubbo RPC 用户校验 |
+| 当前基础设施能力 | `v0.6` Nacos 服务注册发现和配置中心 |
+| 下一步服务调用能力 | `v0.6.1` OpenFeign；`v0.6.2` Dubbo RPC 用户校验 |
 | 接口文档 | Springdoc OpenAPI `2.6.0`、Swagger UI |
 | 前端 | React `18`、TypeScript、Ant Design `5`；Vue `3`、JavaScript、Element Plus |
 | 前端缓存 | React 端使用 IndexedDB；Vue 端使用 localStorage |
@@ -149,6 +151,33 @@ docker exec java-demo-mysql mysql -uroot -proot_pwd -e "CREATE DATABASE IF NOT E
 docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 ```
 
+## 启动 Nacos
+
+```powershell
+docker compose -f infra\docker-compose\nacos\docker-compose.yml up -d
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infra\docker-compose\nacos\import-configs.ps1
+```
+
+检查容器：
+
+```powershell
+docker ps --filter "name=java-demo-nacos-1"
+```
+
+Nacos 控制台：
+
+```text
+http://localhost:8848/nacos
+```
+
+`infra/docker-compose/nacos/configs/*.yml` 会被直接发布到 Nacos。当前 `spring-alibaba-nacos-config 2023.0.3.2` 在 Windows 上解析 YAML 时会把配置字符串按平台默认编码重新转回字节，因此这些待发布 YAML 需要保持 ASCII-only；中文说明请写在 README、milestone 或 `docs/PROGRESS.md` 中，导入脚本也会主动拒绝非 ASCII 内容。
+
+如果需要停止 Nacos：
+
+```powershell
+docker compose -f infra\docker-compose\nacos\docker-compose.yml stop
+```
+
 ## 构建与测试
 
 运行自动化测试：
@@ -163,9 +192,9 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 .\mvnw.cmd package
 ```
 
-当前集成测试代码覆盖注册、重复注册、登录、登录失败风险判断、拼图验证码触发、错误位置、过短耗时、异常轨迹、图片差分求解、一次性 token、验证码通过后登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、验证码公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
+当前 `v0.6` 已在 `JAVA_HOME=D:\software\jdk-17.0.19` 环境下使用 Maven Wrapper `.\mvnw.cmd` 执行 `test` 和 `-DskipTests package` 并通过，Maven 本地仓库继续使用 `D:\software\maven_download`。本版本 Maven 工程版本为 `0.6.0-SNAPSHOT`，打包后会生成四个后端可执行 jar。
 
-`v0.5.5` 已使用本地 Maven `D:\software\apache-maven-3.9.16\bin\mvn.cmd` 执行 `test` 和 `package` 并通过；Maven 本地仓库继续使用 `D:\software\maven_download`。本版本已将 Maven 工程版本提升为 `0.5.5-SNAPSHOT`，打包后会生成四个后端可执行 jar。
+当前集成测试代码覆盖注册、重复注册、登录、登录失败风险判断、拼图验证码触发、错误位置、过短耗时、异常轨迹、图片差分求解、一次性 token、验证码通过后登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、验证码公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
 
 ## 启动后端
 
@@ -178,7 +207,7 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.5.5-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.6.0-SNAPSHOT.jar
 ```
 
 后端默认端口：
@@ -205,7 +234,7 @@ D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.5.5
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\gateway\target\java-demo-gateway-0.5.5-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\gateway\target\java-demo-gateway-0.6.0-SNAPSHOT.jar
 ```
 
 Gateway 默认端口：
@@ -217,7 +246,7 @@ Gateway 默认端口：
 | Swagger UI | `http://localhost:8092/swagger-ui.html` |
 | OpenAPI JSON | `http://localhost:8092/v3/api-docs` |
 
-Gateway 当前使用静态地址转发到用户服务 `8091`、任务服务 `8093` 和通知服务 `8094`，可通过环境变量 `JAVA_DEMO_BACKEND_URI`、`JAVA_DEMO_TASK_SERVICE_URI`、`JAVA_DEMO_NOTIFICATION_SERVICE_URI` 覆盖。后续接入 Nacos 后，这些地址会演进为服务发现路由。
+Gateway 当前默认使用 `lb://java-demo-app`、`lb://task-service` 和 `lb://notification-service` 进行服务发现路由；如需临时回退、排查或绕过注册中心，也可以通过环境变量 `JAVA_DEMO_BACKEND_URI`、`JAVA_DEMO_TASK_SERVICE_URI`、`JAVA_DEMO_NOTIFICATION_SERVICE_URI` 覆盖为固定 URI。
 
 ## 启动任务服务和通知服务
 
@@ -231,8 +260,8 @@ Gateway 当前使用静态地址转发到用户服务 `8091`、任务服务 `809
 或运行已打包 jar：
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\task-service\target\java-demo-task-service-0.5.5-SNAPSHOT.jar
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\notification-service\target\java-demo-notification-service-0.5.5-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\task-service\target\java-demo-task-service-0.6.0-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\notification-service\target\java-demo-notification-service-0.6.0-SNAPSHOT.jar
 ```
 
 服务地址：
@@ -541,11 +570,19 @@ http://localhost:8092/v3/api-docs
 | `JAVA_DEMO_TASK_DB_PASSWORD` | `java_demo_pwd` | task-service MySQL 密码 |
 | `JAVA_DEMO_NOTIFICATION_DB_USERNAME` | `java_demo` | notification-service MySQL 用户名 |
 | `JAVA_DEMO_NOTIFICATION_DB_PASSWORD` | `java_demo_pwd` | notification-service MySQL 密码 |
-| `JAVA_DEMO_BACKEND_URI` | `http://localhost:8091` | Gateway 转发到用户/认证服务的静态地址 |
-| `JAVA_DEMO_TASK_SERVICE_URI` | `http://localhost:8093` | Gateway 转发到任务服务的静态地址 |
-| `JAVA_DEMO_NOTIFICATION_SERVICE_URI` | `http://localhost:8094` | Gateway 转发到通知服务的静态地址 |
-| `JAVA_DEMO_USER_SERVICE_URL` | `http://localhost:8091` | task-service 调用用户服务的静态地址 |
-| `JAVA_DEMO_NOTIFICATION_SERVICE_URL` | `http://localhost:8094` | task-service 调用通知服务的静态地址 |
+| `JAVA_DEMO_NACOS_SERVER_ADDR` | `127.0.0.1:8848` | Nacos 服务地址 |
+| `JAVA_DEMO_NACOS_NAMESPACE` | `public` | Nacos 命名空间 |
+| `JAVA_DEMO_NACOS_DISCOVERY_GROUP` | `DEFAULT_GROUP` | Nacos 服务注册分组 |
+| `JAVA_DEMO_NACOS_CONFIG_GROUP` | `DEFAULT_GROUP` | Nacos 配置分组 |
+| `JAVA_DEMO_NACOS_DISCOVERY_ENABLED` | `true` | 是否启用 Nacos 服务发现 |
+| `JAVA_DEMO_NACOS_REGISTER_ENABLED` | `true` | 是否向 Nacos 注册当前服务 |
+| `JAVA_DEMO_NACOS_CONFIG_ENABLED` | `true` | 是否启用 Nacos 配置中心 |
+| `JAVA_DEMO_SERVICE_DISCOVERY_ENABLED` | `true` | task-service 是否通过服务名调用下游 |
+| `JAVA_DEMO_BACKEND_URI` | `lb://java-demo-app` | Gateway 转发到用户/认证服务的默认路由 |
+| `JAVA_DEMO_TASK_SERVICE_URI` | `lb://task-service` | Gateway 转发到任务服务的默认路由 |
+| `JAVA_DEMO_NOTIFICATION_SERVICE_URI` | `lb://notification-service` | Gateway 转发到通知服务的默认路由 |
+| `JAVA_DEMO_USER_SERVICE_URL` | `http://java-demo-app` | task-service 调用用户服务的默认地址 |
+| `JAVA_DEMO_NOTIFICATION_SERVICE_URL` | `http://notification-service` | task-service 调用通知服务的默认地址 |
 | `JAVA_DEMO_LOG_LEVEL_ROOT` | `INFO` | 三个业务服务的 root 日志级别 |
 | `JAVA_DEMO_APP_LOG_LEVEL` | `INFO` | `java-demo-app` 业务包日志级别 |
 | `JAVA_DEMO_TASK_LOG_LEVEL` | `INFO` | `task-service` 业务包日志级别 |
@@ -701,14 +738,30 @@ $env:JAVA_DEMO_LOG_LEVEL_ROOT='WARN'
 | Gateway 白名单 | 已验证 `/api/auth/captcha/slider` 和 `/api/auth/captcha/slider/verify` 可通过 Gateway 公开访问，无需 JWT |
 | 临时进程清理 | 验证结束后已停止临时启动的 `8252` 和 `8253` Java 进程，端口无监听 |
 
+本次 `v0.6` 验证内容：
+
+| 项目 | 状态 |
+|---|---|
+| Nacos 容器 | 已执行 `docker compose -f infra\docker-compose\nacos\docker-compose.yml up -d`；`java-demo-nacos-1` 当前为 `healthy`，控制台可经 `http://localhost:8848/nacos` 访问 |
+| Nacos 配置导入 | 已执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infra\docker-compose\nacos\import-configs.ps1`，五份配置均已导入到 `DEFAULT_GROUP` |
+| Maven test | 已执行 `.\mvnw.cmd test`，通过；四个后端模块测试均成功 |
+| Maven package | 已执行 `.\mvnw.cmd -DskipTests package`，通过；已生成四个 `0.6.0-SNAPSHOT` 可执行 jar |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| 四服务注册发现 | 使用临时端口 `8252-8255` 启动 `java-demo-app`、Gateway、`task-service`、`notification-service` 后，Nacos 实例列表可见四个服务各 1 个实例；Gateway 默认 `lb://...` 路由和 `task-service` 服务名调用均可用 |
+| 配置中心生效 | 直连和经 Gateway 访问健康检查均返回 `configSource=nacos`、`configLabel=v0.6-default`；服务角色分别为 `user-service`、`task-service`、`notification-service` |
+| 真实 Gateway 业务联调 | 经 Gateway 完成注册、拼图 challenge、任务创建、任务状态从 `TODO` 到 `IN_PROGRESS`、通知分页与未读数验证；验证用户为 `v060_20260603173509` |
+| 回归说明 | 本次只改造基础设施接入，不新增前端页面；React/Vue 无需代码修改，但两端生产构建已回归通过 |
+| Windows 编码约束 | 已确认 `spring-alibaba-nacos-config 2023.0.3.2` 在 Windows 上解析 YAML 时存在平台默认编码问题，因此 `infra/docker-compose/nacos/configs/*.yml` 需保持 ASCII-only，导入脚本已增加校验 |
+| 临时进程清理 | 验证结束后已停止本次临时启动的 `8252-8255` Java 进程，端口无监听 |
+
 ## 下一步
 
-下一步进入 `v0.6 Nacos`，把 Gateway、用户服务、任务服务和通知服务接入 Nacos 服务注册发现和配置中心。基础设施服务继续按当前规则使用 Docker Desktop 独立容器运行，并且后续回归验证需要确认 `v0.5.5` 拼图验证码仍可用。
+下一步进入 `v0.6.1 OpenFeign`，把 `task-service -> java-demo-app` 和 `task-service -> notification-service` 的手写 REST 调用改为声明式 Feign 客户端。基础设施服务继续按当前规则使用 Docker Desktop 独立容器运行，并且后续回归验证仍需确认 `v0.5.5` 拼图验证码链路和 `v0.6` 的 Nacos 注册发现能力保持可用。
 
 | 重点 | 说明 |
 |---|---|
-| Nacos Docker 容器 | 按独立容器方式准备 Nacos，后续可自然扩展为集群 |
-| 服务注册 | `java-demo-app`、Gateway、task-service、notification-service 注册到 Nacos |
-| 配置中心 | 把可演示的配置项迁移到 Nacos，并保留本地默认值 |
-| Gateway 路由 | 从静态 URI 逐步演进到服务名路由 |
-| 回归验证 | 保持注册登录、拼图验证码、用户管理、任务通知链路、Gateway 白名单和 React/Vue 构建可用 |
+| OpenFeign 客户端 | 在 `task-service` 中定义用户服务与通知服务 Feign Client，替代现有手写 REST 调用 |
+| 服务发现 | Feign 继续复用 `v0.6` 已打通的 Nacos 服务名发现能力，不回退到固定 URL |
+| 请求链路 | 保持 `X-Request-Id` 透传、超时配置、异常转换和关键调用日志可观察 |
+| 回归验证 | 保持注册登录、拼图验证码、用户管理、任务通知链路、Gateway 白名单、Nacos 配置加载和 React/Vue 构建可用 |

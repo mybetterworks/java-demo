@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 /**
  * 任务服务启动日志记录器。
  *
- * <p>任务服务依赖用户服务和通知服务，因此启动摘要除了日志文件和数据库外，还会记录下游服务地址。
- * 摘要只包含地址和级别，不输出任何 token、数据库密码或 Authorization header。</p>
+ * <p>任务服务既依赖数据库，也依赖用户服务与通知服务两个下游，因此启动摘要需要同时输出日志文件、数据源、
+ * 下游地址模式以及 Nacos 地址，便于快速判断当前究竟是“静态直连排障模式”还是“服务发现模式”。</p>
  */
 @Component
 public class RuntimeLoggingStartupLogger implements ApplicationRunner {
@@ -24,12 +24,10 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
         this.environment = environment;
     }
 
-    /**
-     * 输出任务服务启动后的关键运行配置。
-     */
     @Override
     public void run(ApplicationArguments args) {
-        log.info("Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, taskLevel={}, datasource={}, userServiceUrl={}, notificationServiceUrl={}",
+        log.info(
+                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, taskLevel={}, datasource={}, userServiceUrl={}, notificationServiceUrl={}, discoveryEnabled={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
                 environment.getProperty("spring.application.name", "task-service"),
                 environment.getProperty("local.server.port", environment.getProperty("server.port", "unknown")),
                 resolveProfiles(),
@@ -38,7 +36,14 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
                 environment.getProperty("logging.level.com.example.javademo.task", "INFO"),
                 sanitizeConfigValue(environment.getProperty("spring.datasource.url", "not-configured")),
                 sanitizeConfigValue(environment.getProperty("java-demo.services.user-service-url", "not-configured")),
-                sanitizeConfigValue(environment.getProperty("java-demo.services.notification-service-url", "not-configured")));
+                sanitizeConfigValue(environment.getProperty("java-demo.services.notification-service-url", "not-configured")),
+                environment.getProperty("java-demo.services.discovery-enabled", "true"),
+                environment.getProperty("spring.cloud.nacos.discovery.enabled", "true"),
+                environment.getProperty("spring.cloud.nacos.config.enabled", "true"),
+                sanitizeConfigValue(environment.getProperty("spring.cloud.nacos.discovery.server-addr", "not-configured")),
+                environment.getProperty("java-demo.runtime.config-source", "local"),
+                environment.getProperty("java-demo.runtime.config-label", "not-configured")
+        );
     }
 
     private String resolveProfiles() {
@@ -47,7 +52,7 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
     }
 
     /**
-     * 为后续可能带账号密码的 URL 做统一脱敏，当前静态服务地址不会携带敏感信息。
+     * 对下游地址与 JDBC URL 做统一脱敏。
      */
     private String sanitizeConfigValue(String value) {
         if (value == null || value.isBlank()) {

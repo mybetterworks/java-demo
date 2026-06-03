@@ -1,0 +1,9 @@
+app:
+  jwt:
+    secret: ${JAVA_DEMO_JWT_SECRET:java-demo-v0-1-local-secret-change-me-32chars}
+    expiration-seconds: ${JAVA_DEMO_JWT_EXPIRATION_SECONDS:7200}
+
+java-demo:
+  runtime:
+    config-source: nacos
+    config-label: v0.6-default

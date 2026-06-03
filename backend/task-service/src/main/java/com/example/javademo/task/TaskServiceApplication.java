@@ -6,14 +6,16 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
  * 任务服务启动类。
  *
- * <p>v0.5.1 开始把任务领域从原有 java-demo-app 中独立出来，形成真实的微服务边界。
- * 当前仍使用静态 REST 地址调用用户服务和通知服务，后续 v0.6 再迁移到 Nacos 服务发现。</p>
+ * <p>v0.6 的关键变化之一，是把 task-service 对用户服务和通知服务的访问从“静态地址 + RestTemplate”
+ * 演进为“服务发现 + RestTemplate”。因此这里除了保留 JWT 与下游地址配置外，还显式开启 Nacos 服务发现。</p>
  */
 @SpringBootApplication
+@EnableDiscoveryClient
 @MapperScan("com.example.javademo.task.mapper")
 @EnableConfigurationProperties({JwtProperties.class, ServiceClientProperties.class})
 public class TaskServiceApplication {

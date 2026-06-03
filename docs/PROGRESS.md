@@ -16,6 +16,10 @@
 
 `v0.5.5 Login Image Puzzle Captcha` 已完成。当前验证码已从学习型滑块升级为固定背景图随机拼图验证码：后端随机生成缺口位置并只在服务端保存真实答案，challenge 响应只返回背景缺口图、拼图块图和渲染参数；React 和 Vue 登录页已同步支持图片拼图拖拽、轨迹采集、verify 校验、一次性 token 登录重试和用户名变化后状态重置。
 
+`v0.6 Nacos` 已完成。Gateway、`java-demo-app`、`task-service` 和 `notification-service` 已接入 Nacos 服务注册发现和配置中心，Gateway 默认改用 `lb://java-demo-app`、`lb://task-service`、`lb://notification-service` 路由，`task-service` 也已通过 Nacos 服务名调用用户服务和通知服务；本轮验证确认四个服务都能读取到 `configSource=nacos` 和 `configLabel=v0.6-default`。
+
+Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` 的编码限制保持 ASCII-only，中文说明继续写在 README、milestone 或 `docs/PROGRESS.md`；导入脚本也会主动拒绝非 ASCII 内容。
+
 已新增 `v0.6.1 OpenFeign Service Calls` 和 `v0.6.2 Dubbo RPC User Validation` 规划。`v0.6.1` 在 Nacos 之后把 `task-service -> java-demo-app`、`task-service -> notification-service` 从手写 REST 改为 OpenFeign；`v0.6.2` 只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC，通知链路继续保留 Feign，后续再由 `v1.0 MQ` 异步化。
 
 已完成：
@@ -99,6 +103,8 @@
 | v0.5.5 milestone 规划 | 已新增 `docs/milestones/v0.5.5-login-image-puzzle-captcha.md`，明确固定背景图随机拼图滑块验证码的实现要求 |
 | 登录拼图验证码增强策略 | 已采纳 `docs/decisions/0016-login-image-puzzle-captcha.md`，明确真实答案只保存在服务端、前端只展示图片和提交拖动结果 |
 | v0.5.5 登录拼图滑块验证码实现 | 已完成固定背景图资源、随机缺口生成、背景缺口图、拼图块图、服务端答案保存、坐标/耗时/轨迹校验、一次性 token、React/Vue 拼图拖拽联动、自动化测试和真实 Gateway 联调 |
+| v0.6 milestone 规划 | 已新增 `docs/milestones/v0.6-nacos.md`，明确 Nacos 单节点、服务注册、配置中心、Gateway 服务名路由、`task-service` 服务发现调用和 Nacos 日志要求 |
+| v0.6 Nacos 实现 | 已完成 Nacos 单节点 Docker Compose、配置导入、四服务注册发现、Gateway `lb://` 路由、`task-service` 服务名下游调用、ASCII-only 配置约束和真实 Gateway 联调 |
 | 服务调用演进策略 | 已采纳 `docs/decisions/0014-service-invocation-evolution.md`，明确 REST、OpenFeign、Dubbo 和 MQ 在项目中的调用边界 |
 | v0.6.1 milestone 规划 | 已新增 `docs/milestones/v0.6.1-openfeign-service-calls.md`，明确 `task-service` 通过 OpenFeign 调用用户服务和通知服务 |
 | v0.6.2 milestone 规划 | 已新增 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，明确只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC |
@@ -108,7 +114,6 @@
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| Nacos 和后续微服务基础设施 | 未开始，下一步按 `docs/milestones/v0.6-nacos.md` 引入 |
 | v0.6.1 OpenFeign 服务调用改造 | 未开始，需在 v0.6 Nacos 完成后实施 |
 | v0.6.2 Dubbo RPC 用户校验改造 | 未开始，需在 v0.6.1 OpenFeign 完成后实施 |
 
@@ -120,7 +125,7 @@
 | Maven | 目标版本 Maven `3.9.16`，路径 `D:\software\apache-maven-3.9.16` |
 | Maven 本地仓库 | `D:\software\maven_download` |
 | Node.js | 目标版本 Node.js `22.x`，用于 React TypeScript 和 Vue JavaScript 前端开发 |
-| Docker | Docker Desktop 当前可用，MySQL `8.4` 单节点容器 `java-demo-mysql` 为 `healthy`；`v0.5.5` 已使用 Docker MySQL 完成真实 Gateway 登录拼图验证码联调 |
+| Docker | Docker Desktop 当前可用，MySQL `8.4` 单节点容器 `java-demo-mysql` 为 `healthy`；`java-demo-nacos-1` 也已处于 `healthy`，`v0.6` 已使用 Docker MySQL + Docker Nacos 完成真实 Gateway 业务联调 |
 | Git | 已初始化 Git 仓库，用户已提交 GitHub；后续提交、tag 和推送由用户手动执行 |
 | 本机占用/保留端口 | `5112-5311`、`7991-8090`、`8146-8245`；当前项目端口规划已避开 |
 | Gateway | Spring Cloud Gateway `2023.0.3` 已接入，默认端口 `8092` |
@@ -132,9 +137,9 @@
 | 直接执行 `D:\software\jdk-17.0.19\bin\java.exe -version` | 已确认 JDK `17.0.19` 可用 |
 | 直接执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -v` | 已确认 Maven `3.9.16` 可用 |
 | 临时设置 `JAVA_HOME=D:\software\jdk-17.0.19` 后执行 Maven | 已确认 Maven 可使用 Java `17.0.19` |
-| 本次执行 `.\mvnw.cmd test` | 当前 PowerShell 会话中 Maven Wrapper 启动失败，报 `Cannot start maven from wrapper`；已改用用户配置的本地 Maven 3.9.16 完成同等验证 |
-| 执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test` | 已通过，`AuthFlowIntegrationTest` 和 `UserManagementIntegrationTest` 覆盖 v0.1/v0.2 核心链路 |
-| 执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package` | 已通过，生成 `backend/app/target/java-demo-app-0.5.0-SNAPSHOT.jar` 和 `backend/gateway/target/java-demo-gateway-0.5.0-SNAPSHOT.jar` |
+| 本次执行 `.\mvnw.cmd test` | 已通过；本次会话已直接使用 Maven Wrapper 完成 `test` 验证 |
+| 本次执行 `.\mvnw.cmd -DskipTests package` | 已通过，生成四个 `0.6.0-SNAPSHOT` 可执行 jar |
+| 本次执行 Nacos 配置导入脚本 | 已通过，五份配置已导入 `DEFAULT_GROUP`，并确认待发布 YAML 需保持 ASCII-only |
 | 访问 `GET /v3/api-docs` | 已确认返回 OpenAPI JSON |
 | 访问 `GET /swagger-ui.html` | 已确认返回 Swagger UI 页面 |
 | Node.js 22 | 已确认当前会话 `node -v` 为 `v22.22.3` |
@@ -538,21 +543,34 @@ v0.4 Vue 项目结构记录：
 | 样式 | React/Vue 均已补充拼图舞台、背景图、拼图块、拖动状态、进度信息和移动端横向容错样式 |
 | 后续迁移 | 失败计数、拼图 challenge 和一次性 token 当前仍使用单机内存，`v0.7 Redis` 再迁移到 Redis TTL 以支持多实例 |
 
+## v0.6 验证记录
+
+自动化、构建和联调验证：
+
+| 验证项 | 结果 |
+|---|---|
+| Nacos 容器 | 已执行 `docker compose -f infra\docker-compose\nacos\docker-compose.yml up -d`；`java-demo-nacos-1` 当前为 `healthy`，控制台可经 `http://localhost:8848/nacos` 访问 |
+| Nacos 配置导入 | 已执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infra\docker-compose\nacos\import-configs.ps1`，五份配置均已导入 `DEFAULT_GROUP` |
+| Maven test | 已执行 `.\mvnw.cmd test`，通过；四个后端模块测试均成功 |
+| Maven package | 已执行 `.\mvnw.cmd -DskipTests package`，通过；已生成四个 `0.6.0-SNAPSHOT` 可执行 jar |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| 四服务注册发现 | 使用临时端口 `8252-8255` 启动四个后端服务后，Nacos 实例列表可见 `java-demo-app`、`java-demo-gateway`、`task-service`、`notification-service` 各 1 个实例 |
+| Nacos 配置读取 | 直连与经 Gateway 访问健康检查均返回 `configSource=nacos` 和 `configLabel=v0.6-default`；服务角色分别为 `user-service`、`task-service`、`notification-service` |
+| 真实 Gateway 业务联调 | 经 Gateway 完成注册、拼图 challenge、任务创建、任务状态从 `TODO` 到 `IN_PROGRESS`、通知分页和未读数验证；验证用户 `v060_20260603173509` |
+| 前端联动判断 | 本版本只改造基础设施接入，不新增用户可见能力，因此 React/Vue 无需代码修改；两端生产构建已回归通过 |
+| Windows 编码约束 | 已确认 `spring-alibaba-nacos-config 2023.0.3.2` 在 Windows 上解析 YAML 时存在平台默认编码问题，因此 Nacos 发布配置保持 ASCII-only，导入脚本已增加非 ASCII 拦截 |
+| 临时端口清理 | 验证结束后已停止本次临时启动的 Java 进程，`8252-8255` 无监听进程 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.5.5-login-image-puzzle-captcha.md
-```
-
-下一步尚未开始：
-
-```text
 docs/milestones/v0.6-nacos.md
 ```
 
-`v0.6` 完成后的下一步：
+下一步尚未开始：
 
 ```text
 docs/milestones/v0.6.1-openfeign-service-calls.md
@@ -648,17 +666,17 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 
 ## 下一步建议
 
-1. 如需保存当前 `v0.5.5` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 下一次开发从 `docs/milestones/v0.6-nacos.md` 开始，把 Gateway、用户服务、任务服务和通知服务接入 Nacos。
-3. v0.6 完成后进入 `docs/milestones/v0.6.1-openfeign-service-calls.md`，把 `task-service -> java-demo-app` 和 `task-service -> notification-service` 从手写 REST 改为 OpenFeign。
-4. v0.6.1 完成后进入 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC。
-5. v0.6.2 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流，并迁移登录失败计数、拼图 challenge 和验证码 token。
+1. 如需保存当前 `v0.6` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
+2. 下一次开发从 `docs/milestones/v0.6.1-openfeign-service-calls.md` 开始，把 `task-service -> java-demo-app` 和 `task-service -> notification-service` 从手写 REST 改为 OpenFeign。
+3. `v0.6.1` 完成后进入 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC。
+4. `v0.6.2` 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流，并迁移登录失败计数、拼图 challenge 和验证码 token。
+5. 继续保持 `v0.5.5` 拼图验证码链路回归，确认 OpenFeign 和后续 RPC 改造不会破坏登录安全流程。
 6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.6-nacos.md。当前 v0.5.5 已完成，请从 v0.6 开始接入 Nacos 服务注册发现和配置中心；不要重复实现登录拼图验证码，但需要在回归验证中确认 v0.5.5 的固定背景图随机拼图验证码仍然可用。基础设施服务必须通过 Docker Desktop 独立容器运行，端口继续避开 `5112-5311`、`7991-8090` 和 `8146-8245`。完成后运行后端测试、React/Vue 构建、真实 Gateway 联调，并更新 README 和 docs/PROGRESS.md。
+请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.6.1-openfeign-service-calls.md。当前 v0.6 Nacos 已完成，请从 v0.6.1 开始把 `task-service -> java-demo-app` 和 `task-service -> notification-service` 的手写 REST 调用改为 OpenFeign；不要回退 Nacos 服务发现，也不要重复实现登录拼图验证码，但需要在回归验证中继续确认 `v0.5.5` 的固定背景图随机拼图验证码和 `v0.6` 的注册发现链路仍然可用。基础设施服务继续通过 Docker Desktop 独立容器运行，端口继续避开 `5112-5311`、`7991-8090` 和 `8146-8245`。完成后运行后端测试、React/Vue 构建、真实 Gateway 联调，并更新 README 和 docs/PROGRESS.md。
 ```
 
 ## 完成记录
@@ -675,7 +693,7 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | `v0.5.3` | 已完成 | 2026-05-31 | 任务和通知前端；React/Vue 已补齐任务管理与通知中心，并通过 Maven test/package、前端构建和真实 Gateway 联调 |
 | `v0.5.4` | 已完成 | 2026-05-31 | 登录滑块验证码；已完成登录失败风险判断、滑块 challenge/verify、一次性验证码 token、React/Vue 登录页联动、Maven test/package、前端构建和真实 Gateway 登录风控联调 |
 | `v0.5.5` | 已完成 | 2026-06-03 | 固定背景图随机拼图滑块验证码；已完成服务端随机缺口、图片生成、答案只存服务端、轨迹校验、一次性 token、React/Vue 拼图拖拽联动、Maven test/package、前端构建和真实 Gateway 登录风控联调 |
-| `v0.6` | 未开始 | - | Nacos |
+| `v0.6` | 已完成 | 2026-06-03 | Nacos 服务注册发现和配置中心；已完成单节点 Docker Compose、配置导入、四服务注册发现、Gateway `lb://` 路由、`task-service` 服务名调用、Maven test/package、前端构建和真实 Gateway 业务联调 |
 | `v0.6.1` | 未开始 | - | OpenFeign 服务调用；已完成 milestone 与服务调用演进策略文档规划 |
 | `v0.6.2` | 未开始 | - | Dubbo RPC 用户校验；已完成 milestone 与服务调用演进策略文档规划 |
 | `v0.7` | 未开始 | - | Redis |
@@ -704,6 +722,7 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | 端口 `8092` 可能被其他应用占用 | Gateway 无法启动，前端默认代理无法访问 API | 启动前检查端口，必要时临时调整 `GATEWAY_SERVER_PORT` 并同步更新前端代理和文档 |
 | 端口 `8093` 可能被其他应用占用 | v0.5.1 task-service 无法启动，Gateway `/api/tasks/**` 路由不可用 | 启动前检查端口，必要时临时调整任务服务端口并同步 Gateway、前端代理和文档 |
 | 端口 `8094` 可能被其他应用占用 | v0.5.1 notification-service 无法启动，任务通知链路不可用 | 启动前检查端口，必要时临时调整通知服务端口并同步 Gateway、服务调用配置和文档 |
+| Nacos 发布 YAML 含非 ASCII 内容 | `spring-alibaba-nacos-config 2023.0.3.2` 在 Windows 上会按平台默认编码重组 YAML 字节，可能导致配置解析失败 | 继续保持 `infra/docker-compose/nacos/configs/*.yml` 为 ASCII-only，中文说明写在 README、milestone 或 `docs/PROGRESS.md`，并保留导入脚本的非 ASCII 拦截 |
 | Windows 保留端口段 `5112-5311` | React/Vue 旧开发端口 `5173/5174` 会出现 `EACCES: permission denied` | 当前已改用 React `5320`、Vue `5321`；后续新增前端端口也要避开该保留段 |
 | 端口 `5320` 可能被其他前端项目占用 | React 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口，并同步更新文档 |
 | 端口 `5321` 可能被其他前端项目占用 | Vue 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口，并同步更新文档 |
