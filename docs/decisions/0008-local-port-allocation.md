@@ -6,35 +6,36 @@
 
 ## 背景
 
-本地 Windows 11 开发环境中，以下端口范围已被其他服务占用：
+本地 Windows 11 开发环境中，以下端口范围已被其他服务占用或被系统保留：
 
 | 起始端口 | 结束端口 |
 |---|---|
 | `7991` | `8090` |
 | `8146` | `8245` |
+| `5112` | `5311` |
 
 项目早期后端曾使用 `8080`，当前 `application.yml` 曾出现 `8082`，两者都落在 `7991-8090` 占用范围内。为了避免后续每个 milestone 反复遇到端口冲突，需要固定新的本地端口规划。
 
 ## 决策
 
 1. 当前 Spring Boot 后端默认端口改为 `8091`。
-2. React 管理端继续使用 `5173`，React preview 使用 `4173`。
-3. `v0.4` Vue 管理端使用 `5174`，Vue preview 使用 `4174`。
+2. React 管理端使用 `5320`，React preview 使用 `4173`。旧端口 `5173` 落入 Windows 当前保留端口段，会触发 `EACCES`。
+3. `v0.4` Vue 管理端使用 `5321`，Vue preview 使用 `4174`。旧端口 `5174` 同样落入 Windows 当前保留端口段。
 4. `v0.5` Spring Cloud Gateway 建议使用 `8092`。
 5. `v0.5.1` `task-service` 使用 `8093`。
 6. `v0.5.1` `notification-service` 使用 `8094`。
 7. 后续拆分出的本地业务服务优先使用 `8095-8145` 或 `8246+`。
 8. 如果 Nginx 本地学习阶段不使用 `80` / `443`，非标准 HTTP/HTTPS 建议使用 `8250` / `8251`。
-9. 后续新增端口必须避开 `7991-8090` 和 `8146-8245`。
+9. 后续新增端口必须避开 `5112-5311`、`7991-8090` 和 `8146-8245`。
 
 ## 当前端口表
 
 | 服务 | 端口 | 说明 |
 |---|---|---|
 | Spring Boot 后端 | `8091` | 当前后端 API、Swagger UI、OpenAPI JSON |
-| React 开发服务器 | `5173` | `frontend-react` 本地开发 |
+| React 开发服务器 | `5320` | `frontend-react` 本地开发 |
 | React Preview | `4173` | `frontend-react` 生产构建预览 |
-| Vue 开发服务器 | `5174` | `frontend-vue` 本地开发 |
+| Vue 开发服务器 | `5321` | `frontend-vue` 本地开发 |
 | Vue Preview | `4174` | `frontend-vue` 生产构建预览 |
 | Spring Cloud Gateway | `8092` | `v0.5` 外部 API 统一入口 |
 | task-service | `8093` | `v0.5.1` 任务服务 |
@@ -61,6 +62,16 @@
 | `http://127.0.0.1:5174` | `200` |
 | `http://127.0.0.1:5174/api/health` | `200`，确认 Vue Vite 代理已转发到后端 `8091` |
 | `http://127.0.0.1:5174/api/auth/login` | `200`，确认 Vue 端口可完成登录链路 |
+
+2026-05-31 发现 Windows 当前保留端口段包含 `5112-5311`，旧 React/Vue 开发端口 `5173/5174` 会导致 Vite 启动时报 `EACCES: permission denied`。当前端口已调整：
+
+| 验证项 | 结果 |
+|---|---|
+| `netsh interface ipv4 show excludedportrange protocol=tcp` | 已确认 `5112-5311` 属于当前保留端口段 |
+| React 开发端口 | 已调整为 `5320` |
+| Vue 开发端口 | 已调整为 `5321` |
+| `http://127.0.0.1:5320` | `200`，确认 React Vite 可绑定新端口 |
+| `http://127.0.0.1:5321` | `200`，确认 Vue Vite 可绑定新端口 |
 
 ## 影响
 

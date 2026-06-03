@@ -23,8 +23,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
     /**
      * 注册接口认证规则。
      *
-     * <p>所有 /api/** 默认都要经过 JWT 校验，但健康检查、注册、登录属于公开接口，
-     * 必须排除，否则用户在拿到 token 之前就无法注册或登录。</p>
+     * <p>所有 /api/** 默认都要经过 JWT 校验，但健康检查、注册、登录和登录前滑块验证码属于公开接口，
+     * 必须排除，否则用户在拿到 token 之前就无法注册、登录或完成二次验证。</p>
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -33,7 +33,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/health",
                         "/api/auth/register",
-                        "/api/auth/login"
+                        "/api/auth/login",
+                        "/api/auth/captcha/slider",
+                        "/api/auth/captcha/slider/verify"
                 );
     }
 }

@@ -41,6 +41,8 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
             "/api/notifications/health",
             "/api/auth/register",
             "/api/auth/login",
+            "/api/auth/captcha/slider",
+            "/api/auth/captcha/slider/verify",
             "/v3/api-docs",
             "/swagger-ui.html",
             "/favicon.ico",

@@ -65,6 +65,23 @@ public class ApiResponse<T> {
         return new ApiResponse<>(code, message, null);
     }
 
+    /**
+     * 构造带业务数据的失败响应。
+     *
+     * <p>v0.5.4 登录滑块验证码需要在失败响应中告诉前端“需要验证码”以及后续动作。
+     * 为了不破坏既有 code/message/data 响应形状，这里保留数字 code，同时允许失败响应携带
+     * 一个非敏感 data 对象。注意 data 只能放前端决策所需的状态，不允许放密码、JWT、验证码答案或验证码 token。</p>
+     *
+     * @param code 业务错误码
+     * @param message 错误说明
+     * @param data 前端可安全读取的失败上下文
+     * @param <T> 失败上下文类型
+     * @return 统一失败响应
+     */
+    public static <T> ApiResponse<T> fail(int code, String message, T data) {
+        return new ApiResponse<>(code, message, data);
+    }
+
     public int getCode() {
         return code;
     }

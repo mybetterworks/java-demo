@@ -4,21 +4,21 @@
 
 ## 当前版本
 
-当前已完成 `v0.5.3 Task And Notification Frontends`。在 `v0.5.1 Task And Notification Services` 和 `v0.5.2 Backend Runtime Logging` 的基础上，React 与 Vue 两套前端都已补齐“任务管理”和“通知中心”，可以通过浏览器完成任务查询、创建、编辑、状态流转、详情查看、逻辑删除、通知查询、未读数、单条已读和全部已读。
+当前已完成 `v0.5.4 Login Slider Captcha`。在 `v0.5.3 Task And Notification Frontends` 的基础上，登录链路已新增风险验证能力：同一登录主体 5 分钟内登录失败 3 次后，后续登录必须先完成滑块验证码；React 和 Vue 登录页也已同步支持验证码触发、展示、校验、错误提示和携带一次性验证码 token 的登录重试流程。
 
-下一步准备开发 `v0.5.4 Login Slider Captcha`。该版本用于增强登录风险验证：同一登录主体 5 分钟内登录失败 3 次后，后续登录必须提交账号密码和滑块验证码；React 和 Vue 登录页也要同步支持验证码触发、展示、校验、错误提示和登录重试流程。
+下一步进入 `v0.6 Nacos`。该版本会把 Gateway、用户服务、任务服务和通知服务接入 Nacos，验证服务注册发现、配置中心以及从静态服务地址向服务名路由演进的基础能力。
 
 | 版本 | 规划内容 | 状态 |
 |---|---|---|
 | `v0.5.3` | React/Vue 任务管理和通知中心 | 已完成 |
-| `v0.5.4` | 登录失败风险判断和滑块验证码 | 准备开发 |
-| `v0.6` | Nacos 服务注册发现和配置中心 | 尚未实现 |
+| `v0.5.4` | 登录失败风险判断和滑块验证码 | 已完成 |
+| `v0.6` | Nacos 服务注册发现和配置中心 | 下一步 |
 | `v0.6.1` | `task-service` 使用 OpenFeign 调用用户服务和通知服务 | 已完成 milestone 规划，尚未实现 |
 | `v0.6.2` | `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC | 已完成 milestone 规划，尚未实现 |
 
 | 项目 | 内容 |
 |---|---|
-| 核心能力 | 注册、登录、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、后端运行日志、React 任务/通知管理端、Vue 任务/通知管理端 |
+| 核心能力 | 注册、登录、登录失败风险判断、滑块验证码、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、后端运行日志、React 任务/通知管理端、Vue 任务/通知管理端 |
 | 后端 | Spring Boot `3.3.5` |
 | 网关 | Spring Cloud Gateway `2023.0.3`，默认端口 `8092` |
 | 任务服务 | `task-service`，默认端口 `8093` |
@@ -27,7 +27,8 @@
 | 数据库 | MySQL `8.4` Docker 单节点 |
 | 认证 | JWT |
 | 日志 | SLF4J + Logback，控制台日志、`logs/*.log` 文件日志、`requestId`、可配置级别 |
-| 下一步安全能力 | `v0.5.4` 登录滑块验证码：5 分钟内登录失败 3 次后要求账号密码 + 滑块验证码 |
+| 登录安全能力 | `v0.5.4` 已实现登录滑块验证码：5 分钟内登录失败 3 次后要求账号密码 + 滑块验证码 |
+| 下一步基础设施能力 | `v0.6` Nacos 服务注册发现和配置中心 |
 | 已规划服务调用能力 | `v0.6.1` OpenFeign；`v0.6.2` Dubbo RPC 用户校验 |
 | 接口文档 | Springdoc OpenAPI `2.6.0`、Swagger UI |
 | 前端 | React `18`、TypeScript、Ant Design `5`；Vue `3`、JavaScript、Element Plus |
@@ -161,9 +162,9 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 .\mvnw.cmd package
 ```
 
-当前集成测试代码覆盖注册、重复注册、登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
+当前集成测试代码覆盖注册、重复注册、登录、登录失败风险判断、滑块验证码触发、验证码错误、验证码通过后登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、验证码公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
 
-`v0.5.3` 已使用本地 Maven `D:\software\apache-maven-3.9.16\bin\mvn.cmd` 执行 `test` 和 `package` 并通过；Maven 本地仓库继续使用 `D:\software\maven_download`。本版本主要补齐前端能力，未修改后端业务代码，因此后端 jar 版本仍为 `0.5.2-SNAPSHOT`。后续 `v0.5.4` 会修改登录风险验证链路。
+`v0.5.4` 已使用本地 Maven `D:\software\apache-maven-3.9.16\bin\mvn.cmd` 执行 `test` 和 `package` 并通过；Maven 本地仓库继续使用 `D:\software\maven_download`。本版本已将 Maven 工程版本提升为 `0.5.4-SNAPSHOT`，打包后会生成四个后端可执行 jar。
 
 ## 启动后端
 
@@ -176,7 +177,7 @@ docker compose -f infra\docker-compose\mysql\docker-compose.yml stop
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.5.2-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.5.4-SNAPSHOT.jar
 ```
 
 后端默认端口：
@@ -203,7 +204,7 @@ D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.5.2
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\gateway\target\java-demo-gateway-0.5.2-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\gateway\target\java-demo-gateway-0.5.4-SNAPSHOT.jar
 ```
 
 Gateway 默认端口：
@@ -229,8 +230,8 @@ Gateway 当前使用静态地址转发到用户服务 `8091`、任务服务 `809
 或运行已打包 jar：
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\task-service\target\java-demo-task-service-0.5.2-SNAPSHOT.jar
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\notification-service\target\java-demo-notification-service-0.5.2-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\task-service\target\java-demo-task-service-0.5.4-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\notification-service\target\java-demo-notification-service-0.5.4-SNAPSHOT.jar
 ```
 
 服务地址：
@@ -255,7 +256,7 @@ npm.cmd run dev
 React 管理端默认地址：
 
 ```text
-http://127.0.0.1:5173
+http://127.0.0.1:5320
 ```
 
 开发环境中，Vite 会把 `/api` 和 `/v3/api-docs` 代理到 Gateway `http://localhost:8092`，因此浏览器访问前端时不会遇到跨域问题，并且所有外部 API 请求都会先经过网关 JWT 校验。
@@ -273,14 +274,14 @@ npm.cmd run dev
 Vue 管理端默认地址：
 
 ```text
-http://127.0.0.1:5174
+http://127.0.0.1:5321
 ```
 
-Vue 端使用 Vue `3`、JavaScript 和 Element Plus，不启用 TypeScript 模板。开发环境中，Vite 会把 `/api` 和 `/v3/api-docs` 代理到 Gateway `http://localhost:8092`，端口 `5174` 和 preview 端口 `4174` 均避开了本机占用范围。
+Vue 端使用 Vue `3`、JavaScript 和 Element Plus，不启用 TypeScript 模板。开发环境中，Vite 会把 `/api` 和 `/v3/api-docs` 代理到 Gateway `http://localhost:8092`，端口 `5321` 和 preview 端口 `4174` 均避开了本机占用范围和 Windows 当前保留端口段。
 
 ## 本地端口规划
 
-当前本机 `7991-8090`、`8146-8245` 两段端口已被占用，项目当前和后续新增服务都必须避开这两个范围。
+当前本机 `7991-8090`、`8146-8245` 两段端口已被占用；Windows 当前还保留了 `5112-5311` 段，旧 React/Vue 开发端口 `5173/5174` 会因系统保留报 `EACCES`。项目当前和后续新增服务都必须避开这些范围。
 
 | 服务 | 当前/建议端口 | 说明 |
 |---|---|---|
@@ -288,9 +289,9 @@ Vue 端使用 Vue `3`、JavaScript 和 Element Plus，不启用 TypeScript 模�
 | Spring Cloud Gateway | `8092` | v0.5 外部 API 统一入口，前端默认代理到该端口 |
 | task-service | `8093` | v0.5.1 任务服务 |
 | notification-service | `8094` | v0.5.1 通知服务 |
-| React 开发服务器 | `5173` | `v0.3` React 管理端 |
+| React 开发服务器 | `5320` | `v0.3` React 管理端，替代被 Windows 保留的旧端口 `5173` |
 | React Preview | `4173` | `npm.cmd run preview` |
-| Vue 开发服务器 | `5174` | `v0.4` Vue 管理端，避开 React 端口 |
+| Vue 开发服务器 | `5321` | `v0.4` Vue 管理端，替代被 Windows 保留的旧端口 `5174` |
 | Vue Preview | `4174` | `v0.4` Vue 生产构建预览 |
 | 后续拆分服务 | `8095-8145` 或 `8246+` | 不使用 `8146-8245` |
 | 本地 Nginx 非标准 HTTP/HTTPS | `8250` / `8251` | 如不使用 `80` / `443`，优先使用该范围 |
@@ -357,15 +358,15 @@ Vue 管理端保持与 React 管理端一致的业务功能和操作路径，但
 | 本地查询缓存 | React 使用 IndexedDB 保存任务/通知最近查询条件；Vue 使用 localStorage 保存同类查询条件 |
 | 代码注释 | 新增前端代码已补充中文注释，说明 API 封装、页面状态、表单校验、表格分页、本地缓存和错误处理 |
 
-`v0.5.4` 规划中的登录安全扩展：
+`v0.5.4` 已完成的登录安全扩展：
 
 | 能力 | 说明 |
 |---|---|
-| 登录失败计数 | 同一登录主体 5 分钟内登录失败达到 3 次后进入风险验证状态 |
-| 滑块验证码 | 后续登录必须提交账号密码和滑块验证码，验证码通过后才能继续登录 |
-| 统计维度 | MVP 推荐使用 `username + clientIp`，兼顾账号级风险和共享 IP 场景 |
-| 前端联动 | React 和 Vue 登录页都要支持验证码触发、展示、校验、错误提示和登录重试 |
-| 状态存储 | `v0.5.4` 可先使用单机 MVP 状态存储，`v0.7 Redis` 再迁移到 Redis TTL |
+| 登录失败计数 | 同一登录主体 5 分钟内登录失败达到 3 次后进入风险验证状态；未达到阈值时仍按普通账号密码错误处理 |
+| 滑块验证码 | 后续登录必须先获取 challenge、完成滑块校验并拿到一次性验证码 token，再携带账号密码和验证码 token 登录 |
+| 统计维度 | 使用 `username + clientIp`，兼顾账号级风险和共享 IP 场景 |
+| 前端联动 | React 和 Vue 登录页均已支持验证码触发、展示、校验、错误提示和登录重试，业务流程保持一致 |
+| 状态存储 | `v0.5.4` 使用单机内存保存失败计数、challenge 和一次性 token，`v0.7 Redis` 再迁移到 Redis TTL |
 | 安全日志 | 记录失败计数、验证码触发和校验结果，但禁止打印密码、完整 JWT、Authorization header、验证码答案或验证码 token |
 
 ## API
@@ -389,6 +390,8 @@ Vue 管理端保持与 React 管理端一致的业务功能和操作路径，但
 | `GET` | `/api/health` | 健康检查 | 否 |
 | `POST` | `/api/auth/register` | 注册用户 | 否 |
 | `POST` | `/api/auth/login` | 登录并返回 JWT | 否 |
+| `POST` | `/api/auth/captcha/slider` | 生成滑块验证码 challenge | 否 |
+| `POST` | `/api/auth/captcha/slider/verify` | 校验滑块验证码，返回一次性验证码 token | 否 |
 | `GET` | `/api/users/me` | 获取当前用户 | 是 |
 | `GET` | `/api/users` | 用户分页查询，支持 `current`、`size`、`username`、`status` | 是 |
 | `GET` | `/api/users/{id}` | 用户详情 | 是 |
@@ -411,14 +414,19 @@ Vue 管理端保持与 React 管理端一致的业务功能和操作路径，但
 | `PUT` | `/api/notifications/{id}/read` | 标记单条通知已读 | 是 |
 | `PUT` | `/api/notifications/read-all` | 当前用户通知全部已读 | 是 |
 
-`v0.5.4` 规划新增的登录风险验证接口尚未实现，后续开发时以 milestone 文档为准：
+`POST /api/auth/login` 在 `v0.5.4` 起支持风险验证语义：5 分钟内登录失败 3 次后，如果请求未携带有效验证码 token，后端返回业务码 `4601`；验证码错误、过期或 token 无效时返回业务码 `4602`。为了保持现有统一响应结构兼容，当前仍使用数字业务码。
 
-| 方法 | 路径 | 说明 | 是否需要 JWT |
-|---|---|---|---|
-| `POST` | `/api/auth/captcha/slider` | 生成滑块验证码 challenge | 否 |
-| `POST` | `/api/auth/captcha/slider/verify` | 校验滑块验证码，返回一次性验证结果或 token | 否 |
+验证码必需响应示例：
 
-`POST /api/auth/login` 在 `v0.5.4` 后需要支持风险验证语义：5 分钟内登录失败 3 次后，如果请求未携带有效验证码结果，后端应返回类似 `CAPTCHA_REQUIRED` 的错误码或业务状态，前端据此展示滑块验证码。
+```json
+{
+  "code": 4601,
+  "message": "登录失败次数过多，请完成滑块验证",
+  "data": {
+    "captchaRequired": true
+  }
+}
+```
 
 注册请求：
 
@@ -668,19 +676,29 @@ $env:JAVA_DEMO_LOG_LEVEL_ROOT='WARN'
 | Vue 浏览器联调 | 使用 `VITE_API_BASE_URL=http://localhost:8253` 启动 Vue `5174`，已登录同一测试用户，进入任务管理并通过页面创建任务，通知中心可看到通知和已读操作 |
 | 临时进程清理 | 验证结束后已停止本次临时启动的后端和前端进程，`8252-8255`、`5173`、`5174` 无监听进程 |
 
+本次 `v0.5.4` 验证内容：
+
+| 项目 | 状态 |
+|---|---|
+| Maven app 测试 | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -pl backend/app -am test`，通过；覆盖登录失败 3 次触发验证码、验证码错误、验证码通过后登录和状态清理 |
+| Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；四个后端模块测试均成功 |
+| Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；已生成四个 `0.5.4-SNAPSHOT` 可执行 jar |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| 真实 Gateway 登录风控联调 | Docker Desktop 已启动，`java-demo-mysql` 容器为 `healthy`；本次使用真实 MySQL，临时启动 `java-demo-app:8252` 和 Gateway `8253`，并设置 `JAVA_DEMO_BACKEND_URI=http://localhost:8252`；经 Gateway 完成注册、前两次错误密码、第三次触发 `4601/captchaRequired=true`、正确密码无验证码仍返回 `4601`、错误滑块返回 `4602`、正确滑块返回一次性 token、携带 token 登录成功、状态清理后再次普通登录成功 |
+| Gateway 白名单 | 已验证 `/api/auth/captcha/slider` 和 `/api/auth/captcha/slider/verify` 可通过 Gateway 公开访问，无需 JWT |
+| 临时进程清理 | 验证结束后已停止临时启动的 `8252` 和 `8253` Java 进程，端口无监听 |
+
 ## 下一步
 
-下一步进入 `v0.5.4 Login Slider Captcha`，为登录流程增加基础风险验证能力：同一登录主体 5 分钟内登录失败 3 次后，后续登录需要提交账号密码和滑块验证码。
+下一步进入 `v0.6 Nacos`，把 Gateway、用户服务、任务服务和通知服务接入 Nacos，验证服务注册发现和配置中心能力。
 
-`v0.5.4` 开发重点：
+`v0.6` 开发重点：
 
 | 重点 | 说明 |
 |---|---|
-| 后端登录风险判断 | 扩展 `java-demo-app` 登录流程，记录登录失败次数、5 分钟窗口和 3 次阈值 |
-| 滑块验证码接口 | 新增验证码 challenge 生成和校验能力，并提供一次性验证结果或 token |
-| React 登录页 | 支持验证码触发、展示、校验、错误提示和登录重试 |
-| Vue 登录页 | 与 React 保持一致的验证码交互和错误处理 |
-| 日志与安全 | 记录失败计数、验证码触发和校验结果，但禁止打印密码、完整 JWT、Authorization header、验证码答案或验证码 token |
-| 后续衔接 | `v0.7 Redis` 再把登录失败计数、验证码 challenge 和验证码 token 迁移到 Redis TTL |
-
-`v0.5.4` 完成后再进入 `v0.6 Nacos`，把 Gateway、用户服务、任务服务和通知服务接入 Nacos，验证服务注册发现和配置中心能力。
+| Nacos 容器 | 使用 Docker Desktop 运行 Nacos 容器，后续集群节点仍保持独立容器 |
+| 服务注册 | `java-demo-app`、Gateway、`task-service`、`notification-service` 注册到 Nacos |
+| 配置中心 | 把适合演示的基础配置迁移到 Nacos，保留本地默认值作为回退 |
+| Gateway 路由 | 从静态地址路由逐步演进为基于服务名的路由 |
+| 回归验证 | 保持注册登录、滑块验证码、用户管理、任务通知链路和 React/Vue 构建可用 |

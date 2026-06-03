@@ -100,11 +100,117 @@ class AuthFlowIntegrationTest {
         assertThat(openApiJson.path("info").path("title").asText()).isEqualTo("Java Demo API");
         assertThat(openApiJson.path("paths").has("/api/auth/register")).isTrue();
         assertThat(openApiJson.path("paths").has("/api/auth/login")).isTrue();
+        assertThat(openApiJson.path("paths").has("/api/auth/captcha/slider")).isTrue();
+        assertThat(openApiJson.path("paths").has("/api/auth/captcha/slider/verify")).isTrue();
         assertThat(openApiJson.path("paths").has("/api/users/me")).isTrue();
         assertThat(openApiJson.path("paths").has("/api/users")).isTrue();
         assertThat(openApiJson.path("paths").has("/api/users/{id}")).isTrue();
         assertThat(openApiJson.path("paths").has("/api/users/{id}/password")).isTrue();
         assertThat(openApiJson.path("components").path("securitySchemes").has("bearerAuth")).isTrue();
+    }
+
+    /**
+     * v0.5.4 登录滑块验证码集成测试。
+     *
+     * <p>该测试覆盖“失败 3 次 -> 必须验证码 -> challenge/verify -> 带 captchaToken 登录成功”的核心闭环。
+     * 测试断言不会读取或依赖后端内部验证码答案，只根据接口返回的 UI 尺寸把滑块拖到终点，
+     * 与当前学习型 MVP 前端交互保持一致。</p>
+     */
+    @Test
+    void shouldRequireSliderCaptchaAfterRepeatedLoginFailures() throws Exception {
+        restTemplate.getRestTemplate().setRequestFactory(new HttpComponentsClientHttpRequestFactory());
+
+        String username = "risk_" + System.nanoTime();
+        String password = "secret123";
+        Map<String, String> registerRequest = Map.of(
+                "username", username,
+                "password", password,
+                "nickname", "Risk User"
+        );
+        ResponseEntity<String> registerResponse = restTemplate.postForEntity("/api/auth/register", registerRequest, String.class);
+        assertThat(registerResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        Map<String, String> badLoginRequest = Map.of(
+                "username", username,
+                "password", "wrong-password"
+        );
+
+        // 前两次失败只返回普通 401，不强制前端展示验证码。
+        assertThat(restTemplate.postForEntity("/api/auth/login", badLoginRequest, String.class).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(restTemplate.postForEntity("/api/auth/login", badLoginRequest, String.class).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        // 第三次失败进入风险状态，响应 code=4601，并携带 captchaRequired=true 供前端联动。
+        ResponseEntity<String> thirdFailureResponse = restTemplate.postForEntity("/api/auth/login", badLoginRequest, String.class);
+        assertThat(thirdFailureResponse.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        JsonNode thirdFailureJson = readJson(thirdFailureResponse);
+        assertThat(thirdFailureJson.path("code").asInt()).isEqualTo(4601);
+        assertThat(thirdFailureJson.path("data").path("captchaRequired").asBoolean()).isTrue();
+
+        Map<String, String> goodLoginWithoutCaptchaRequest = Map.of(
+                "username", username,
+                "password", password
+        );
+        ResponseEntity<String> goodWithoutCaptchaResponse = restTemplate.postForEntity(
+                "/api/auth/login",
+                goodLoginWithoutCaptchaRequest,
+                String.class
+        );
+        assertThat(goodWithoutCaptchaResponse.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(readJson(goodWithoutCaptchaResponse).path("code").asInt()).isEqualTo(4601);
+
+        // 错误滑块位置应返回明确验证码错误，并消耗当前 challenge，前端需要重新获取。
+        ResponseEntity<String> wrongChallengeResponse = restTemplate.postForEntity(
+                "/api/auth/captcha/slider",
+                Map.of("username", username),
+                String.class
+        );
+        assertThat(wrongChallengeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String wrongChallengeId = readJson(wrongChallengeResponse).path("data").path("challengeId").asText();
+        ResponseEntity<String> wrongVerifyResponse = restTemplate.postForEntity(
+                "/api/auth/captcha/slider/verify",
+                Map.of("challengeId", wrongChallengeId, "sliderPosition", 0),
+                String.class
+        );
+        assertThat(wrongVerifyResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(readJson(wrongVerifyResponse).path("code").asInt()).isEqualTo(4602);
+
+        // 重新获取 challenge，并按当前 MVP 规则拖到终点完成验证。
+        ResponseEntity<String> challengeResponse = restTemplate.postForEntity(
+                "/api/auth/captcha/slider",
+                Map.of("username", username),
+                String.class
+        );
+        assertThat(challengeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode challengeJson = readJson(challengeResponse).path("data");
+        String challengeId = challengeJson.path("challengeId").asText();
+        int sliderPosition = challengeJson.path("trackWidth").asInt() - challengeJson.path("puzzleWidth").asInt();
+
+        ResponseEntity<String> verifyResponse = restTemplate.postForEntity(
+                "/api/auth/captcha/slider/verify",
+                Map.of("challengeId", challengeId, "sliderPosition", sliderPosition),
+                String.class
+        );
+        assertThat(verifyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String captchaToken = readJson(verifyResponse).path("data").path("captchaToken").asText();
+        assertThat(captchaToken).isNotBlank();
+
+        ResponseEntity<String> goodWithCaptchaResponse = restTemplate.postForEntity(
+                "/api/auth/login",
+                Map.of("username", username, "password", password, "captchaToken", captchaToken),
+                String.class
+        );
+        assertThat(goodWithCaptchaResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(readJson(goodWithCaptchaResponse).path("data").path("accessToken").asText()).isNotBlank();
+
+        // 登录成功会清理失败计数，后续同一用户同一 IP 可以恢复普通账号密码登录。
+        ResponseEntity<String> goodAfterClearResponse = restTemplate.postForEntity(
+                "/api/auth/login",
+                goodLoginWithoutCaptchaRequest,
+                String.class
+        );
+        assertThat(goodAfterClearResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     /**

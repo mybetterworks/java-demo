@@ -26,13 +26,13 @@ public class GlobalExceptionHandler {
      * 处理业务层主动抛出的可预期异常，例如用户名重复、未认证、用户不存在。
      */
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
-        // 业务异常属于可预期错误，记录 code 和摘要即可，不输出请求体或敏感字段。
+    public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException exception) {
+        // 业务异常属于可预期错误，记录 code 和摘要即可，不输出请求体、密码、JWT、验证码答案或验证码 token。
         log.warn("Application business exception, code={}, status={}, message={}",
                 exception.getCode(), exception.getStatus().value(), exception.getMessage());
         return ResponseEntity
                 .status(exception.getStatus())
-                .body(ApiResponse.fail(exception.getCode(), exception.getMessage()));
+                .body(ApiResponse.fail(exception.getCode(), exception.getMessage(), exception.getData()));
     }
 
     /**

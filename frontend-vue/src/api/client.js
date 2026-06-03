@@ -12,11 +12,12 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
  * 用一个错误类把状态码、业务码和提示信息保留下来，页面层只需要统一弹出 message。
  */
 export class ApiError extends Error {
-  constructor(message, status, code) {
+  constructor(message, status, code, data) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -45,10 +46,14 @@ export async function request(path, options = {}) {
 
   const payload = await readJson(response);
   if (!response.ok) {
-    throw new ApiError(payload?.message || `HTTP ${response.status}`, response.status, payload?.code);
+    /**
+     * v0.5.4 登录滑块验证码会在失败响应 data 中返回 captchaRequired。
+     * Vue 页面层需要这个 data 来判断是否展示验证码区域，因此请求层不能丢弃它。
+     */
+    throw new ApiError(payload?.message || `HTTP ${response.status}`, response.status, payload?.code, payload?.data);
   }
   if (payload.code !== 0) {
-    throw new ApiError(payload.message || '业务处理失败', response.status, payload.code);
+    throw new ApiError(payload.message || '业务处理失败', response.status, payload.code, payload.data);
   }
 
   return payload.data;

@@ -10,12 +10,14 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: number;
+  readonly data?: unknown;
 
-  constructor(message: string, status: number, code?: number) {
+  constructor(message: string, status: number, code?: number, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -48,13 +50,17 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   const payload = await readJson<ApiResponse<T>>(response);
   if (!response.ok) {
-    throw new ApiError(payload?.message || `HTTP ${response.status}`, response.status, payload?.code);
+    /**
+     * v0.5.4 登录验证码会在失败响应 data 中返回 captchaRequired。
+     * 请求层保留该 data，页面层才能区分“普通账号密码错误”和“需要展示滑块验证码”。
+     */
+    throw new ApiError(payload?.message || `HTTP ${response.status}`, response.status, payload?.code, payload?.data);
   }
   if (payload.code !== 0) {
-    throw new ApiError(payload.message || '业务处理失败', response.status, payload.code);
+    throw new ApiError(payload.message || '业务处理失败', response.status, payload.code, payload.data);
   }
 
-  return payload.data;
+  return payload.data as T;
 }
 
 async function readJson<T>(response: Response): Promise<T> {

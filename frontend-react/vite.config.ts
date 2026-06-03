@@ -6,8 +6,9 @@ export default defineConfig({
   server: {
     /**
      * v0.5 开始采用“前端本地进程 + Gateway 本地进程 + 后端本地进程 + MySQL Docker”的运行方式。
-     * 开发时浏览器访问 Vite 端口 5173，所有 /api 请求由 Vite 代理到 Spring Cloud Gateway 8092。
-     * 8092 是本机占用范围 7991-8090、8146-8245 之外的网关端口，
+     * 开发时浏览器访问 Vite 端口 5320，所有 /api 请求由 Vite 代理到 Spring Cloud Gateway 8092。
+     * 5320 和 8092 都避开了 Windows 当前保留端口段 5112-5311，
+     * 以及本机占用范围 7991-8090、8146-8245，
      * 这样外部请求会统一经过网关 JWT 校验，再由网关按路径转发到用户、任务或通知服务。
      */
     proxy: {

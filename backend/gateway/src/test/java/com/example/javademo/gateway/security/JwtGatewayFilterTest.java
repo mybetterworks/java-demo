@@ -57,6 +57,30 @@ class JwtGatewayFilterTest {
     }
 
     /**
+     * 测试：登录前滑块验证码接口必须公开，否则用户在拿到 JWT 之前无法完成二次验证。
+     */
+    @Test
+    void shouldAllowPublicCaptchaPathsWithoutToken() {
+        JwtGatewayFilter filter = createFilter();
+
+        MockServerWebExchange challengeExchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/auth/captcha/slider").build()
+        );
+        AtomicBoolean challengeChainCalled = new AtomicBoolean(false);
+        filter.filter(challengeExchange, passChain(challengeChainCalled)).block();
+        assertThat(challengeChainCalled).isTrue();
+        assertThat(challengeExchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        MockServerWebExchange verifyExchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/auth/captcha/slider/verify").build()
+        );
+        AtomicBoolean verifyChainCalled = new AtomicBoolean(false);
+        filter.filter(verifyExchange, passChain(verifyChainCalled)).block();
+        assertThat(verifyChainCalled).isTrue();
+        assertThat(verifyExchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    /**
      * 测试：任务和通知服务的健康检查属于公开路径，方便 Gateway 路由和后续注册中心探测。
      */
     @Test

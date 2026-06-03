@@ -11,7 +11,7 @@
 | 开发语言 | JavaScript，不启用 TypeScript 模板 |
 | UI 组件库 | Element Plus |
 | 开发服务器 | Vite |
-| 开发端口 | `5174` |
+| 开发端口 | `5321` |
 | Preview 端口 | `4174` |
 | 后端代理 | `/api` 与 `/v3/api-docs` 转发到 Gateway `http://localhost:8092` |
 
@@ -41,7 +41,7 @@ npm.cmd run dev
 浏览器访问：
 
 ```text
-http://127.0.0.1:5174
+http://127.0.0.1:5321
 ```
 
 ## 构建验证

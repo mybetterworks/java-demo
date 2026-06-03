@@ -6,7 +6,7 @@
 export interface ApiResponse<T> {
   code: number;
   message: string;
-  data: T;
+  data: T | null;
 }
 
 export interface UserProfile {
@@ -32,6 +32,7 @@ export interface PageResponse<T> {
 export interface LoginRequest {
   username: string;
   password: string;
+  captchaToken?: string;
 }
 
 export interface LoginResponse {
@@ -39,6 +40,35 @@ export interface LoginResponse {
   accessToken: string;
   expiresInSeconds: number;
   user: UserProfile;
+}
+
+export interface CaptchaRequiredData {
+  captchaRequired: boolean;
+  failureCount: number;
+  failureThreshold: number;
+  windowSeconds: number;
+}
+
+export interface SliderCaptchaChallengeRequest {
+  username: string;
+}
+
+export interface SliderCaptchaChallengeResponse {
+  challengeId: string;
+  trackWidth: number;
+  puzzleWidth: number;
+  expiresInSeconds: number;
+  instruction: string;
+}
+
+export interface SliderCaptchaVerifyRequest {
+  challengeId: string;
+  sliderPosition: number;
+}
+
+export interface SliderCaptchaVerifyResponse {
+  captchaToken: string;
+  expiresInSeconds: number;
 }
 
 export interface CreateUserRequest {

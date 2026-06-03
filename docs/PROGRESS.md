@@ -12,7 +12,7 @@
 
 `v0.5.3 Task And Notification Frontends` 已完成。React 和 Vue 两套前端都已补齐任务管理与通知中心，双端功能、布局、操作路径保持一致，但代码结构和开发风格继续保留各自框架特点。该版本已完成后端回归、前端构建和真实 Gateway 联调验证。
 
-已新增 `v0.5.4 Login Slider Captcha` 规划，作为任务通知前端闭环后的登录安全增强版本。该版本要求同一登录主体 5 分钟内登录失败 3 次后，后续登录必须提交账号密码和滑块验证码，并同步 React/Vue 登录页的验证码展示、错误提示和重试流程。
+`v0.5.4 Login Slider Captcha` 已完成。当前 `java-demo-app` 登录链路已支持同一登录主体 5 分钟内登录失败 3 次后触发滑块验证码；React 和 Vue 登录页已同步支持验证码触发、展示、校验、错误提示和携带一次性验证码 token 的登录重试流程；Gateway 已放行验证码 challenge 和 verify 公开接口。
 
 已新增 `v0.6.1 OpenFeign Service Calls` 和 `v0.6.2 Dubbo RPC User Validation` 规划。`v0.6.1` 在 Nacos 之后把 `task-service -> java-demo-app`、`task-service -> notification-service` 从手写 REST 改为 OpenFeign；`v0.6.2` 只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC，通知链路继续保留 Feign，后续再由 `v1.0 MQ` 异步化。
 
@@ -63,7 +63,7 @@
 | v0.4 浏览器验证 | 已通过内置浏览器登录 Vue 管理端，并进入“当前用户”和“用户管理”工作区 |
 | 本地后端端口调整 | 已将后端默认端口从占用范围内的 `8082` 调整为 `8091` |
 | React 代理端口调整 | v0.5 已将 Vite 代理目标从后端 `8091` 调整为 Gateway `8092` |
-| Vue 代理端口配置 | v0.5 已将 Vite 代理目标从后端 `8091` 调整为 Gateway `8092`，Vue 开发端口为 `5174` |
+| 前端开发端口调整 | Windows 当前保留 `5112-5311` 段，旧 React/Vue 开发端口 `5173/5174` 会触发 `EACCES`；已调整为 React `5320`、Vue `5321` |
 | v0.5 Spring Cloud Gateway | 已新增 `backend/gateway` 模块，默认端口为 `8092` |
 | v0.5 Gateway 路由 | 已将登录、用户、OpenAPI JSON 和 Swagger UI 经 Gateway 转发到后端 `8091` |
 | v0.5 Gateway JWT 校验 | 已新增 `JwtGatewayFilter`，白名单放行登录、注册、健康检查和接口文档，用户接口必须携带 Bearer token |
@@ -93,6 +93,7 @@
 | 前后端功能联动策略 | 已采纳 `docs/decisions/0013-frontend-backend-feature-sync.md`，后续后端用户可见能力变化默认需要评估并同步 React/Vue 前端 |
 | v0.5.4 milestone 规划 | 已新增 `docs/milestones/v0.5.4-login-slider-captcha.md`，明确 5 分钟内登录失败 3 次后要求账号密码 + 滑块验证码的最小实现范围 |
 | 登录风险验证策略 | 已采纳 `docs/decisions/0015-login-risk-slider-captcha.md`，明确失败计数维度、验证码状态、安全日志边界和后续 Redis 迁移方向 |
+| v0.5.4 登录滑块验证码实现 | 已完成后端登录风险判断、验证码 challenge/verify 接口、一次性验证码 token、Gateway 白名单、React/Vue 登录页联动和自动化测试 |
 | 服务调用演进策略 | 已采纳 `docs/decisions/0014-service-invocation-evolution.md`，明确 REST、OpenFeign、Dubbo 和 MQ 在项目中的调用边界 |
 | v0.6.1 milestone 规划 | 已新增 `docs/milestones/v0.6.1-openfeign-service-calls.md`，明确 `task-service` 通过 OpenFeign 调用用户服务和通知服务 |
 | v0.6.2 milestone 规划 | 已新增 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，明确只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC |
@@ -102,8 +103,7 @@
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| v0.5.4 登录滑块验证码实现 | 未开始，当前准备开发该版本 |
-| Nacos 和后续微服务基础设施 | 未开始，需在 v0.5.4 登录风险验证完成后按后续 milestone 逐步引入 |
+| Nacos 和后续微服务基础设施 | 未开始，下一步按 `docs/milestones/v0.6-nacos.md` 引入 |
 | v0.6.1 OpenFeign 服务调用改造 | 未开始，需在 v0.6 Nacos 完成后实施 |
 | v0.6.2 Dubbo RPC 用户校验改造 | 未开始，需在 v0.6.1 OpenFeign 完成后实施 |
 
@@ -115,9 +115,9 @@
 | Maven | 目标版本 Maven `3.9.16`，路径 `D:\software\apache-maven-3.9.16` |
 | Maven 本地仓库 | `D:\software\maven_download` |
 | Node.js | 目标版本 Node.js `22.x`，用于 React TypeScript 和 Vue JavaScript 前端开发 |
-| Docker | Docker Desktop 可用，MySQL `8.4` 单节点容器启动验证通过；后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务按“服务/节点独立容器”推进 |
+| Docker | Docker Desktop 当前可用，MySQL `8.4` 单节点容器 `java-demo-mysql` 为 `healthy`；`v0.5.4` 已重新使用 Docker MySQL 完成真实 Gateway 登录风控联调 |
 | Git | 已初始化 Git 仓库，用户已提交 GitHub；后续提交、tag 和推送由用户手动执行 |
-| 本机占用端口 | `7991-8090`、`8146-8245`；当前项目端口规划已避开 |
+| 本机占用/保留端口 | `5112-5311`、`7991-8090`、`8146-8245`；当前项目端口规划已避开 |
 | Gateway | Spring Cloud Gateway `2023.0.3` 已接入，默认端口 `8092` |
 
 当前会话验证说明：
@@ -136,8 +136,8 @@
 | npm | PowerShell 执行 `npm.ps1` 受本机策略限制，已使用 `npm.cmd` 完成安装和构建 |
 | 端口扫描 | 已确认当前显式配置端口中，只有旧后端 `8082`/历史文档 `8080` 落入占用范围；当前配置已改为 `8091` |
 | 后端 `8091` 运行验证 | 已通过，`GET http://127.0.0.1:8091/api/health`、`/v3/api-docs`、`/swagger-ui.html` 均返回 `200` |
-| React `5173` 代理验证 | 历史验证已通过；v0.5 当前 Vite 代理目标已调整为 Gateway `8092` |
-| Vue `5174` 代理验证 | 已通过，`GET http://127.0.0.1:5174`、`/api/health`、登录、用户分页、新增、编辑和删除均可用 |
+| React `5320` 代理验证 | 当前开发端口已从 `5173` 调整为 `5320`；v0.5 当前 Vite 代理目标仍为 Gateway `8092` |
+| Vue `5321` 代理验证 | 当前开发端口已从 `5174` 调整为 `5321`；v0.5 当前 Vite 代理目标仍为 Gateway `8092` |
 | Vue 浏览器登录验证 | 已通过，使用内置浏览器登录 Vue 管理端、进入首页，并切换到用户管理工作区 |
 | Vue 结构优化构建验证 | 已通过，调整为 Vue 常见结构后再次执行 `frontend-vue` 的 `npm.cmd run build` 成功 |
 | Vue 结构优化浏览器验证 | 已通过，调整为 `layouts`、`views`、`composables` 后仍可登录、查看首页并进入用户管理 |
@@ -146,7 +146,7 @@
 | v0.5 Gateway `8092` 运行验证 | 已通过，`GET http://127.0.0.1:8092/api/health` 和 `/v3/api-docs` 均返回 `200` |
 | v0.5 Gateway JWT 验证 | 已通过，注册/登录走 Gateway 成功，不带 token 访问 `/api/users` 返回 `401`，携带 token 可访问 `/api/users/me` 和用户分页 |
 | v0.5 React/Vue 构建回归 | 已通过，`frontend-react` 和 `frontend-vue` 均执行 `npm.cmd run build` 成功 |
-| v0.5 React/Vue 代理联调 | 已通过，React `5173` 和 Vue `5174` 均经 Vite proxy 访问 Gateway `8092`，并完成注册、登录、当前用户和无 token 拦截验证 |
+| v0.5 React/Vue 代理联调 | 历史验证已通过；当前 React/Vue 开发端口已调整为 `5320/5321`，仍经 Vite proxy 访问 Gateway `8092` |
 | v0.5.1 Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；`java-demo-app` 2 个测试、`java-demo-gateway` 6 个测试、`task-service` 1 个测试、`notification-service` 1 个测试均成功 |
 | v0.5.1 Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；已生成 `java-demo-app`、`java-demo-gateway`、`java-demo-task-service`、`java-demo-notification-service` 四个 `0.5.1-SNAPSHOT` jar |
 | v0.5.1 MySQL 容器状态 | 已执行 `docker ps --filter "name=java-demo-mysql"`，确认 `java-demo-mysql` 为 `healthy` |
@@ -168,6 +168,10 @@
 | v0.5.2 WARN 级别验证 | 已验证 `JAVA_DEMO_LOG_LEVEL_ROOT=WARN` 和 `JAVA_DEMO_APP_LOG_LEVEL=WARN` 下普通 INFO 请求日志不输出，认证失败 WARN 日志仍输出 |
 | v0.5.2 敏感信息检查 | 已确认本次日志文件中未出现登录密码、完整 JWT 或 `Authorization` 字样 |
 | v0.5.2 临时端口 | 验证结束后已停止本次临时启动进程，`8252-8255` 无监听进程；未停止用户 IntelliJ 正在占用的 `8091-8094` 进程 |
+| v0.5.4 Docker MySQL 状态 | 已确认 `java-demo-mysql` 为 `healthy`，并补齐 `java_demo`、`java_demo_task`、`java_demo_notification` 数据库和 `java_demo` 用户授权 |
+| v0.5.4 真实 Gateway 登录风控联调复验 | 已使用真实 Docker MySQL、`java-demo-app:8252` 和 Gateway `8253` 完成完整滑块验证码链路；验证用户 `v054_mysql_20260531103422` |
+| v0.5.4 临时端口清理复验 | 验证结束后已停止本次启动的 `java-demo-app` 和 Gateway 进程，`8252`、`8253` 均无监听进程 |
+| 前端端口 EACCES 修复 | 已确认 Windows 当前保留端口段包含 `5112-5311`，旧 React/Vue 开发端口 `5173/5174` 无法绑定；已调整为 React `5320`、Vue `5321`，并验证两个端口页面均返回 `200` |
 
 注意：当前 Codex 进程的 PATH/JAVA_HOME/Node.js 路径可能仍是旧会话环境。若 `java -version`、`mvn -v` 或 `node -v` 未显示上述版本，重启终端或 Codex 会话后再验证。
 
@@ -467,21 +471,42 @@ v0.4 Vue 项目结构记录：
 | Vue 通知中心 | 已支持与 React 一致的通知列表、未读数和已读操作 |
 | 双端一致性 | React 和 Vue 菜单名称、页面布局、筛选项、表格字段、操作按钮、空数据与错误提示保持一致 |
 
+## v0.5.4 验证记录
+
+自动化、构建和联调验证：
+
+| 验证项 | 结果 |
+|---|---|
+| Maven app 测试 | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -pl backend/app -am test`，通过；`AuthFlowIntegrationTest` 覆盖注册、前两次错误密码、第三次触发验证码、验证码错误、验证码通过后登录和状态清理 |
+| Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；四个后端模块测试均成功 |
+| Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；已生成四个 `0.5.4-SNAPSHOT` 可执行 jar |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| Gateway 登录风控联调 | Docker Desktop 已启动，`java-demo-mysql` 容器为 `healthy`；本次使用真实 MySQL，临时启动 `java-demo-app` 端口 `8252`、Gateway 端口 `8253`，并设置 `JAVA_DEMO_BACKEND_URI=http://localhost:8252`；验证用户 `v054_mysql_20260531103422` |
+| 风控触发验证 | 经 Gateway 完成注册；前两次错误密码返回普通 `401`；第三次错误密码返回 `401`、业务码 `4601`、`captchaRequired=true`；正确密码但未携带验证码 token 仍返回 `4601` |
+| 验证码校验验证 | 错误滑块返回 `400`、业务码 `4602`；正确滑块返回一次性验证码 token；携带验证码 token 登录返回 `200` 且包含 JWT；登录成功后再次普通登录返回 `200`，确认状态已清理 |
+| Gateway 白名单 | 已验证 `/api/auth/captcha/slider` 与 `/api/auth/captcha/slider/verify` 在 Gateway 中属于公开路径，无需 JWT |
+| 临时端口清理 | 验证结束后已停止临时启动的 Java 进程，`8252` 和 `8253` 均无监听进程 |
+
+前端联动完成情况：
+
+| 项目 | 结论 |
+|---|---|
+| React 登录页 | 已支持验证码必需错误识别、challenge 加载、滑块拖动、verify 校验、携带一次性 token 登录重试和用户名变更后验证码状态重置 |
+| Vue 登录页 | 已使用 JavaScript + Element Plus 补齐与 React 一致的验证码交互、错误提示、登录重试和状态重置 |
+| API 封装 | React/Vue 均已扩展验证码 challenge、verify 和登录请求 `captchaToken` 字段；`ApiError` 可携带后端 `data` 用于识别 `captchaRequired` |
+| 安全边界 | 本版本继续禁止日志和前端提示泄露密码、完整 JWT、Authorization header、验证码答案和验证码 token 原文 |
+| 后续迁移 | 失败计数、challenge 和一次性 token 当前存放在单机内存，`v0.7 Redis` 再迁移到 Redis TTL 以支持多实例 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.5.3-task-notification-frontends.md
-```
-
-下一步尚未开始：
-
-```text
 docs/milestones/v0.5.4-login-slider-captcha.md
 ```
 
-`v0.5.4` 完成后的下一步：
+下一步尚未开始：
 
 ```text
 docs/milestones/v0.6-nacos.md
@@ -522,9 +547,9 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 |---|---|---|
 | Spring Boot 后端 | `8091` | 已配置 |
 | Swagger UI / OpenAPI JSON | `8091` | 跟随后端端口 |
-| React 开发服务器 | `5173` | 已配置，未落入占用范围 |
+| React 开发服务器 | `5320` | 已配置，避开 Windows 保留端口段 `5112-5311` |
 | React Preview | `4173` | 已配置，未落入占用范围 |
-| Vue 开发服务器 | `5174` | 已配置，未落入占用范围 |
+| Vue 开发服务器 | `5321` | 已配置，避开 Windows 保留端口段 `5112-5311` |
 | Vue Preview | `4174` | 已配置，未落入占用范围 |
 | Spring Cloud Gateway | `8092` | 已配置，v0.5 外部 API 统一入口 |
 | task-service | `8093` | 已配置，v0.5.1 任务服务端口 |
@@ -540,16 +565,16 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | 后端 `http://127.0.0.1:8091/api/health` | `200` |
 | 后端 `http://127.0.0.1:8091/v3/api-docs` | `200`，标题为 `Java Demo API` |
 | 后端 `http://127.0.0.1:8091/swagger-ui.html` | `200` |
-| React `http://127.0.0.1:5173` | `200` |
-| React 代理 `http://127.0.0.1:5173/api/health` | `200`，历史验证可转发到后端；v0.5 当前代理目标已调整为 Gateway `8092` |
-| React 代理 `http://127.0.0.1:5173/v3/api-docs` | `200`，标题为 `Java Demo API` |
-| Vue `http://127.0.0.1:5174` | `200` |
-| Vue 代理 `http://127.0.0.1:5174/api/health` | `200`，历史验证可转发到后端；v0.5 当前代理目标已调整为 Gateway `8092` |
+| React `http://127.0.0.1:5320` | 当前开发端口；已替代落入 Windows 保留端口段的 `5173` |
+| React 代理 `http://127.0.0.1:5320/api/health` | v0.5 当前代理目标为 Gateway `8092` |
+| React 代理 `http://127.0.0.1:5320/v3/api-docs` | v0.5 当前代理目标为 Gateway `8092` |
+| Vue `http://127.0.0.1:5321` | 当前开发端口；已替代落入 Windows 保留端口段的 `5174` |
+| Vue 代理 `http://127.0.0.1:5321/api/health` | v0.5 当前代理目标为 Gateway `8092` |
 | Vue 代理登录和用户管理接口 | `200`，已验证登录、当前用户、分页、新增、编辑和逻辑删除 |
 | Gateway `http://127.0.0.1:8092/api/health` | `200`，确认 Gateway 可转发到后端 `8091` |
 | Gateway `http://127.0.0.1:8092/v3/api-docs` | `200`，确认接口文档可经 Gateway 访问 |
 | Gateway JWT 校验 | 不带 token 访问 `/api/users` 返回 `401`，携带 token 可访问 `/api/users/me` 和用户分页 |
-| React/Vue 经 Gateway 联调 | React `5173` 和 Vue `5174` 均已通过 Vite proxy 经 Gateway 完成登录态接口验证 |
+| React/Vue 经 Gateway 联调 | 当前 React `5320` 和 Vue `5321` 均通过 Vite proxy 指向 Gateway `8092` |
 | v0.5.1 端口规划 | task-service 使用 `8093`，notification-service 使用 `8094`；后续其他服务从 `8095-8145` 或 `8246+` 分配 |
 | v0.5.1 端口配置 | `backend/task-service` 已使用 `8093`，`backend/notification-service` 已使用 `8094`，Gateway 已配置对应静态路由 |
 | 验证进程 | 验证结束后已停止本次临时启动的后端、Gateway 和前端进程 |
@@ -582,18 +607,17 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 
 ## 下一步建议
 
-1. 如需保存当前 `v0.5.3` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 下一次开发从 `docs/milestones/v0.5.4-login-slider-captcha.md` 开始，为登录流程增加失败计数和滑块验证码风险验证。
-3. v0.5.4 完成后再进入 `docs/milestones/v0.6-nacos.md`，把 Gateway、用户、任务、通知服务接入 Nacos。
-4. v0.6 完成后进入 `docs/milestones/v0.6.1-openfeign-service-calls.md`，把 `task-service -> java-demo-app` 和 `task-service -> notification-service` 从手写 REST 改为 OpenFeign。
-5. v0.6.1 完成后进入 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC。
-6. v0.6.2 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流，并迁移 v0.5.4 的登录失败计数和验证码状态。
-7. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
+1. 如需保存当前 `v0.5.4` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
+2. 下一次开发从 `docs/milestones/v0.6-nacos.md` 开始，把 Gateway、用户、任务、通知服务接入 Nacos。
+3. v0.6 完成后进入 `docs/milestones/v0.6.1-openfeign-service-calls.md`，把 `task-service -> java-demo-app` 和 `task-service -> notification-service` 从手写 REST 改为 OpenFeign。
+4. v0.6.1 完成后进入 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC。
+5. v0.6.2 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流，并迁移 v0.5.4 的登录失败计数和验证码状态。
+6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.5.4-login-slider-captcha.md。当前 v0.5.3 已完成，请从 v0.5.4 开始实现登录滑块验证码，不要重复实现任务和通知前端。v0.5.4 要求同一登录主体 5 分钟内登录失败 3 次后，后续登录必须提交账号密码和滑块验证码；请扩展 java-demo-app 登录流程，新增滑块验证码挑战和校验能力，并同步 React/Vue 登录页的验证码展示、校验、错误提示和登录重试流程。新增前端和后端代码必须补充详细中文注释，日志禁止打印密码、完整 JWT、Authorization header、验证码答案、验证码 token 或真实密钥。完成后运行后端测试、React/Vue 构建、真实 Gateway 登录联调，并更新 README 和 docs/PROGRESS.md。
+请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.6-nacos.md。当前 v0.5.4 已完成，请从 v0.6 开始实现 Nacos 服务注册发现和配置中心能力，不要重复实现登录滑块验证码。后续基础设施服务必须通过 Docker Desktop 独立容器运行；请保持本机端口避开 `5112-5311`、`7991-8090` 和 `8146-8245`，完成后运行后端测试、React/Vue 构建、真实 Gateway 联调，并更新 README 和 docs/PROGRESS.md。
 ```
 
 ## 完成记录
@@ -608,7 +632,7 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | `v0.5.1` | 已完成 | 2026-05-27 | 任务服务和通知服务 MVP；已通过 Maven test/package、React/Vue 构建回归和真实 Gateway 任务通知链路联调；提交、tag 和推送由用户手动执行 |
 | `v0.5.2` | 已完成 | 2026-05-27 | 后端运行日志基线；三个业务服务已支持控制台日志、文件日志、requestId、日志级别配置和敏感信息保护；提交、tag 和推送由用户手动执行 |
 | `v0.5.3` | 已完成 | 2026-05-31 | 任务和通知前端；React/Vue 已补齐任务管理与通知中心，并通过 Maven test/package、前端构建和真实 Gateway 联调 |
-| `v0.5.4` | 未开始 | - | 登录滑块验证码；已完成 milestone 与登录风险验证策略文档规划 |
+| `v0.5.4` | 已完成 | 2026-05-31 | 登录滑块验证码；已完成登录失败风险判断、滑块 challenge/verify、一次性验证码 token、React/Vue 登录页联动、Maven test/package、前端构建和真实 Gateway 登录风控联调 |
 | `v0.6` | 未开始 | - | Nacos |
 | `v0.6.1` | 未开始 | - | OpenFeign 服务调用；已完成 milestone 与服务调用演进策略文档规划 |
 | `v0.6.2` | 未开始 | - | Dubbo RPC 用户校验；已完成 milestone 与服务调用演进策略文档规划 |
@@ -632,14 +656,16 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 |---|---|---|
 | 当前 Codex 会话可能未刷新环境变量 | `java` 或 `mvn` 命令可能仍显示旧版本 | 重启终端或 Codex 会话后再验证 |
 | Maven 直接运行时可能读取旧 `JAVA_HOME` | Maven 可能使用 Java 8 而不是 Java 17 | 确保 `JAVA_HOME=D:\software\jdk-17.0.19` |
+| Docker Desktop 未运行或 Docker API 不可访问 | 依赖 MySQL、Nacos、Redis 等容器的真实联调无法使用 Docker 服务 | 先启动 Docker Desktop 并确认 `docker ps` 可用；如确需降级到 `test` profile + H2，只能作为临时排查手段，正式验收仍以 Docker MySQL 为准 |
 | 端口 `3306` 可能与本机 MySQL 冲突 | MySQL Docker 容器无法启动 | 暂停本机 MySQL 或调整 compose 端口后记录变更 |
 | 端口 `8091` 可能被其他应用占用 | 后端应用无法启动 | 启动前检查端口，必要时临时调整到 `8250` 等非占用范围端口 |
 | 端口 `8092` 可能被其他应用占用 | Gateway 无法启动，前端默认代理无法访问 API | 启动前检查端口，必要时临时调整 `GATEWAY_SERVER_PORT` 并同步更新前端代理和文档 |
 | 端口 `8093` 可能被其他应用占用 | v0.5.1 task-service 无法启动，Gateway `/api/tasks/**` 路由不可用 | 启动前检查端口，必要时临时调整任务服务端口并同步 Gateway、前端代理和文档 |
 | 端口 `8094` 可能被其他应用占用 | v0.5.1 notification-service 无法启动，任务通知链路不可用 | 启动前检查端口，必要时临时调整通知服务端口并同步 Gateway、服务调用配置和文档 |
-| 端口 `5173` 可能被其他前端项目占用 | React 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口 |
-| 端口 `5174` 可能被其他前端项目占用 | Vue 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口，并同步更新文档 |
-| 占用端口范围 `7991-8090`、`8146-8245` | 新增服务若误用这些端口会启动失败或冲突 | 后续新增服务必须按 `docs/decisions/0008-local-port-allocation.md` 分配端口，`8093` 和 `8094` 已预留给 v0.5.1 |
+| Windows 保留端口段 `5112-5311` | React/Vue 旧开发端口 `5173/5174` 会出现 `EACCES: permission denied` | 当前已改用 React `5320`、Vue `5321`；后续新增前端端口也要避开该保留段 |
+| 端口 `5320` 可能被其他前端项目占用 | React 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口，并同步更新文档 |
+| 端口 `5321` 可能被其他前端项目占用 | Vue 管理端开发服务器无法启动 | 停止占用进程或通过 Vite 参数临时调整端口，并同步更新文档 |
+| 占用/保留端口范围 `5112-5311`、`7991-8090`、`8146-8245` | 新增服务若误用这些端口会启动失败、冲突或出现 `EACCES` | 后续新增服务必须按 `docs/decisions/0008-local-port-allocation.md` 分配端口，`8093` 和 `8094` 已预留给 v0.5.1 |
 | PowerShell 旧版本不支持 `-SkipHttpErrorCheck` | 直接验证 4xx 状态时命令参数不可用 | 使用 `try/catch` 捕获 HTTP 4xx 状态 |
 | 当前 Codex 会话可能未刷新 Node.js PATH | `node -v` 可能无法显示 `v22.x.x`，影响前端开发验证 | 进入前端 milestone 前重启终端或 Codex 会话后再验证 Node.js 22 |
 | PowerShell 执行策略阻止 `npm.ps1` | 直接运行 `npm` 可能失败 | 使用 `npm.cmd` 执行安装、启动和构建 |

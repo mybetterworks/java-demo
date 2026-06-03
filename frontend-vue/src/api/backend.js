@@ -7,6 +7,20 @@ export function loginApi(data) {
   });
 }
 
+export function createSliderCaptchaApi(data) {
+  return request('/api/auth/captcha/slider', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export function verifySliderCaptchaApi(data) {
+  return request('/api/auth/captcha/slider/verify', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
 export function fetchCurrentUser(token) {
   return request('/api/users/me', { token });
 }

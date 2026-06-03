@@ -128,15 +128,15 @@
 
 已采纳 `docs/decisions/0008-local-port-allocation.md`。
 
-1. 本地环境中 `7991-8090`、`8146-8245` 已被占用，当前项目和后续新增服务不得使用这两个范围内的端口。
+1. 本地环境中 `7991-8090`、`8146-8245` 已被占用；Windows 当前还保留了 `5112-5311` 段，当前项目和后续新增服务不得使用这些范围内的端口。
 2. Spring Boot 后端默认端口为 `8091`，配置在 `backend/app/src/main/resources/application.yml`。
-3. React 管理端开发端口为 `5173`，preview 端口为 `4173`。
-4. `v0.4` Vue 管理端使用 `5174`，preview 端口使用 `4174`。
+3. React 管理端开发端口为 `5320`，preview 端口为 `4173`。
+4. `v0.4` Vue 管理端使用 `5321`，preview 端口使用 `4174`。
 5. `v0.5` Spring Cloud Gateway 建议使用 `8092`。
 6. `v0.5.1` task-service 使用 `8093`，notification-service 使用 `8094`。
 7. 后续拆分业务服务优先使用 `8095-8145` 或 `8246+`。
 8. 如果 Nginx 本地学习阶段不使用 `80` / `443`，非标准 HTTP/HTTPS 建议使用 `8250` / `8251`。
-9. 每次新增 Docker Compose、前端 dev server、后端服务、网关或运维组件端口时，都必须先检查是否落入占用范围，并同步更新 README 和 `docs/PROGRESS.md`。
+9. 每次新增 Docker Compose、前端 dev server、后端服务、网关或运维组件端口时，都必须先检查是否落入占用范围或 Windows 保留端口段，并同步更新 README 和 `docs/PROGRESS.md`。
 
 ## API 规则
 

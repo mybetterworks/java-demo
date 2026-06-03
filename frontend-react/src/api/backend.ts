@@ -11,6 +11,10 @@ import type {
   TaskItem,
   TasksQuery,
   TaskStatus,
+  SliderCaptchaChallengeRequest,
+  SliderCaptchaChallengeResponse,
+  SliderCaptchaVerifyRequest,
+  SliderCaptchaVerifyResponse,
   UnreadCountResponse,
   UpdateTaskRequest,
   UpdateTaskStatusRequest,
@@ -21,6 +25,20 @@ import type {
 
 export function loginApi(data: LoginRequest) {
   return request<LoginResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export function createSliderCaptchaApi(data: SliderCaptchaChallengeRequest) {
+  return request<SliderCaptchaChallengeResponse>('/api/auth/captcha/slider', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export function verifySliderCaptchaApi(data: SliderCaptchaVerifyRequest) {
+  return request<SliderCaptchaVerifyResponse>('/api/auth/captcha/slider/verify', {
     method: 'POST',
     body: JSON.stringify(data)
   });

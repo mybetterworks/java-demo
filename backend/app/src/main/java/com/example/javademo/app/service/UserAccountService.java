@@ -5,6 +5,8 @@ import com.example.javademo.app.common.BusinessException;
 import com.example.javademo.app.dto.LoginRequest;
 import com.example.javademo.app.dto.LoginResponse;
 import com.example.javademo.app.dto.RegisterRequest;
+import com.example.javademo.app.dto.SliderCaptchaChallengeResponse;
+import com.example.javademo.app.dto.SliderCaptchaVerifyResponse;
 import com.example.javademo.app.dto.UserProfileResponse;
 import com.example.javademo.app.entity.User;
 import com.example.javademo.app.mapper.UserMapper;
@@ -43,11 +45,13 @@ public class UserAccountService {
     private final UserMapper userMapper;
     private final PasswordService passwordService;
     private final JwtService jwtService;
+    private final LoginRiskService loginRiskService;
 
-    public UserAccountService(UserMapper userMapper, PasswordService passwordService, JwtService jwtService) {
+    public UserAccountService(UserMapper userMapper, PasswordService passwordService, JwtService jwtService, LoginRiskService loginRiskService) {
         this.userMapper = userMapper;
         this.passwordService = passwordService;
         this.jwtService = jwtService;
+        this.loginRiskService = loginRiskService;
     }
 
     /**
@@ -88,17 +92,46 @@ public class UserAccountService {
      * 用户登录并签发 JWT。
      *
      * <p>为了避免泄露账号是否存在，用户名不存在、账号不可用、密码错误都统一返回
-     * Invalid username or password。真实业务中还可以在这里增加失败次数限制、验证码、登录审计等能力。</p>
+     * Invalid username or password。v0.5.4 在这里新增登录风险判断：同一 username + clientIp
+     * 在 5 分钟内失败达到 3 次后，后续登录必须先完成滑块验证码。</p>
      *
      * @param request 登录请求
+     * @param clientIp 客户端 IP 或网关转发 IP，用于和 username 一起构成登录风险维度
      * @return 登录响应，包含 token 类型、JWT、过期时间和用户基础信息
      */
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, String clientIp) {
         String username = normalizeUsername(request.getUsername());
+
+        // 判断当前登录请求是否需要验证码，返回的 riskSnapshot 里包含当前失败次数和阈值等信息，供后续日志记录和异常响应使用。
+        LoginRiskService.LoginRiskSnapshot riskSnapshot = loginRiskService.snapshot(username, clientIp);
+
+        // 需要验证码
+        if (riskSnapshot.captchaRequired()) {
+            // 进入风险状态后必须先消费一次性 captchaToken。这里故意先校验验证码，再校验密码，避免攻击者在高风险状态下继续无限尝试密码。token 不会被写入日志。
+            boolean captchaVerified = loginRiskService.consumeVerifiedToken(username, clientIp, request.getCaptchaToken());
+            // 若验证码校验失败，则拒绝登录，并返回验证码上下文。
+            if (!captchaVerified) {
+                log.warn("User login rejected, username={}, reason=captcha_required", username);
+                // 返回登录失败摘要和验证码上下文，包括失败次数、验证阈值等。
+                throw BusinessException.captchaRequired(
+                        "登录失败次数过多，请先完成滑块验证",
+                        loginRiskService.captchaRequiredResponse(riskSnapshot)
+                );
+            }
+        }
+
         User user = findByUsername(username);
         if (user == null || user.getStatus() == null || user.getStatus() != STATUS_ENABLED || !passwordService.matches(request.getPassword(), user.getPasswordHash())) {
-            // 登录失败时统一输出摘要，不区分用户不存在还是密码错误，避免日志侧信道放大账号枚举风险。
+            // 登录失败时统一输出摘要，不区分用户不存在、账号禁用还是密码错误，避免接口和日志侧信道放大账号枚举风险。
+            LoginRiskService.LoginRiskSnapshot updatedSnapshot = loginRiskService.recordFailure(username, clientIp);
             log.warn("User login rejected, username={}, reason=invalid_credentials_or_disabled", username);
+            if (updatedSnapshot.captchaRequired()) {
+                // 第 3 次失败后立即告诉前端进入验证码流程；后续即使密码正确，也必须带验证码 token。
+                throw BusinessException.captchaRequired(
+                        "登录失败次数过多，请完成滑块验证后再登录",
+                        loginRiskService.captchaRequiredResponse(updatedSnapshot)
+                );
+            }
             throw BusinessException.unauthorized("Invalid username or password");
         }
 
@@ -108,8 +141,38 @@ public class UserAccountService {
         userMapper.updateById(user);
 
         String token = jwtService.createToken(user.getId(), user.getUsername());
+        loginRiskService.clearLoginState(username, clientIp);
         log.info("User login succeeded, userId={}, username={}", user.getId(), user.getUsername());
         return new LoginResponse("Bearer", token, jwtService.getExpirationSeconds(), UserProfileResponse.from(user));
+    }
+
+    /**
+     * 创建滑块验证码 challenge。
+     *
+     * <p>Controller 只负责 HTTP 入参，用户名规范化和风险 key 绑定仍放在账号服务里，
+     * 这样登录和验证码两个入口使用完全一致的 username 规则。</p>
+     *
+     * @param username 用户输入的用户名
+     * @param clientIp 客户端 IP 或网关转发 IP
+     * @return 前端渲染滑块所需的 challenge 信息
+     */
+    public SliderCaptchaChallengeResponse createSliderCaptcha(String username, String clientIp) {
+        String normalizedUsername = normalizeUsername(username);
+        return loginRiskService.createChallenge(normalizedUsername, clientIp);
+    }
+
+    /**
+     * 校验滑块验证码并返回一次性 captchaToken。
+     *
+     * <p>这里不接收用户名，因为 challenge 创建时已经绑定了 username + clientIp；
+     * 登录时再消费 token 并校验同一风险 key，保证 token 不能跨账号或跨客户端复用。</p>
+     *
+     * @param challengeId challenge 接口返回的 ID
+     * @param sliderPosition 用户最终拖动的位置
+     * @return 一次性验证码 token
+     */
+    public SliderCaptchaVerifyResponse verifySliderCaptcha(String challengeId, int sliderPosition) {
+        return loginRiskService.verifyChallenge(challengeId, sliderPosition);
     }
 
     /**
