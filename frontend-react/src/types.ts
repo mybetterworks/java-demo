@@ -55,15 +55,29 @@ export interface SliderCaptchaChallengeRequest {
 
 export interface SliderCaptchaChallengeResponse {
   challengeId: string;
+  backgroundImage: string;
+  puzzleImage: string;
   trackWidth: number;
+  imageWidth: number;
+  imageHeight: number;
   puzzleWidth: number;
+  puzzleHeight: number;
+  puzzleY: number;
   expiresInSeconds: number;
   instruction: string;
 }
 
+export interface CaptchaTrackPoint {
+  x: number;
+  y: number;
+  t: number;
+}
+
 export interface SliderCaptchaVerifyRequest {
   challengeId: string;
-  sliderPosition: number;
+  sliderX: number;
+  durationMs: number;
+  tracks: CaptchaTrackPoint[];
 }
 
 export interface SliderCaptchaVerifyResponse {

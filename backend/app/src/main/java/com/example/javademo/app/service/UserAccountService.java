@@ -2,6 +2,7 @@ package com.example.javademo.app.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.example.javademo.app.common.BusinessException;
+import com.example.javademo.app.dto.CaptchaTrackPoint;
 import com.example.javademo.app.dto.LoginRequest;
 import com.example.javademo.app.dto.LoginResponse;
 import com.example.javademo.app.dto.RegisterRequest;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 用户账号业务服务。
@@ -168,11 +170,13 @@ public class UserAccountService {
      * 登录时再消费 token 并校验同一风险 key，保证 token 不能跨账号或跨客户端复用。</p>
      *
      * @param challengeId challenge 接口返回的 ID
-     * @param sliderPosition 用户最终拖动的位置
+     * @param sliderX 用户最终拖动到的横坐标
+     * @param durationMs 拖动耗时，单位毫秒
+     * @param tracks 基础拖动轨迹点
      * @return 一次性验证码 token
      */
-    public SliderCaptchaVerifyResponse verifySliderCaptcha(String challengeId, int sliderPosition) {
-        return loginRiskService.verifyChallenge(challengeId, sliderPosition);
+    public SliderCaptchaVerifyResponse verifySliderCaptcha(String challengeId, int sliderX, long durationMs, List<CaptchaTrackPoint> tracks) {
+        return loginRiskService.verifyChallenge(challengeId, sliderX, durationMs, tracks);
     }
 
     /**

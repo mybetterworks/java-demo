@@ -1,9 +1,10 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Form, Input, Slider, Space, Typography, message } from 'antd';
-import { useState } from 'react';
+import { Alert, Button, Card, Form, Input, Space, Typography, message } from 'antd';
+import { useRef, useState } from 'react';
+import type { PointerEvent } from 'react';
 import { createSliderCaptchaApi, loginApi, verifySliderCaptchaApi } from '../api/backend';
 import { ApiError } from '../api/client';
-import type { CaptchaRequiredData, LoginResponse, SliderCaptchaChallengeResponse } from '../types';
+import type { CaptchaRequiredData, CaptchaTrackPoint, LoginResponse, SliderCaptchaChallengeResponse } from '../types';
 
 interface LoginPageProps {
   onLogin: (response: LoginResponse) => Promise<void>;
@@ -18,7 +19,9 @@ const CAPTCHA_REQUIRED_CODE = 4601;
 
 /**
  * 登录页只负责收集账号密码、处理登录风险验证码和触发登录，不直接操作 IndexedDB。
- * 这样登录成功后的状态保存统一交给 App，后续替换登录方式或升级验证码时页面不会变得臃肿。
+ *
+ * <p>v0.5.5 把原来的组件库 Slider 升级为自定义拼图拖拽区域：后端返回带缺口背景图和拼图块图，
+ * React 页面只负责展示图片、采集拖动轨迹并提交 sliderX / durationMs / tracks。</p>
  */
 export function LoginPage({ onLogin }: LoginPageProps) {
   const [form] = Form.useForm<LoginFormValues>();
@@ -31,15 +34,20 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [captchaVerifying, setCaptchaVerifying] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const dragStartClientXRef = useRef(0);
+  const dragStartSliderXRef = useRef(0);
+  const dragStartedAtRef = useRef(0);
+  const trackPointsRef = useRef<CaptchaTrackPoint[]>([]);
 
   async function handleFinish(values: LoginFormValues) {
     if (captchaRequired && !captchaToken) {
       /**
-       * 高风险状态下不直接提交账号密码，而是先引导用户完成滑块验证。
+       * 高风险状态下不重复提交账号密码，而是先引导用户完成拼图验证。
        * 这样可以避免在验证码缺失时反复触发后端登录接口。
        */
       await loadCaptchaChallenge(values.username);
-      messageApi.warning('请先完成滑块验证，再提交登录');
+      messageApi.warning('请先完成拼图验证，再提交登录');
       return;
     }
 
@@ -57,7 +65,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       if (isCaptchaRequiredError(error)) {
         /**
          * 后端返回 code=4601 时说明当前 username + clientIp 已进入风险状态。
-         * 前端立刻展示滑块并拉取 challenge，让用户不必猜测下一步该做什么。
+         * 前端立即展示拼图并拉取 challenge，让用户不必猜测下一步该做什么。
          */
         setCaptchaRequired(true);
         setCaptchaInfo(readCaptchaInfo(error));
@@ -81,7 +89,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     try {
       const challenge = await createSliderCaptchaApi({ username });
       setCaptchaChallenge(challenge);
-      setSliderPosition(0);
+      resetPuzzleDragState();
       setCaptchaToken(null);
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '验证码生成失败，请稍后重试');
@@ -97,32 +105,107 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       return;
     }
 
+    const tracks = ensureFinalTrackPoint();
+    if (tracks.length < 3) {
+      /**
+       * 前端先做一层体验提示；真正的安全判断仍以服务端为准。
+       * 这样用户没有拖动时不会直接收到后端 4602，看起来更友好。
+       */
+      messageApi.warning('请先拖动拼图块到缺口位置');
+      return;
+    }
+
     setCaptchaVerifying(true);
     try {
-      /**
-       * 当前 MVP 是“滑动到终点”。后端仍按 challengeId 校验一次性状态并返回短 TTL token。
-       * 页面只保存 token 到内存，登录成功或重新获取 challenge 后都会清空，不写入 IndexedDB。
-       */
       const response = await verifySliderCaptchaApi({
         challengeId: captchaChallenge.challengeId,
-        sliderPosition
+        sliderX: Math.round(sliderPosition),
+        durationMs: resolveDragDurationMs(),
+        tracks
       });
       setCaptchaToken(response.captchaToken);
-      messageApi.success('滑块验证通过，请继续登录');
+      messageApi.success('拼图验证通过，请继续登录');
     } catch (error) {
       setCaptchaToken(null);
       setCaptchaChallenge(null);
-      setSliderPosition(0);
-      messageApi.error(error instanceof Error ? error.message : '滑块验证失败，请重新获取验证码');
+      resetPuzzleDragState();
+      messageApi.error(error instanceof Error ? error.message : '拼图验证失败，请重新获取验证码');
     } finally {
       setCaptchaVerifying(false);
     }
   }
 
+  function handlePuzzlePointerDown(event: PointerEvent<HTMLImageElement>) {
+    if (!captchaChallenge || captchaToken) {
+      return;
+    }
+
+    /**
+     * Pointer Events 同时覆盖鼠标和触摸屏。这里记录拖动起点和初始 sliderX，
+     * 后续移动时按水平位移更新拼图块位置，并采集基础轨迹。
+     */
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStartClientXRef.current = event.clientX;
+    dragStartSliderXRef.current = sliderPosition;
+    dragStartedAtRef.current = performance.now();
+    trackPointsRef.current = [{ x: Math.round(sliderPosition), y: captchaChallenge.puzzleY, t: 0 }];
+    setDragging(true);
+  }
+
+  function handlePuzzlePointerMove(event: PointerEvent<HTMLImageElement>) {
+    if (!dragging || !captchaChallenge || captchaToken) {
+      return;
+    }
+
+    const maxSliderX = captchaChallenge.trackWidth - captchaChallenge.puzzleWidth;
+    const nextX = clamp(dragStartSliderXRef.current + event.clientX - dragStartClientXRef.current, 0, maxSliderX);
+    setSliderPosition(nextX);
+    appendTrackPoint(Math.round(nextX), captchaChallenge.puzzleY, Math.round(performance.now() - dragStartedAtRef.current));
+  }
+
+  function handlePuzzlePointerEnd(event: PointerEvent<HTMLImageElement>) {
+    if (!dragging || !captchaChallenge) {
+      return;
+    }
+
+    appendTrackPoint(Math.round(sliderPosition), captchaChallenge.puzzleY, Math.round(performance.now() - dragStartedAtRef.current));
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    setDragging(false);
+  }
+
+  function appendTrackPoint(x: number, y: number, t: number) {
+    const tracks = trackPointsRef.current;
+    const last = tracks.length > 0 ? tracks[tracks.length - 1] : null;
+    if (!last || Math.abs(last.x - x) >= 2 || t - last.t >= 45) {
+      tracks.push({ x, y, t });
+    }
+    if (tracks.length > 120) {
+      trackPointsRef.current = tracks.slice(tracks.length - 120);
+    }
+  }
+
+  function ensureFinalTrackPoint() {
+    if (!captchaChallenge) {
+      return [];
+    }
+    appendTrackPoint(Math.round(sliderPosition), captchaChallenge.puzzleY, resolveDragDurationMs());
+    return trackPointsRef.current;
+  }
+
+  function resolveDragDurationMs() {
+    const tracks = trackPointsRef.current;
+    const last = tracks.length > 0 ? tracks[tracks.length - 1] : null;
+    if (dragStartedAtRef.current <= 0) {
+      return last?.t ?? 0;
+    }
+    return Math.max(last?.t ?? 0, Math.round(performance.now() - dragStartedAtRef.current));
+  }
+
   function handleFormValuesChange(changedValues: Partial<LoginFormValues>) {
     if (changedValues.username !== undefined) {
       /**
-       * 验证码 token 和 username + clientIp 绑定。用户名变化后必须丢弃旧 challenge/token，
+       * 验证码 token 与 username + clientIp 绑定。用户名变化后必须丢弃旧 challenge/token，
        * 避免用户误以为旧验证码可以用于新账号。
        */
       resetCaptchaState();
@@ -133,8 +216,17 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     setCaptchaRequired(false);
     setCaptchaInfo(null);
     setCaptchaChallenge(null);
-    setSliderPosition(0);
+    resetPuzzleDragState();
     setCaptchaToken(null);
+  }
+
+  function resetPuzzleDragState() {
+    setSliderPosition(0);
+    setDragging(false);
+    dragStartClientXRef.current = 0;
+    dragStartSliderXRef.current = 0;
+    dragStartedAtRef.current = 0;
+    trackPointsRef.current = [];
   }
 
   function isCaptchaRequiredError(error: unknown): error is ApiError {
@@ -149,17 +241,20 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     return error.data as CaptchaRequiredData;
   }
 
-  const sliderMax = captchaChallenge ? captchaChallenge.trackWidth - captchaChallenge.puzzleWidth : 100;
+  function clamp(value: number, min: number, max: number) {
+    return Math.min(Math.max(value, min), max);
+  }
+
   const captchaReady = !captchaRequired || Boolean(captchaToken);
 
   return (
     <main className="login-scene">
       {contextHolder}
       <section className="login-hero">
-        <div className="hero-kicker">v0.3 React Admin</div>
+        <div className="hero-kicker">v0.5.5 React Admin</div>
         <Typography.Title level={1}>把微服务学习做成可触摸的系统</Typography.Title>
         <Typography.Paragraph>
-          这一版先让浏览器真正接入后端登录和用户管理 API。后面接网关、缓存、消息和观测时，这个前端会成为稳定的验证入口。
+          当前版本继续强化登录安全：失败次数过多后，需要先完成后端生成的图片拼图验证，再携带一次性 token 登录。
         </Typography.Paragraph>
       </section>
 
@@ -194,7 +289,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               <Alert
                 type={captchaToken ? 'success' : 'warning'}
                 showIcon
-                message={captchaToken ? '滑块验证已通过' : '需要滑块验证'}
+                message={captchaToken ? '拼图验证已通过' : '需要拼图验证'}
                 description={
                   captchaInfo
                     ? `当前 5 分钟内失败 ${captchaInfo.failureCount}/${captchaInfo.failureThreshold} 次，请完成验证后继续登录。`
@@ -203,16 +298,37 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               />
               <div className="captcha-track">
                 <div className="captcha-track-copy">
-                  {captchaChallenge?.instruction ?? '点击获取验证码后，将滑块拖动到最右侧'}
+                  {captchaChallenge?.instruction ?? '点击获取验证码后，将拼图块拖动到背景缺口位置'}
                 </div>
-                <Slider
-                  min={0}
-                  max={sliderMax}
-                  value={sliderPosition}
-                  disabled={!captchaChallenge || Boolean(captchaToken)}
-                  tooltip={{ formatter: (value) => `${value ?? 0}px` }}
-                  onChange={(value) => setSliderPosition(Array.isArray(value) ? value[0] : value)}
-                />
+                {captchaChallenge && (
+                  <>
+                    <div
+                      className="captcha-puzzle-stage"
+                      style={{ width: captchaChallenge.imageWidth, height: captchaChallenge.imageHeight }}
+                    >
+                      <img className="captcha-background" src={captchaChallenge.backgroundImage} alt="验证码背景图" draggable={false} />
+                      <img
+                        className={`captcha-puzzle-piece${dragging ? ' dragging' : ''}`}
+                        src={captchaChallenge.puzzleImage}
+                        alt="可拖动拼图块"
+                        draggable={false}
+                        style={{
+                          width: captchaChallenge.puzzleWidth,
+                          height: captchaChallenge.puzzleHeight,
+                          transform: `translate3d(${sliderPosition}px, ${captchaChallenge.puzzleY}px, 0)`
+                        }}
+                        onPointerDown={handlePuzzlePointerDown}
+                        onPointerMove={handlePuzzlePointerMove}
+                        onPointerUp={handlePuzzlePointerEnd}
+                        onPointerCancel={handlePuzzlePointerEnd}
+                      />
+                    </div>
+                    {/*<div className="captcha-progress">*/}
+                    {/*  <span>拖动距离：{Math.round(sliderPosition)}px</span>*/}
+                    {/*  <span>有效期：{captchaChallenge.expiresInSeconds}s</span>*/}
+                    {/*</div>*/}
+                  </>
+                )}
               </div>
               <Space className="captcha-actions" wrap>
                 <Button loading={captchaLoading} onClick={() => loadCaptchaChallenge(form.getFieldValue('username'))}>
@@ -225,7 +341,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   loading={captchaVerifying}
                   onClick={handleVerifyCaptcha}
                 >
-                  验证滑块
+                  验证拼图
                 </Button>
               </Space>
             </div>

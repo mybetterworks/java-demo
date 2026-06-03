@@ -1,11 +1,11 @@
 <template>
   <main class="login-scene">
     <section class="login-hero">
-      <p class="hero-kicker">v0.4 Vue Admin</p>
+      <p class="hero-kicker">v0.5.5 Vue Admin</p>
       <h1>把微服务学习做成可触摸的系统</h1>
       <p>
-        这一版用 Vue 实现和 React 管理端一致的登录和用户管理闭环。后面接网关、缓存、消息和观测时，
-        React 与 Vue 都可以作为稳定的验证入口。
+        当前版本继续强化登录安全：失败次数过多后，需要先完成后端生成的图片拼图验证，
+        再携带一次性 token 登录。Vue 与 React 保持同样业务路径，方便对比学习。
       </p>
     </section>
 
@@ -47,21 +47,47 @@
         <div v-if="captchaRequired" class="captcha-panel">
           <el-alert
             :type="captchaToken ? 'success' : 'warning'"
-            :title="captchaToken ? '滑块验证已通过' : '需要滑块验证'"
+            :title="captchaToken ? '拼图验证已通过' : '需要拼图验证'"
             :description="captchaDescription"
             show-icon
             :closable="false"
           />
           <div class="captcha-track">
             <div class="captcha-track-copy">
-              {{ captchaChallenge?.instruction || '点击获取验证码后，将滑块拖动到最右侧' }}
+              {{ captchaChallenge?.instruction || '点击获取验证码后，将拼图块拖动到背景缺口位置' }}
             </div>
-            <el-slider
-              v-model="sliderPosition"
-              :min="0"
-              :max="sliderMax"
-              :disabled="!captchaChallenge || Boolean(captchaToken)"
-            />
+            <template v-if="captchaChallenge">
+              <div
+                class="captcha-puzzle-stage"
+                :style="{ width: `${captchaChallenge.imageWidth}px`, height: `${captchaChallenge.imageHeight}px` }"
+              >
+                <img
+                  class="captcha-background"
+                  :src="captchaChallenge.backgroundImage"
+                  alt="验证码背景图"
+                  draggable="false"
+                >
+                <img
+                  :class="['captcha-puzzle-piece', { dragging }]"
+                  :src="captchaChallenge.puzzleImage"
+                  alt="可拖动拼图块"
+                  draggable="false"
+                  :style="{
+                    width: `${captchaChallenge.puzzleWidth}px`,
+                    height: `${captchaChallenge.puzzleHeight}px`,
+                    transform: `translate3d(${sliderPosition}px, ${captchaChallenge.puzzleY}px, 0)`
+                  }"
+                  @pointerdown="handlePuzzlePointerDown"
+                  @pointermove="handlePuzzlePointerMove"
+                  @pointerup="handlePuzzlePointerEnd"
+                  @pointercancel="handlePuzzlePointerEnd"
+                >
+              </div>
+<!--              <div class="captcha-progress">-->
+<!--                <span>拖动距离：{{ Math.round(sliderPosition) }}px</span>-->
+<!--                <span>有效期：{{ captchaChallenge.expiresInSeconds }}s</span>-->
+<!--              </div>-->
+            </template>
           </div>
           <div class="captcha-actions">
             <el-button :loading="captchaLoading" @click="loadCaptchaChallenge(form.username)">
@@ -74,7 +100,7 @@
               :loading="captchaVerifying"
               @click="handleVerifyCaptcha"
             >
-              验证滑块
+              验证拼图
             </el-button>
           </div>
         </div>
@@ -111,6 +137,11 @@ const sliderPosition = ref(0);
 const captchaToken = ref(null);
 const captchaLoading = ref(false);
 const captchaVerifying = ref(false);
+const dragging = ref(false);
+const dragStartClientX = ref(0);
+const dragStartSliderX = ref(0);
+const dragStartedAt = ref(0);
+const trackPoints = ref([]);
 
 const CAPTCHA_REQUIRED_CODE = 4601;
 
@@ -123,13 +154,6 @@ const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 };
-
-const sliderMax = computed(() => {
-  if (!captchaChallenge.value) {
-    return 100;
-  }
-  return captchaChallenge.value.trackWidth - captchaChallenge.value.puzzleWidth;
-});
 
 const captchaReady = computed(() => !captchaRequired.value || Boolean(captchaToken.value));
 
@@ -208,7 +232,7 @@ async function loadCaptchaChallenge(username) {
   captchaLoading.value = true;
   try {
     captchaChallenge.value = await createSliderCaptchaApi({ username });
-    sliderPosition.value = 0;
+    resetPuzzleDragState();
     captchaToken.value = null;
   } catch (error) {
     ElMessage.error(error?.message || '验证码生成失败，请稍后重试');
@@ -223,34 +247,131 @@ async function handleVerifyCaptcha() {
     return;
   }
 
+  const tracks = ensureFinalTrackPoint();
+  if (tracks.length < 3) {
+    /**
+     * 前端只做体验层提示，真正的验证码安全判断仍在后端。
+     * 没有拖动轨迹时先提示用户操作，避免直接收到后端 4602 看起来像系统异常。
+     */
+    ElMessage.warning('请先拖动拼图块到缺口位置');
+    return;
+  }
+
   captchaVerifying.value = true;
   try {
     /**
-     * 当前 MVP 使用“滑动到终点”的轻量滑块。后端仍校验 challengeId、位置和 TTL，
-     * 成功后返回短 TTL captchaToken；Vue 端只保存在内存中，不写入 localStorage。
+     * v0.5.5 提交的是拼图块最终横坐标、拖动耗时和基础轨迹。
+     * Vue 端不保存答案，也不把 captchaToken 写入 localStorage，降低二次验证结果被复用的风险。
      */
     const response = await verifySliderCaptchaApi({
       challengeId: captchaChallenge.value.challengeId,
-      sliderPosition: sliderPosition.value
+      sliderX: Math.round(sliderPosition.value),
+      durationMs: resolveDragDurationMs(),
+      tracks
     });
     captchaToken.value = response.captchaToken;
-    ElMessage.success('滑块验证通过，请继续登录');
+    ElMessage.success('拼图验证通过，请继续登录');
   } catch (error) {
     captchaToken.value = null;
     captchaChallenge.value = null;
-    sliderPosition.value = 0;
-    ElMessage.error(error?.message || '滑块验证失败，请重新获取验证码');
+    resetPuzzleDragState();
+    ElMessage.error(error?.message || '拼图验证失败，请重新获取验证码');
   } finally {
     captchaVerifying.value = false;
   }
+}
+
+function handlePuzzlePointerDown(event) {
+  if (!captchaChallenge.value || captchaToken.value) {
+    return;
+  }
+
+  /**
+   * Pointer Events 同时覆盖鼠标和触摸屏。这里记录拖动起点、当前拼图块位置和起始时间，
+   * 后续移动时只根据水平位移更新 sliderX，真实答案仍由后端保存和校验。
+   */
+  event.preventDefault();
+  event.currentTarget?.setPointerCapture?.(event.pointerId);
+  dragStartClientX.value = event.clientX;
+  dragStartSliderX.value = sliderPosition.value;
+  dragStartedAt.value = performance.now();
+  trackPoints.value = [{ x: Math.round(sliderPosition.value), y: captchaChallenge.value.puzzleY, t: 0 }];
+  dragging.value = true;
+}
+
+function handlePuzzlePointerMove(event) {
+  if (!dragging.value || !captchaChallenge.value || captchaToken.value) {
+    return;
+  }
+
+  const maxSliderX = captchaChallenge.value.trackWidth - captchaChallenge.value.puzzleWidth;
+  const nextX = clamp(dragStartSliderX.value + event.clientX - dragStartClientX.value, 0, maxSliderX);
+  sliderPosition.value = nextX;
+  appendTrackPoint(
+    Math.round(nextX),
+    captchaChallenge.value.puzzleY,
+    Math.round(performance.now() - dragStartedAt.value)
+  );
+}
+
+function handlePuzzlePointerEnd(event) {
+  if (!dragging.value || !captchaChallenge.value) {
+    return;
+  }
+
+  appendTrackPoint(
+    Math.round(sliderPosition.value),
+    captchaChallenge.value.puzzleY,
+    Math.round(performance.now() - dragStartedAt.value)
+  );
+  event.currentTarget?.releasePointerCapture?.(event.pointerId);
+  dragging.value = false;
+}
+
+function appendTrackPoint(x, y, t) {
+  const tracks = trackPoints.value;
+  const last = tracks.length > 0 ? tracks[tracks.length - 1] : null;
+  // 只记录有意义的轨迹点，避免过于密集的点导致请求体积过大。经验值：位置变化超过 2px 或时间间隔超过 45ms 时记录一个点。
+  if (!last || Math.abs(last.x - x) >= 2 || t - last.t >= 45) {
+    tracks.push({ x, y, t });
+  }
+  if (tracks.length > 120) {
+    trackPoints.value = tracks.slice(tracks.length - 120);
+  }
+}
+
+function ensureFinalTrackPoint() {
+  if (!captchaChallenge.value) {
+    return [];
+  }
+  appendTrackPoint(Math.round(sliderPosition.value), captchaChallenge.value.puzzleY, resolveDragDurationMs());
+  return trackPoints.value;
+}
+
+function resolveDragDurationMs() {
+  const tracks = trackPoints.value;
+  const last = tracks.length > 0 ? tracks[tracks.length - 1] : null;
+  if (dragStartedAt.value <= 0) {
+    return last?.t ?? 0;
+  }
+  return Math.max(last?.t ?? 0, Math.round(performance.now() - dragStartedAt.value));
 }
 
 function resetCaptchaState() {
   captchaRequired.value = false;
   captchaInfo.value = null;
   captchaChallenge.value = null;
-  sliderPosition.value = 0;
+  resetPuzzleDragState();
   captchaToken.value = null;
+}
+
+function resetPuzzleDragState() {
+  sliderPosition.value = 0;
+  dragging.value = false;
+  dragStartClientX.value = 0;
+  dragStartSliderX.value = 0;
+  dragStartedAt.value = 0;
+  trackPoints.value = [];
 }
 
 function isCaptchaRequiredError(error) {
@@ -263,5 +384,9 @@ function readCaptchaInfo(error) {
     return null;
   }
   return error.data;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 </script>

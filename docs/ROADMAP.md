@@ -168,6 +168,7 @@ E:\Code\codex\java-demo
 | 前后端功能联动策略 | `docs/decisions/0013-frontend-backend-feature-sync.md` | `v0.5.3` 起后端用户可见能力变化需要自动评估并同步 React/Vue 前端 |
 | 服务调用演进策略 | `docs/decisions/0014-service-invocation-evolution.md` | `v0.6.1` 使用 OpenFeign 改造普通同步 HTTP 调用，`v0.6.2` 只选择用户校验链路引入 Dubbo RPC，通知链路后续演进为 MQ |
 | 登录风险验证策略 | `docs/decisions/0015-login-risk-slider-captcha.md` | `v0.5.4` 增加登录失败风险判断，5 分钟内失败 3 次后要求账号密码 + 滑块验证码 |
+| 登录拼图验证码增强策略 | `docs/decisions/0016-login-image-puzzle-captcha.md` | `v0.5.5` 将学习型滑块升级为固定背景图随机拼图验证码，真实答案只保存在服务端 |
 | Git 提交策略 | `docs/decisions/0005-manual-git-commit.md` | 用户手动提交、打 tag 和推送，Codex 不自动执行 Git 写操作 |
 | 前端 Node 环境 | `docs/decisions/0006-node-frontend-environment.md` | Node.js 22 作为 React、Vue 前端默认运行时 |
 | 前端组件库 | `docs/decisions/0007-frontend-component-libraries.md` | React 使用 Ant Design，Vue 使用 Element UI 系列组件库 |
@@ -184,6 +185,7 @@ E:\Code\codex\java-demo
 | `v0.5.2` | 建立后端运行日志基线 | 三个业务服务支持控制台日志、文件日志、日志级别配置和敏感信息保护 |
 | `v0.5.3` | 补齐任务和通知前端 | React 和 Vue 都提供任务管理与通知中心，功能和布局一致，代码风格保持各自特点 |
 | `v0.5.4` | 增强登录风险验证 | 5 分钟内登录失败 3 次后，登录需要账号密码和滑块验证码 |
+| `v0.5.5` | 增强验证码抗自动化能力 | 固定背景图、随机拼图缺口、服务端保存答案、基础轨迹校验，降低脚本自动通过风险 |
 | `v0.6` | 接入 Nacos | 服务注册发现和配置中心进入主线，Gateway 和服务间调用从静态地址转向服务名 |
 | `v0.6.1` | 引入 OpenFeign | `task-service` 内部普通同步调用从手写 REST 改为声明式 HTTP 客户端 |
 | `v0.6.2` | 引入 Dubbo RPC | 只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo，用于对比 Feign 和 RPC |
@@ -211,6 +213,7 @@ E:\Code\codex\java-demo
 | `v0.5.2` | 后端运行日志 | SLF4J、Logback、控制台日志、文件日志、日志级别配置 | 用户、任务、通知服务关键流程可在控制台和 `logs` 文件中观察 |
 | `v0.5.3` | 任务和通知前端 | React、TypeScript、Ant Design、Vue、JavaScript、Element Plus | React/Vue 都能在浏览器中完成任务管理和通知中心操作 |
 | `v0.5.4` | 登录滑块验证码 | 登录失败计数、滑块验证码、React/Vue 登录页联动 | 5 分钟内失败 3 次后，必须完成滑块验证码才能登录 |
+| `v0.5.5` | 登录拼图滑块验证码 | 固定背景图、随机缺口位置、服务端答案校验、基础轨迹校验 | 触发风险后必须完成随机拼图滑块验证，脚本不能仅凭接口字段推导答案 |
 | `v0.6` | 注册与配置中心 | Nacos | Gateway、用户、任务、通知服务注册；服务名路由和配置读取可用 |
 | `v0.6.1` | 声明式服务调用 | OpenFeign、Nacos、Spring Cloud LoadBalancer | `task-service` 通过 Feign 调用用户服务和通知服务 |
 | `v0.6.2` | RPC 服务调用 | Dubbo、Nacos、RPC 接口契约 | `task-service` 通过 Dubbo 调用用户校验，通知链路继续保留 Feign |

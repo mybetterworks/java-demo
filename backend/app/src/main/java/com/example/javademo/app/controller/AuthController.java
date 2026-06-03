@@ -91,7 +91,12 @@ public class AuthController {
     public ApiResponse<SliderCaptchaVerifyResponse> verifySliderCaptcha(@Valid @RequestBody SliderCaptchaVerifyRequest request) {
         return ApiResponse.success(
                 "captcha verified",
-                userAccountService.verifySliderCaptcha(request.getChallengeId(), request.getSliderPosition())
+                userAccountService.verifySliderCaptcha(
+                        request.getChallengeId(),
+                        request.getSliderX(),
+                        request.getDurationMs(),
+                        request.getTracks()
+                )
         );
     }
 

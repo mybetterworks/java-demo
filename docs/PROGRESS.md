@@ -1,6 +1,6 @@
 # Project Progress
 
-最后更新：2026-05-31，Asia/Shanghai。
+最后更新：2026-06-03，Asia/Shanghai。
 
 ## 当前状态
 
@@ -13,6 +13,8 @@
 `v0.5.3 Task And Notification Frontends` 已完成。React 和 Vue 两套前端都已补齐任务管理与通知中心，双端功能、布局、操作路径保持一致，但代码结构和开发风格继续保留各自框架特点。该版本已完成后端回归、前端构建和真实 Gateway 联调验证。
 
 `v0.5.4 Login Slider Captcha` 已完成。当前 `java-demo-app` 登录链路已支持同一登录主体 5 分钟内登录失败 3 次后触发滑块验证码；React 和 Vue 登录页已同步支持验证码触发、展示、校验、错误提示和携带一次性验证码 token 的登录重试流程；Gateway 已放行验证码 challenge 和 verify 公开接口。
+
+`v0.5.5 Login Image Puzzle Captcha` 已完成。当前验证码已从学习型滑块升级为固定背景图随机拼图验证码：后端随机生成缺口位置并只在服务端保存真实答案，challenge 响应只返回背景缺口图、拼图块图和渲染参数；React 和 Vue 登录页已同步支持图片拼图拖拽、轨迹采集、verify 校验、一次性 token 登录重试和用户名变化后状态重置。
 
 已新增 `v0.6.1 OpenFeign Service Calls` 和 `v0.6.2 Dubbo RPC User Validation` 规划。`v0.6.1` 在 Nacos 之后把 `task-service -> java-demo-app`、`task-service -> notification-service` 从手写 REST 改为 OpenFeign；`v0.6.2` 只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC，通知链路继续保留 Feign，后续再由 `v1.0 MQ` 异步化。
 
@@ -94,6 +96,9 @@
 | v0.5.4 milestone 规划 | 已新增 `docs/milestones/v0.5.4-login-slider-captcha.md`，明确 5 分钟内登录失败 3 次后要求账号密码 + 滑块验证码的最小实现范围 |
 | 登录风险验证策略 | 已采纳 `docs/decisions/0015-login-risk-slider-captcha.md`，明确失败计数维度、验证码状态、安全日志边界和后续 Redis 迁移方向 |
 | v0.5.4 登录滑块验证码实现 | 已完成后端登录风险判断、验证码 challenge/verify 接口、一次性验证码 token、Gateway 白名单、React/Vue 登录页联动和自动化测试 |
+| v0.5.5 milestone 规划 | 已新增 `docs/milestones/v0.5.5-login-image-puzzle-captcha.md`，明确固定背景图随机拼图滑块验证码的实现要求 |
+| 登录拼图验证码增强策略 | 已采纳 `docs/decisions/0016-login-image-puzzle-captcha.md`，明确真实答案只保存在服务端、前端只展示图片和提交拖动结果 |
+| v0.5.5 登录拼图滑块验证码实现 | 已完成固定背景图资源、随机缺口生成、背景缺口图、拼图块图、服务端答案保存、坐标/耗时/轨迹校验、一次性 token、React/Vue 拼图拖拽联动、自动化测试和真实 Gateway 联调 |
 | 服务调用演进策略 | 已采纳 `docs/decisions/0014-service-invocation-evolution.md`，明确 REST、OpenFeign、Dubbo 和 MQ 在项目中的调用边界 |
 | v0.6.1 milestone 规划 | 已新增 `docs/milestones/v0.6.1-openfeign-service-calls.md`，明确 `task-service` 通过 OpenFeign 调用用户服务和通知服务 |
 | v0.6.2 milestone 规划 | 已新增 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，明确只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC |
@@ -115,7 +120,7 @@
 | Maven | 目标版本 Maven `3.9.16`，路径 `D:\software\apache-maven-3.9.16` |
 | Maven 本地仓库 | `D:\software\maven_download` |
 | Node.js | 目标版本 Node.js `22.x`，用于 React TypeScript 和 Vue JavaScript 前端开发 |
-| Docker | Docker Desktop 当前可用，MySQL `8.4` 单节点容器 `java-demo-mysql` 为 `healthy`；`v0.5.4` 已重新使用 Docker MySQL 完成真实 Gateway 登录风控联调 |
+| Docker | Docker Desktop 当前可用，MySQL `8.4` 单节点容器 `java-demo-mysql` 为 `healthy`；`v0.5.5` 已使用 Docker MySQL 完成真实 Gateway 登录拼图验证码联调 |
 | Git | 已初始化 Git 仓库，用户已提交 GitHub；后续提交、tag 和推送由用户手动执行 |
 | 本机占用/保留端口 | `5112-5311`、`7991-8090`、`8146-8245`；当前项目端口规划已避开 |
 | Gateway | Spring Cloud Gateway `2023.0.3` 已接入，默认端口 `8092` |
@@ -172,6 +177,13 @@
 | v0.5.4 真实 Gateway 登录风控联调复验 | 已使用真实 Docker MySQL、`java-demo-app:8252` 和 Gateway `8253` 完成完整滑块验证码链路；验证用户 `v054_mysql_20260531103422` |
 | v0.5.4 临时端口清理复验 | 验证结束后已停止本次启动的 `java-demo-app` 和 Gateway 进程，`8252`、`8253` 均无监听进程 |
 | 前端端口 EACCES 修复 | 已确认 Windows 当前保留端口段包含 `5112-5311`，旧 React/Vue 开发端口 `5173/5174` 无法绑定；已调整为 React `5320`、Vue `5321`，并验证两个端口页面均返回 `200` |
+| v0.5.5 Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；四个后端模块测试均成功 |
+| v0.5.5 Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；已生成四个 `0.5.5-SNAPSHOT` 可执行 jar |
+| v0.5.5 React 构建 | 已执行 `frontend-react` 的 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| v0.5.5 Vue 构建 | 已执行 `frontend-vue` 的 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| v0.5.5 前端浏览器检查 | 已使用当前 `5320/5321` dev server 检查 React/Vue 登录页，确认两端均显示 `v0.5.5` 登录页和拼图安全说明 |
+| v0.5.5 真实 Gateway 登录拼图验证码联调 | 已使用真实 Docker MySQL、`java-demo-app:8252` 和 Gateway `8253` 完成注册、3 次失败触发 `4601`、错误拼图 `4602`、图片差分求解、verify 成功、token 一次性、最终登录成功和状态清理；验证用户 `v055_gateway_20260603124127` |
+| v0.5.5 临时端口清理 | 验证结束后已停止本次启动的 `java-demo-app` 和 Gateway 进程，`8252`、`8253` 均无监听进程 |
 
 注意：当前 Codex 进程的 PATH/JAVA_HOME/Node.js 路径可能仍是旧会话环境。若 `java -version`、`mvn -v` 或 `node -v` 未显示上述版本，重启终端或 Codex 会话后再验证。
 
@@ -498,12 +510,40 @@ v0.4 Vue 项目结构记录：
 | 安全边界 | 本版本继续禁止日志和前端提示泄露密码、完整 JWT、Authorization header、验证码答案和验证码 token 原文 |
 | 后续迁移 | 失败计数、challenge 和一次性 token 当前存放在单机内存，`v0.7 Redis` 再迁移到 Redis TTL 以支持多实例 |
 
+## v0.5.5 验证记录
+
+自动化、构建和联调验证：
+
+| 验证项 | 结果 |
+|---|---|
+| Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；四个后端模块测试均成功 |
+| Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd package`，通过；已生成四个 `0.5.5-SNAPSHOT` 可执行 jar |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| 前端浏览器检查 | 已使用当前 `5320/5321` dev server 检查 React/Vue 登录页，确认两端均显示 `v0.5.5` 登录页和拼图安全说明 |
+| 后端自动化测试 | `AuthFlowIntegrationTest` 已覆盖 3 次错误密码触发 `4601`、正确密码但无验证码仍触发 `4601`、错误拼图位置 `4602`、过短耗时 `4602`、轨迹点过少 `4602`、challenge 响应不包含 `targetX/answerOffset`、图片差分求解正确位置、一次性 token 和登录成功后状态清理 |
+| Docker MySQL 状态 | 已确认 `java-demo-mysql` 容器为 `healthy`，真实联调使用 Docker MySQL `java_demo` 数据库 |
+| Gateway 登录拼图验证码联调 | 临时启动 `java-demo-app:8252` 和 Gateway `8253`，设置 `JAVA_DEMO_BACKEND_URI=http://localhost:8252`；验证用户 `v055_gateway_20260603124127` 完成注册、风险触发、challenge 获取、错误拼图失败、图片差分求解、verify 成功、token 被错误密码消费后不可复用、携带新 token 登录成功和状态清理 |
+| Gateway 白名单 | 已确认 `/api/auth/captcha/slider` 与 `/api/auth/captcha/slider/verify` 可经 Gateway 公开访问，无需 JWT |
+| 安全边界 | challenge 响应不返回真实 `targetX` 或旧版 `answerOffset`；已检查 `logs/v055-*`，未发现 `targetX`、`captchaToken`、`Authorization`、测试密码、图片 data URL 或完整 `accessToken` |
+| 临时端口清理 | 验证结束后已停止临时启动的 Java 进程，`8252` 和 `8253` 均无监听进程 |
+
+前端联动完成情况：
+
+| 项目 | 结论 |
+|---|---|
+| React 登录页 | 已使用 TypeScript + Ant Design 保留原登录流程，并将验证码交互升级为图片拼图拖拽、轨迹采集、verify 校验和一次性 token 登录重试 |
+| Vue 登录页 | 已使用 JavaScript + Element Plus 实现与 React 同语义的拼图验证码交互，页面布局、业务操作和处理逻辑继续保持一致 |
+| API 封装 | React 类型定义已扩展 `backgroundImage`、`puzzleImage`、`sliderX`、`durationMs` 和 `tracks`；Vue API 继续使用同一路径并提交同等字段 |
+| 样式 | React/Vue 均已补充拼图舞台、背景图、拼图块、拖动状态、进度信息和移动端横向容错样式 |
+| 后续迁移 | 失败计数、拼图 challenge 和一次性 token 当前仍使用单机内存，`v0.7 Redis` 再迁移到 Redis TTL 以支持多实例 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.5.4-login-slider-captcha.md
+docs/milestones/v0.5.5-login-image-puzzle-captcha.md
 ```
 
 下一步尚未开始：
@@ -591,6 +631,7 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | `v0.5.2` | 为用户、任务、通知三个业务服务建立控制台日志、文件日志和日志级别配置基线 |
 | `v0.5.3` | React 和 Vue 都补齐任务管理与通知中心，承接任务/通知微服务的用户可见能力 |
 | `v0.5.4` | 增强登录风险验证，5 分钟内登录失败 3 次后要求账号密码 + 滑块验证码，并同步 React/Vue 登录页 |
+| `v0.5.5` | 增强验证码抗自动化能力，使用固定背景图、随机拼图缺口、服务端答案和基础轨迹校验 |
 | `v0.6` | 接入 Nacos，进入服务注册和配置中心阶段 |
 | `v0.6.1` | 使用 OpenFeign 改造 `task-service` 到用户服务和通知服务的普通同步 HTTP 调用 |
 | `v0.6.2` | 使用 Dubbo RPC 改造 `task-service -> java-demo-app` 用户校验链路，通知链路继续保留 Feign |
@@ -607,17 +648,17 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 
 ## 下一步建议
 
-1. 如需保存当前 `v0.5.4` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 下一次开发从 `docs/milestones/v0.6-nacos.md` 开始，把 Gateway、用户、任务、通知服务接入 Nacos。
+1. 如需保存当前 `v0.5.5` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
+2. 下一次开发从 `docs/milestones/v0.6-nacos.md` 开始，把 Gateway、用户服务、任务服务和通知服务接入 Nacos。
 3. v0.6 完成后进入 `docs/milestones/v0.6.1-openfeign-service-calls.md`，把 `task-service -> java-demo-app` 和 `task-service -> notification-service` 从手写 REST 改为 OpenFeign。
 4. v0.6.1 完成后进入 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC。
-5. v0.6.2 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流，并迁移 v0.5.4 的登录失败计数和验证码状态。
+5. v0.6.2 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流，并迁移登录失败计数、拼图 challenge 和验证码 token。
 6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.6-nacos.md。当前 v0.5.4 已完成，请从 v0.6 开始实现 Nacos 服务注册发现和配置中心能力，不要重复实现登录滑块验证码。后续基础设施服务必须通过 Docker Desktop 独立容器运行；请保持本机端口避开 `5112-5311`、`7991-8090` 和 `8146-8245`，完成后运行后端测试、React/Vue 构建、真实 Gateway 联调，并更新 README 和 docs/PROGRESS.md。
+请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.6-nacos.md。当前 v0.5.5 已完成，请从 v0.6 开始接入 Nacos 服务注册发现和配置中心；不要重复实现登录拼图验证码，但需要在回归验证中确认 v0.5.5 的固定背景图随机拼图验证码仍然可用。基础设施服务必须通过 Docker Desktop 独立容器运行，端口继续避开 `5112-5311`、`7991-8090` 和 `8146-8245`。完成后运行后端测试、React/Vue 构建、真实 Gateway 联调，并更新 README 和 docs/PROGRESS.md。
 ```
 
 ## 完成记录
@@ -633,6 +674,7 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | `v0.5.2` | 已完成 | 2026-05-27 | 后端运行日志基线；三个业务服务已支持控制台日志、文件日志、requestId、日志级别配置和敏感信息保护；提交、tag 和推送由用户手动执行 |
 | `v0.5.3` | 已完成 | 2026-05-31 | 任务和通知前端；React/Vue 已补齐任务管理与通知中心，并通过 Maven test/package、前端构建和真实 Gateway 联调 |
 | `v0.5.4` | 已完成 | 2026-05-31 | 登录滑块验证码；已完成登录失败风险判断、滑块 challenge/verify、一次性验证码 token、React/Vue 登录页联动、Maven test/package、前端构建和真实 Gateway 登录风控联调 |
+| `v0.5.5` | 已完成 | 2026-06-03 | 固定背景图随机拼图滑块验证码；已完成服务端随机缺口、图片生成、答案只存服务端、轨迹校验、一次性 token、React/Vue 拼图拖拽联动、Maven test/package、前端构建和真实 Gateway 登录风控联调 |
 | `v0.6` | 未开始 | - | Nacos |
 | `v0.6.1` | 未开始 | - | OpenFeign 服务调用；已完成 milestone 与服务调用演进策略文档规划 |
 | `v0.6.2` | 未开始 | - | Dubbo RPC 用户校验；已完成 milestone 与服务调用演进策略文档规划 |
@@ -676,5 +718,6 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | 后端能力已完成但前端未同步 | 用户只能通过 Swagger 或脚本验证任务/通知，影响全栈学习闭环 | 遵守 `docs/decisions/0013-frontend-backend-feature-sync.md`，后端用户可见能力变化时自动评估并补齐 React/Vue 前端 |
 | React 和 Vue 功能漂移 | 两套前端如果功能、布局或操作路径不一致，会降低对比学习价值 | v0.5.3 开始要求双端菜单、页面结构、字段、操作和错误提示保持一致，代码结构仍保留各自框架特点 |
 | v0.5.4 单机登录风险状态不适合多实例 | 如果登录失败计数、验证码 challenge 和验证 token 只保存在单机内存，多实例部署时会出现状态不一致 | v0.5.4 明确作为 MVP 单机方案，v0.7 Redis 再迁移为 Redis TTL 状态存储 |
+| v0.5.5 拼图验证码仍非专业风控 | 固定背景图随机拼图能防止脚本只靠接口字段计算答案，但专业识图、打码平台或人工介入仍可能绕过 | 后续结合 `v0.7 Redis` 限流、登录安全审计、设备/行为分析或第三方验证码平台继续增强 |
 | 后续中间件容器边界混乱 | 如果多个服务共用一个容器，后续难以单独扩缩容或集群化 | 遵守 `docs/decisions/0010-docker-service-containerization.md`，每个服务和每个集群节点独立容器 |
 | 中间件范围很大 | 容易一次性复杂化 | 严格按 milestone 单步推进 |
