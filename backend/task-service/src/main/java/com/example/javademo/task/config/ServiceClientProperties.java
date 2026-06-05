@@ -5,46 +5,31 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * 任务服务下游调用配置。
  *
- * <p>v0.6 开始默认通过 Nacos 服务发现访问用户服务和通知服务，因此默认地址从 localhost 静态地址演进为
- * 服务名地址。同时保留 discoveryEnabled 开关，便于自动化测试继续使用普通 RestTemplate 与 Mock 服务。</p>
+ * <p>v0.6.1 开始 task-service 通过 OpenFeign + Nacos 服务名访问下游服务，因此这里不再保存静态 URL，
+ * 而是只保存两个逻辑服务名，便于启动日志、健康检查和 Feign 声明保持一致。</p>
  */
 @ConfigurationProperties(prefix = "java-demo.services")
 public class ServiceClientProperties {
 
-    /** 用户服务地址，默认通过服务名访问。 */
-    private String userServiceUrl = "http://java-demo-app";
+    /** 用户服务在 Nacos 中注册的服务名。 */
+    private String userServiceName = "java-demo-app";
 
-    /** 通知服务地址，默认通过服务名访问。 */
-    private String notificationServiceUrl = "http://notification-service";
+    /** 通知服务在 Nacos 中注册的服务名。 */
+    private String notificationServiceName = "notification-service";
 
-    /**
-     * 是否启用服务发现。
-     *
-     * <p>真实 v0.6 运行默认值为 true；测试环境和临时静态排障可以显式关闭。</p>
-     */
-    private boolean discoveryEnabled = true;
-
-    public String getUserServiceUrl() {
-        return userServiceUrl;
+    public String getUserServiceName() {
+        return userServiceName;
     }
 
-    public void setUserServiceUrl(String userServiceUrl) {
-        this.userServiceUrl = userServiceUrl;
+    public void setUserServiceName(String userServiceName) {
+        this.userServiceName = userServiceName;
     }
 
-    public String getNotificationServiceUrl() {
-        return notificationServiceUrl;
+    public String getNotificationServiceName() {
+        return notificationServiceName;
     }
 
-    public void setNotificationServiceUrl(String notificationServiceUrl) {
-        this.notificationServiceUrl = notificationServiceUrl;
-    }
-
-    public boolean isDiscoveryEnabled() {
-        return discoveryEnabled;
-    }
-
-    public void setDiscoveryEnabled(boolean discoveryEnabled) {
-        this.discoveryEnabled = discoveryEnabled;
+    public void setNotificationServiceName(String notificationServiceName) {
+        this.notificationServiceName = notificationServiceName;
     }
 }

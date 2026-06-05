@@ -26,6 +26,13 @@ spring:
         refresh-enabled: true
         import-check:
           enabled: false
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: ${JAVA_DEMO_FEIGN_CONNECT_TIMEOUT:3000}
+            readTimeout: ${JAVA_DEMO_FEIGN_READ_TIMEOUT:5000}
+            loggerLevel: ${JAVA_DEMO_FEIGN_LOGGER_LEVEL:basic}
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/java_demo_task?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
@@ -57,9 +64,8 @@ app:
 
 java-demo:
   services:
-    user-service-url: ${JAVA_DEMO_USER_SERVICE_URL:http://java-demo-app}
-    notification-service-url: ${JAVA_DEMO_NOTIFICATION_SERVICE_URL:http://notification-service}
-    discovery-enabled: ${JAVA_DEMO_SERVICE_DISCOVERY_ENABLED:true}
+    user-service-name: ${JAVA_DEMO_USER_SERVICE_NAME:java-demo-app}
+    notification-service-name: ${JAVA_DEMO_NOTIFICATION_SERVICE_NAME:notification-service}
 
 logging:
   file:

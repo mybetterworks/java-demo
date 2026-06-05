@@ -29,10 +29,9 @@ app:
 
 java-demo:
   services:
-    # 集成测试使用 MockRestServiceServer 拦截这两个地址，不需要真实启动下游服务。
-    user-service-url: http://java-demo-app
-    notification-service-url: http://notification-service
-    discovery-enabled: false
+    # 集成测试通过 @MockBean 替换两个 Feign Client，不依赖真实 Nacos 实例或下游服务。
+    user-service-name: java-demo-app
+    notification-service-name: notification-service
 
 logging:
   file:

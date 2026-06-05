@@ -1,7 +1,6 @@
 java-demo:
   services:
-    user-service-url: http://java-demo-app
-    notification-service-url: http://notification-service
-    discovery-enabled: true
+    user-service-name: java-demo-app
+    notification-service-name: notification-service
   runtime:
     service-role: task-service

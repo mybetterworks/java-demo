@@ -1,41 +1,34 @@
 package com.example.javademo.task.client;
 
+import com.example.javademo.task.client.feign.UserFeignClient;
 import com.example.javademo.task.common.ApiResponse;
 import com.example.javademo.task.common.BusinessException;
 import com.example.javademo.task.config.ServiceClientProperties;
 import com.example.javademo.task.security.AuthUser;
+import feign.FeignException;
+import feign.RetryableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 /**
- * 用户服务 REST 客户端。
+ * 用户服务客户端。
  *
- * <p>v0.6 之后默认通过服务名 http://java-demo-app 访问用户服务。调用时继续转发当前登录用户的 JWT，
- * 但日志只记录业务 ID、耗时和目标服务地址，不打印 token 或 Authorization header。</p>
+ * <p>v0.6.1 开始内部实现从 RestTemplate 切换为 OpenFeign。对 TaskService 而言，这里仍然保留一个
+ * 语义化包装层，用来集中处理日志、requestId、Authorization 透传和异常映射，避免把这些样板逻辑散落
+ * 到业务服务中。</p>
  */
 @Component
 public class UserServiceClient {
 
     private static final Logger log = LoggerFactory.getLogger(UserServiceClient.class);
 
-    /** 与请求日志过滤器保持一致，服务间调用时透传该值，便于跨服务日志串联。 */
-    private static final String REQUEST_ID_HEADER = "X-Request-Id";
-
-    private final RestTemplate restTemplate;
+    private final UserFeignClient userFeignClient;
     private final ServiceClientProperties properties;
 
-    public UserServiceClient(RestTemplate restTemplate, ServiceClientProperties properties) {
-        this.restTemplate = restTemplate;
+    public UserServiceClient(UserFeignClient userFeignClient, ServiceClientProperties properties) {
+        this.userFeignClient = userFeignClient;
         this.properties = properties;
     }
 
@@ -47,69 +40,71 @@ public class UserServiceClient {
      * @return 用户服务返回的最小用户信息
      */
     public UserProfileResponse requireUser(Long userId, AuthUser currentUser) {
-        String baseUrl = trimTrailingSlash(properties.getUserServiceUrl());
-        String url = baseUrl + "/api/users/" + userId;
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(currentUser.getAccessToken());
-        attachRequestId(headers);
+        String targetServiceName = properties.getUserServiceName();
+        String authorization = buildAuthorizationHeader(currentUser);
+        String requestId = currentRequestId();
         long startTime = System.currentTimeMillis();
 
         try {
-            // 服务间调用日志只记录业务 ID、操作人和目标地址，避免把 JWT 等敏感内容写入日志。
-            log.info("Calling user service to validate assignee, assigneeUserId={}, operatorUserId={}, target={}",
-                    userId, currentUser.getId(), sanitizeTarget(baseUrl));
-            ResponseEntity<ApiResponse<UserProfileResponse>> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    new HttpEntity<>(headers),
-                    new ParameterizedTypeReference<ApiResponse<UserProfileResponse>>() {
-                    }
-            );
-            ApiResponse<UserProfileResponse> body = response.getBody();
+            /*
+             * 这里显式透传 Authorization 和 requestId，而不是把任务服务自己的认证逻辑复制到下游。
+             * 这样 java-demo-app 仍然可以沿用“当前登录用户”语义做鉴权和审计。
+             */
+            log.info("Calling user service via OpenFeign to validate assignee, assigneeUserId={}, operatorUserId={}, targetService={}",
+                    userId, currentUser.getId(), sanitizeTarget(targetServiceName));
+            ApiResponse<UserProfileResponse> body = userFeignClient.getUser(userId, authorization, requestId);
             if (body == null || body.getCode() != 0 || body.getData() == null || body.getData().getId() == null) {
                 throw BusinessException.downstream("User service returned invalid response");
             }
-            log.info("User service validation succeeded, assigneeUserId={}, status={}, durationMs={}, target={}",
-                    userId, response.getStatusCode().value(), System.currentTimeMillis() - startTime, sanitizeTarget(baseUrl));
+            log.info("User service validation succeeded, assigneeUserId={}, durationMs={}, targetService={}",
+                    userId, System.currentTimeMillis() - startTime, sanitizeTarget(targetServiceName));
             return body.getData();
-        } catch (HttpStatusCodeException exception) {
-            if (exception.getStatusCode().value() == 404) {
+        } catch (RetryableException exception) {
+            /*
+             * RetryableException 主要对应连接失败、超时或下游实例暂不可达。这里统一转成 502，
+             * 让上层明确知道失败来自下游服务，而不是任务参数本身非法。
+             */
+            log.warn("User service call failed, assigneeUserId={}, reason={}, targetService={}",
+                    userId, exception.getClass().getSimpleName(), sanitizeTarget(targetServiceName));
+            throw BusinessException.downstream("User service is unavailable");
+        } catch (FeignException exception) {
+            // 用户不存在属于可预期业务失败，应当转换为 400，而不是统一吞成 502。
+            if (exception.status() == 404) {
                 throw BusinessException.badRequest("Assignee user does not exist");
             }
-            if (exception.getStatusCode().value() == 401) {
+            if (exception.status() == 401) {
                 throw BusinessException.unauthorized("User service rejected current token");
             }
-            log.warn("User service validation failed, assigneeUserId={}, status={}, target={}",
-                    userId, exception.getStatusCode().value(), sanitizeTarget(baseUrl));
-            throw BusinessException.downstream("User service is unavailable");
-        } catch (RestClientException exception) {
-            log.warn("User service call failed, assigneeUserId={}, reason={}, target={}",
-                    userId, exception.getClass().getSimpleName(), sanitizeTarget(baseUrl));
+            log.warn("User service validation failed, assigneeUserId={}, status={}, targetService={}",
+                    userId, exception.status(), sanitizeTarget(targetServiceName));
             throw BusinessException.downstream("User service is unavailable");
         }
     }
 
     /**
-     * 透传当前请求的 requestId，方便把任务服务和用户服务日志串起来。
+     * 读取当前 requestId，用于把 task-service 和 java-demo-app 的日志串起来。
      */
-    private void attachRequestId(HttpHeaders headers) {
+    private String currentRequestId() {
         String requestId = MDC.get("requestId");
-        if (requestId != null && !requestId.isBlank()) {
-            headers.set(REQUEST_ID_HEADER, requestId);
-        }
-    }
-
-    private String trimTrailingSlash(String value) {
-        if (value == null || value.isBlank()) {
-            return "http://java-demo-app";
-        }
-        return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+        return requestId == null || requestId.isBlank() ? null : requestId;
     }
 
     /**
-     * 对目标地址做兜底脱敏。
+     * 把当前用户 token 重新拼成标准 Bearer 头。
      *
-     * <p>当前地址通常只是服务名或本地调试 URL，但这里仍然保护 password/pwd 参数，避免后续扩展时误打日志。</p>
+     * <p>日志中绝不打印这个头，但下游服务仍需要它来沿用现有 JWT 鉴权链路。</p>
+     */
+    private String buildAuthorizationHeader(AuthUser currentUser) {
+        if (currentUser.getAccessToken() == null || currentUser.getAccessToken().isBlank()) {
+            throw BusinessException.unauthorized("Current user token is missing");
+        }
+        return "Bearer " + currentUser.getAccessToken();
+    }
+
+    /**
+     * 对目标服务名或调试地址做兜底脱敏。
+     *
+     * <p>当前 v0.6.1 主路径使用的是纯服务名；这里仍保留参数脱敏，兼顾未来临时排障时可能引入的调试地址。</p>
      */
     private String sanitizeTarget(String value) {
         return value

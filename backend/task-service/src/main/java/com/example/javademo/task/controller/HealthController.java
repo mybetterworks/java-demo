@@ -32,7 +32,11 @@ public class HealthController {
         data.put("configSource", environment.getProperty("java-demo.runtime.config-source", "local"));
         data.put("configLabel", environment.getProperty("java-demo.runtime.config-label", "not-configured"));
         data.put("serviceRole", environment.getProperty("java-demo.runtime.service-role", "task-service"));
-        data.put("discoveryEnabled", environment.getProperty("java-demo.services.discovery-enabled", Boolean.class, true));
+        // 健康检查里补充 v0.6.1 的服务调用模式和目标服务名，便于联调时快速确认已经切到 OpenFeign 主路径。
+        data.put("serviceCallMode", "openfeign");
+        data.put("userServiceName", environment.getProperty("java-demo.services.user-service-name", "java-demo-app"));
+        data.put("notificationServiceName", environment.getProperty("java-demo.services.notification-service-name", "notification-service"));
+        data.put("nacosDiscoveryEnabled", environment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, true));
         return ApiResponse.success(data);
     }
 }

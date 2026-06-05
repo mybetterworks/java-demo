@@ -28,7 +28,8 @@ import java.util.Set;
  * 任务业务服务。
  *
  * <p>本服务只管理任务数据本身。用户是否存在通过 UserServiceClient 校验，通知写入通过
- * NotificationServiceClient 完成，保持 v0.5.1 的微服务边界清晰可见。</p>
+ * NotificationServiceClient 完成；v0.6.1 起这两个客户端内部已切换为 OpenFeign，业务层不需要关心
+ * 具体 HTTP 调用细节，继续保持清晰的微服务边界。</p>
  */
 @Service
 public class TaskService {
