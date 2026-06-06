@@ -55,6 +55,25 @@ app:
     secret: ${JAVA_DEMO_JWT_SECRET:java-demo-v0-1-local-secret-change-me-32chars}
     expiration-seconds: ${JAVA_DEMO_JWT_EXPIRATION_SECONDS:7200}
 
+java-demo:
+  rpc:
+    user-provider-mode: ${JAVA_DEMO_USER_PROVIDER_MODE:dubbo}
+
+dubbo:
+  application:
+    name: ${JAVA_DEMO_DUBBO_APPLICATION_NAME:${spring.application.name}}
+    qos-enable: false
+    logger: slf4j
+  registry:
+    address: nacos://${JAVA_DEMO_NACOS_SERVER_ADDR:127.0.0.1:8848}
+    group: ${JAVA_DEMO_DUBBO_NACOS_GROUP:JAVA_DEMO_DUBBO}
+    register-mode: instance
+    parameters:
+      namespace: ${JAVA_DEMO_NACOS_NAMESPACE:public}
+  protocol:
+    name: dubbo
+    port: ${JAVA_DEMO_DUBBO_USER_PROVIDER_PORT:20881}
+
 logging:
   file:
     name: ${JAVA_DEMO_APP_LOG_FILE:logs/java-demo-app.log}

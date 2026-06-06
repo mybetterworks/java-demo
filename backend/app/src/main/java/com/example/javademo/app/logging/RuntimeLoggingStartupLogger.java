@@ -10,8 +10,10 @@ import org.springframework.stereotype.Component;
 /**
  * 用户服务启动日志记录器。
  *
- * <p>v0.6 接入 Nacos 后，除了保留原有日志文件、端口和数据源摘要，还需要额外记录注册中心与配置中心地址、
- * 当前配置来源和配置标签，便于排查“服务已启动但没有注册上去”或“读取到的仍是本地默认配置”等问题。</p>
+ * <p>v0.6.2 起，java-demo-app 除了继续承担用户 REST 能力外，
+ * 还要同时作为 Dubbo provider 暴露用户校验 RPC。
+ * 因此启动日志除了记录 Nacos、数据源和日志文件外，
+ * 还会额外输出 Dubbo application、registry 和 protocol 信息。</p>
  */
 @Component
 public class RuntimeLoggingStartupLogger implements ApplicationRunner {
@@ -27,7 +29,7 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         log.info(
-                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, appLevel={}, datasource={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
+                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, appLevel={}, datasource={}, userValidationProviderMode={}, dubboAppName={}, dubboRegistryAddress={}, dubboRegistryGroup={}, dubboProtocolName={}, dubboProtocolPort={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
                 environment.getProperty("spring.application.name", "java-demo-app"),
                 environment.getProperty("local.server.port", environment.getProperty("server.port", "unknown")),
                 resolveProfiles(),
@@ -35,6 +37,12 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
                 environment.getProperty("logging.level.root", "INFO"),
                 environment.getProperty("logging.level.com.example.javademo.app", "INFO"),
                 sanitizeConfigValue(environment.getProperty("spring.datasource.url", "not-configured")),
+                environment.getProperty("java-demo.rpc.user-provider-mode", "dubbo"),
+                sanitizeConfigValue(environment.getProperty("dubbo.application.name", "java-demo-app")),
+                sanitizeConfigValue(environment.getProperty("dubbo.registry.address", "not-configured")),
+                environment.getProperty("dubbo.registry.group", "JAVA_DEMO_DUBBO"),
+                environment.getProperty("dubbo.protocol.name", "dubbo"),
+                environment.getProperty("dubbo.protocol.port", "20881"),
                 environment.getProperty("spring.cloud.nacos.discovery.enabled", "true"),
                 environment.getProperty("spring.cloud.nacos.config.enabled", "true"),
                 sanitizeConfigValue(environment.getProperty("spring.cloud.nacos.discovery.server-addr", "not-configured")),

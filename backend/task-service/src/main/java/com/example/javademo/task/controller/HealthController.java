@@ -12,7 +12,9 @@ import java.util.Map;
 /**
  * 任务服务健康检查接口。
  *
- * <p>该接口不需要 JWT，便于 Gateway 路由验证、脚本探测和 v0.6 Nacos 配置刷新验证。</p>
+ * <p>该接口不需要 JWT，主要用于 Gateway 路由验证、脚本探测与 Nacos 配置加载检查。
+ * v0.6.2 以后，它还会显式暴露“用户 Dubbo + 通知 Feign”的运行摘要，
+ * 便于联调时快速确认当前主路径。</p>
  */
 @RestController
 public class HealthController {
@@ -32,10 +34,14 @@ public class HealthController {
         data.put("configSource", environment.getProperty("java-demo.runtime.config-source", "local"));
         data.put("configLabel", environment.getProperty("java-demo.runtime.config-label", "not-configured"));
         data.put("serviceRole", environment.getProperty("java-demo.runtime.service-role", "task-service"));
-        // 健康检查里补充 v0.6.1 的服务调用模式和目标服务名，便于联调时快速确认已经切到 OpenFeign 主路径。
-        data.put("serviceCallMode", "openfeign");
+        data.put("serviceCallMode", "mixed-dubbo-feign");
+        data.put("userValidationMode", environment.getProperty("java-demo.rpc.user-validation-mode", "dubbo"));
+        data.put("notificationCallMode", environment.getProperty("java-demo.rpc.notification-mode", "openfeign"));
         data.put("userServiceName", environment.getProperty("java-demo.services.user-service-name", "java-demo-app"));
         data.put("notificationServiceName", environment.getProperty("java-demo.services.notification-service-name", "notification-service"));
+        data.put("dubboApplicationName", environment.getProperty("dubbo.application.name", "task-service"));
+        data.put("dubboRegistryGroup", environment.getProperty("dubbo.registry.group", "JAVA_DEMO_DUBBO"));
+        data.put("dubboConsumerTimeoutMs", environment.getProperty("dubbo.consumer.timeout", "3000"));
         data.put("nacosDiscoveryEnabled", environment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, true));
         return ApiResponse.success(data);
     }

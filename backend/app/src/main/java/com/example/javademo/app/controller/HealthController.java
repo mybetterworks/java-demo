@@ -14,8 +14,8 @@ import java.util.Map;
 /**
  * 应用健康检查接口。
  *
- * <p>该接口不需要登录，主要用于本地启动验证、Gateway 连通性检查以及 v0.6 Nacos 配置读取验证。
- * 这里返回的配置摘要只包含非敏感信息，例如配置来源和 JWT 过期时间，不返回密钥本身。</p>
+ * <p>该接口不需要登录，主要用于本地启动验证、Gateway 连通性检查和 Nacos 配置读取检查。
+ * 从 v0.6.2 起，它还会返回 Dubbo provider 摘要，便于确认用户校验 RPC 是否已经暴露成功。</p>
  */
 @Tag(name = "Health", description = "应用健康检查接口")
 @RestController
@@ -28,11 +28,11 @@ public class HealthController {
     }
 
     /**
-     * 返回应用存活状态与当前配置摘要。
+     * 返回应用存活状态与当前关键配置摘要。
      *
-     * @return 包含 UP 状态、当前时间和 Nacos 配置摘要的统一响应
+     * @return 包含存活状态、配置来源和 Dubbo provider 摘要的统一响应
      */
-    @Operation(summary = "健康检查", description = "返回应用存活状态、当前时间和配置摘要。")
+    @Operation(summary = "健康检查", description = "返回应用存活状态、配置来源和 Dubbo provider 摘要。")
     @GetMapping("/api/health")
     public ApiResponse<Map<String, Object>> health() {
         Map<String, Object> data = new LinkedHashMap<>();
@@ -43,6 +43,10 @@ public class HealthController {
         data.put("configLabel", environment.getProperty("java-demo.runtime.config-label", "not-configured"));
         data.put("serviceRole", environment.getProperty("java-demo.runtime.service-role", "user-service"));
         data.put("jwtExpirationSeconds", environment.getProperty("app.jwt.expiration-seconds", Long.class, 7200L));
+        data.put("userValidationProviderMode", environment.getProperty("java-demo.rpc.user-provider-mode", "dubbo"));
+        data.put("dubboApplicationName", environment.getProperty("dubbo.application.name", "java-demo-app"));
+        data.put("dubboRegistryGroup", environment.getProperty("dubbo.registry.group", "JAVA_DEMO_DUBBO"));
+        data.put("dubboProtocolPort", environment.getProperty("dubbo.protocol.port", "20881"));
         return ApiResponse.success(data);
     }
 }

@@ -1,3 +1,20 @@
 java-demo:
+  rpc:
+    user-provider-mode: dubbo
   runtime:
     service-role: user-service
+
+dubbo:
+  application:
+    name: java-demo-app
+    qos-enable: false
+    logger: slf4j
+  registry:
+    address: nacos://${JAVA_DEMO_NACOS_SERVER_ADDR:127.0.0.1:8848}
+    group: ${JAVA_DEMO_DUBBO_NACOS_GROUP:JAVA_DEMO_DUBBO}
+    register-mode: instance
+    parameters:
+      namespace: ${JAVA_DEMO_NACOS_NAMESPACE:public}
+  protocol:
+    name: dubbo
+    port: ${JAVA_DEMO_DUBBO_USER_PROVIDER_PORT:20881}

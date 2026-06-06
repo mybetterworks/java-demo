@@ -2,5 +2,28 @@ java-demo:
   services:
     user-service-name: java-demo-app
     notification-service-name: notification-service
+  rpc:
+    user-validation-mode: dubbo
+    notification-mode: openfeign
   runtime:
     service-role: task-service
+
+dubbo:
+  application:
+    name: task-service
+    qos-enable: false
+    logger: slf4j
+  registry:
+    address: nacos://${JAVA_DEMO_NACOS_SERVER_ADDR:127.0.0.1:8848}
+    group: ${JAVA_DEMO_DUBBO_NACOS_GROUP:JAVA_DEMO_DUBBO}
+    register-mode: instance
+    parameters:
+      namespace: ${JAVA_DEMO_NACOS_NAMESPACE:public}
+      register-consumer-url: false
+  protocol:
+    name: dubbo
+    port: -1
+  consumer:
+    check: false
+    timeout: ${JAVA_DEMO_DUBBO_USER_TIMEOUT:3000}
+    retries: ${JAVA_DEMO_DUBBO_USER_RETRIES:0}

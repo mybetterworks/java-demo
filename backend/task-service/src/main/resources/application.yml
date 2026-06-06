@@ -66,6 +66,29 @@ java-demo:
   services:
     user-service-name: ${JAVA_DEMO_USER_SERVICE_NAME:java-demo-app}
     notification-service-name: ${JAVA_DEMO_NOTIFICATION_SERVICE_NAME:notification-service}
+  rpc:
+    user-validation-mode: ${JAVA_DEMO_USER_VALIDATION_MODE:dubbo}
+    notification-mode: ${JAVA_DEMO_NOTIFICATION_MODE:openfeign}
+
+dubbo:
+  application:
+    name: ${JAVA_DEMO_DUBBO_APPLICATION_NAME:${spring.application.name}}
+    qos-enable: false
+    logger: slf4j
+  registry:
+    address: nacos://${JAVA_DEMO_NACOS_SERVER_ADDR:127.0.0.1:8848}
+    group: ${JAVA_DEMO_DUBBO_NACOS_GROUP:JAVA_DEMO_DUBBO}
+    register-mode: instance
+    parameters:
+      namespace: ${JAVA_DEMO_NACOS_NAMESPACE:public}
+      register-consumer-url: false
+  protocol:
+    name: dubbo
+    port: -1
+  consumer:
+    check: ${JAVA_DEMO_DUBBO_CONSUMER_CHECK:false}
+    timeout: ${JAVA_DEMO_DUBBO_USER_TIMEOUT:3000}
+    retries: ${JAVA_DEMO_DUBBO_USER_RETRIES:0}
 
 logging:
   file:

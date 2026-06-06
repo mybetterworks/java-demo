@@ -1,10 +1,10 @@
 # Project Progress
 
-最后更新：2026-06-04，Asia/Shanghai。
+最后更新：2026-06-05，Asia/Shanghai。
 
 ## 当前状态
 
-`v0.6.1 OpenFeign Service Calls` 已完成。`task-service` 已引入 OpenFeign，并通过 Nacos 服务名调用 `java-demo-app` 与 `notification-service`；对业务层仍保留 `UserServiceClient` 和 `NotificationServiceClient` 包装层，用于集中处理 `Authorization`、`X-Request-Id` 透传、下游异常转换和关键日志。真实 Gateway 联调已确认 `serviceCallMode=openfeign`、`v0.5.5` 拼图验证码回归、任务/通知主流程和 requestId 透传均可用。
+`v0.6.2 Dubbo RPC User Validation` 已完成。当前已新增共享契约模块 `backend/rpc-api`，并把 `task-service -> java-demo-app` 的负责人用户校验主路径从 OpenFeign 切换为 Dubbo RPC；`task-service -> notification-service` 的通知创建链路继续保留 OpenFeign。业务层仍保留 `UserServiceClient` 和 `NotificationServiceClient` 包装层，分别集中处理 Dubbo attachment `requestId` 透传、Feign 请求头透传、异常转换和关键日志。真实 Gateway 联调已确认 `task-service` 健康检查返回 `serviceCallMode=mixed-dubbo-feign`，`java-demo-app` 返回 `userValidationProviderMode=dubbo`，同时 `v0.5.5` 拼图验证码、`v0.6` Nacos 注册发现和 `v0.6.1` Feign 通知链路均无回归。
 
 `v0.5 Gateway JWT` 已实现并完成 Spring Cloud Gateway 模块、网关 JWT 校验过滤器、React/Vue 代理切换、Maven reactor package、前端构建回归、Gateway 真实接口联调和文档更新。
 
@@ -22,7 +22,7 @@
 
 Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` 的编码限制保持 ASCII-only，中文说明继续写在 README、milestone 或 `docs/PROGRESS.md`；导入脚本也会主动拒绝非 ASCII 内容。
 
-`v0.6.1 OpenFeign Service Calls` 已完成，并已新增 `v0.6.2 Dubbo RPC User Validation` 规划。`v0.6.2` 只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC，通知链路继续保留 Feign，后续再由 `v1.0 MQ` 异步化。
+`v0.6.2 Dubbo RPC User Validation` 已完成。最终实现选择共享契约接口 `UserRpcService#getUserSummary(Long userId)`，provider 通过返回 `null` 表达“用户不存在或已逻辑删除”，consumer 再映射为 task-service 自己的 `400` 业务错误；Dubbo 注册仍使用 Nacos，但与 Spring Cloud 发现分组隔离到 `JAVA_DEMO_DUBBO`。测试环境通过 `@Profile("!test")` 避开真实 Dubbo 引用配置，并使用 `@MockBean(name = "userRpcServiceBridge")` 保持自动化测试稳定。下一步进入 `v0.7 Redis Cache And Rate Limit`。
 
 已完成：
 
@@ -110,14 +110,16 @@ Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` �
 | 服务调用演进策略 | 已采纳 `docs/decisions/0014-service-invocation-evolution.md`，明确 REST、OpenFeign、Dubbo 和 MQ 在项目中的调用边界 |
 | v0.6.1 milestone 规划 | 已新增 `docs/milestones/v0.6.1-openfeign-service-calls.md`，明确 `task-service` 通过 OpenFeign 调用用户服务和通知服务 |
 | v0.6.1 OpenFeign 实现 | 已完成 Feign 依赖接入、Feign Client、Nacos 服务名配置、健康检查和启动日志增强、requestId/JWT 透传、异常映射与真实 Gateway 联调 |
-| v0.6.2 milestone 规划 | 已新增 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，明确只把 `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC |
+| v0.6.2 milestone 文档 | 已更新 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，记录共享契约、Dubbo Provider/Consumer、验证结果与下一步 |
+| 共享 RPC 契约模块 | 已新增 `backend/rpc-api`，提供 `DubboAttachmentConstants`、`UserRpcService` 和 `UserSummaryRpcResponse` |
+| v0.6.2 Dubbo 用户校验实现 | 已完成 `task-service -> java-demo-app` Dubbo 用户校验、`task-service -> notification-service` Feign 保留、requestId 附件透传、健康检查与启动日志增强 |
 
 尚未完成：
 
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| v0.6.2 Dubbo RPC 用户校验改造 | 未开始，需在 v0.6.1 OpenFeign 完成后实施 |
+| v0.7 Redis 缓存与限流 | 未开始，待在 `v0.6.2` 稳定后实施 |
 
 ## 环境观察
 
@@ -140,8 +142,8 @@ Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` �
 | 直接执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -v` | 已确认 Maven `3.9.16` 可用 |
 | 临时设置 `JAVA_HOME=D:\software\jdk-17.0.19` 后执行 Maven | 已确认 Maven 可使用 Java `17.0.19` |
 | 本次执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test` | 已通过；五个 Maven 模块测试均成功 |
-| 本次执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -DskipTests package` | 已通过，生成四个 `0.6.1-SNAPSHOT` 可执行 jar |
-| 本次执行 Nacos 配置导入脚本 | 已通过，五份配置已导入 `DEFAULT_GROUP`，并确认待发布 YAML 需保持 ASCII-only |
+| 本次执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -DskipTests package` | 已通过，生成四个 `0.6.2-SNAPSHOT` 可执行 jar 和一个 `java-demo-rpc-api-0.6.2-SNAPSHOT.jar` |
+| 本次执行 Nacos 配置导入脚本 | 已通过，五份配置已导入 `DEFAULT_GROUP`，并继续确认待发布 YAML 需保持 ASCII-only，Dubbo 独立注册分组为 `JAVA_DEMO_DUBBO` |
 | 访问 `GET /v3/api-docs` | 已确认返回 OpenAPI JSON |
 | 访问 `GET /swagger-ui.html` | 已确认返回 Swagger UI 页面 |
 | Node.js 22 | 已确认当前会话 `node -v` 为 `v22.22.3` |
@@ -583,21 +585,35 @@ v0.4 Vue 项目结构记录：
 | Windows 编码约束 | 已继续确认 `spring-alibaba-nacos-config 2023.0.3.2` 在 Windows 上存在平台默认编码限制，因此 Nacos 发布配置保持 ASCII-only |
 | 临时端口清理 | 验证结束后已停止本次临时启动的 Java 进程，`8252-8255` 无监听进程 |
 
+## v0.6.2 验证记录
+
+自动化、构建和联调验证：
+
+| 验证项 | 结果 |
+|---|---|
+| Nacos 配置导入 | 已执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infra\docker-compose\nacos\import-configs.ps1`，确认最新 Dubbo + Feign 混合配置已导入 |
+| Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；五个 Maven 模块均成功 |
+| Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -DskipTests package`，通过；已生成四个 `0.6.2-SNAPSHOT` 可执行 jar 和一个 `rpc-api` 契约 jar |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 标准 `npm.cmd run build` 因 `frontend-vue/dist/assets/index-DYq5bwgT.js` 被环境锁定返回 `EPERM`；改用 `npm.cmd run build -- --outDir dist-v0_6_2_check --emptyOutDir false` 后通过 |
+| 四服务注册发现 | 使用真实后端 jar 联调时，Nacos `service/list` 可见 `java-demo-app`、`java-demo-gateway`、`task-service`、`notification-service` 各 1 个实例 |
+| Nacos 配置读取 | 直连与经 Gateway 访问健康检查时，`java-demo-app` 返回 `userValidationProviderMode=dubbo`、`dubboRegistryGroup=JAVA_DEMO_DUBBO`，`task-service` 返回 `serviceCallMode=mixed-dubbo-feign`、`userValidationMode=dubbo`、`notificationCallMode=openfeign` |
+| `v0.5.5` 登录安全回归 | 经 Gateway 验证错误密码第三次触发 `4601`，并成功访问 `/api/auth/captcha/slider` 完成拼图 challenge |
+| 真实 Gateway 业务联调 | 经 Gateway 完成注册、登录、`/api/users/me`、任务创建、通知查询；本次联调 `requestId=v062-smoke-20260605-212340`、任务 ID `12`、创建人 `31`、负责人 `32` |
+| 混合调用日志链路 | 已在 `logs/v062-20260605-212340-task-service.log`、`logs/v062-20260605-212340-java-demo-app.log`、`logs/v062-20260605-212340-notification-service.log` 中确认 `Calling user service via Dubbo`、`Received Dubbo user validation request` 和 `Calling notification service via OpenFeign` |
+| 前端联动判断 | 本版本只改造后端内部同步调用方式，不新增用户可见能力，因此 React/Vue 无需代码修改；双端构建已完成回归 |
+| Windows 编码约束 | 已继续确认 Nacos 待发布 YAML 必须保持 ASCII-only，Dubbo 注册分组仅写入配置，不写入中文注释 |
+| 临时进程清理 | 真实联调结束后已停止本次临时启动的 Java 进程，未保留额外监听端口 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.6.1-openfeign-service-calls.md
-```
-
-下一步尚未开始：
-
-```text
 docs/milestones/v0.6.2-dubbo-rpc-user-validation.md
 ```
 
-`v0.6.2` 完成后的下一步：
+下一步尚未开始：
 
 ```text
 docs/milestones/v0.7-redis-cache-rate-limit.md
@@ -681,17 +697,17 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 
 ## 下一步建议
 
-1. 如需保存当前 `v0.6.1` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 下一次开发从 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md` 开始，只把 `task-service -> java-demo-app` 用户校验链路从 OpenFeign 改为 Dubbo RPC。
-3. `v0.6.2` 完成后进入 `docs/milestones/v0.7-redis-cache-rate-limit.md`，验证用户校验、任务列表、通知未读数缓存和接口限流，并迁移登录失败计数、拼图 challenge 和验证码 token。
-4. 继续保持 `v0.5.5` 拼图验证码链路回归，确认 Dubbo 用户校验改造不会破坏登录安全流程。
-5. 继续保持 `v0.6` 的 Nacos 注册发现和 `v0.6.1` 的 Feign 通知链路，避免在同一版本一次性改动全部内部调用。
+1. 如需保存当前 `v0.6.2` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
+2. 下一次开发从 `docs/milestones/v0.7-redis-cache-rate-limit.md` 开始，为登录失败计数、拼图 challenge、验证码 token、用户校验、任务列表和通知未读数引入 Redis 缓存与 TTL。
+3. 继续保持 `task-service -> java-demo-app` 的 Dubbo 用户校验主路径，以及 `task-service -> notification-service` 的 Feign 通知主路径，不在同一版本一次性改动全部内部调用。
+4. 继续保持 `v0.5.5` 拼图验证码链路回归，确认后续 Redis 改造不会破坏登录安全流程。
+5. 继续保持 `v0.6` 的 Nacos 注册发现、`JAVA_DEMO_DUBBO` Dubbo 独立注册分组和 `requestId` 跨 Dubbo/Feign 链路串联能力。
 6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.6.2-dubbo-rpc-user-validation.md。当前 v0.6.1 OpenFeign 已完成，请在保留 Nacos 服务发现、Gateway 路由和 `task-service -> notification-service` Feign 通知链路的前提下，只把 `task-service -> java-demo-app` 的用户校验链路改为 Dubbo RPC；不要回退登录拼图验证码，也不要把通知链路提前改成 MQ。完成后运行后端测试、React/Vue 构建、真实 Gateway 联调，并在回归验证中继续确认 `v0.5.5` 的固定背景图随机拼图验证码、`v0.6` 的注册发现链路和 `v0.6.1` 的通知 Feign 主路径仍然可用，然后更新 README 和 docs/PROGRESS.md。
+请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.7-redis-cache-rate-limit.md。当前 `v0.6.2 Dubbo RPC User Validation` 已完成，请在保留 Nacos 服务发现、Gateway 路由、`task-service -> java-demo-app` Dubbo 用户校验主路径和 `task-service -> notification-service` Feign 通知链路的前提下，引入 Redis 缓存与限流；优先覆盖登录失败计数、拼图 challenge、验证码 token、用户校验、任务列表和通知未读数。完成后运行后端测试、前端构建、真实 Gateway 联调，并继续确认 `v0.5.5` 的固定背景图随机拼图验证码、`v0.6` 的注册发现链路和 `v0.6.2` 的 Dubbo + Feign 混合主路径仍然可用，然后更新 README 和 docs/PROGRESS.md。
 ```
 
 ## 完成记录
@@ -710,8 +726,8 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | `v0.5.5` | 已完成 | 2026-06-03 | 固定背景图随机拼图滑块验证码；已完成服务端随机缺口、图片生成、答案只存服务端、轨迹校验、一次性 token、React/Vue 拼图拖拽联动、Maven test/package、前端构建和真实 Gateway 登录风控联调 |
 | `v0.6` | 已完成 | 2026-06-03 | Nacos 服务注册发现和配置中心；已完成单节点 Docker Compose、配置导入、四服务注册发现、Gateway `lb://` 路由、`task-service` 服务名调用、Maven test/package、前端构建和真实 Gateway 业务联调 |
 | `v0.6.1` | 已完成 | 2026-06-04 | OpenFeign 服务调用；已完成 `task-service` Feign 客户端、Nacos 服务名配置、Maven test/package、React 构建、Vue 备用输出目录构建和真实 Gateway 联调 |
-| `v0.6.2` | 未开始 | - | Dubbo RPC 用户校验；已完成 milestone 与服务调用演进策略文档规划 |
-| `v0.7` | 未开始 | - | Redis |
+| `v0.6.2` | 已完成 | 2026-06-05 | Dubbo RPC 用户校验；已新增 `backend/rpc-api`、共享 `UserRpcService` 契约、Dubbo requestId 附件透传、Maven test/package、React 构建、Vue 备用输出目录构建和真实 Gateway 联调 |
+| `v0.7` | 未开始 | - | Redis 缓存、未读数缓存与接口限流 |
 | `v0.8` | 未开始 | - | WebSocket |
 | `v0.9` | 未开始 | - | MinIO |
 | `v1.0` | 未开始 | - | RabbitMQ 与 Kafka |

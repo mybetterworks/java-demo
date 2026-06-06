@@ -1,7 +1,7 @@
 spring:
   cloud:
     nacos:
-      # 自动化测试不依赖真实 Nacos，避免单元/集成测试被外部基础设施绑定。
+      # 自动化测试不依赖真实 Nacos，避免单元/集成测试与外部基础设施绑定。
       discovery:
         enabled: false
         register-enabled: false
@@ -10,7 +10,7 @@ spring:
         import-check:
           enabled: false
   datasource:
-    # 测试环境使用 H2 内存数据库，避免单元/集成测试依赖 Docker MySQL。
+    # 测试环境使用 H2 内存数据库，避免依赖 Docker MySQL。
     driver-class-name: org.h2.Driver
     # MODE=MySQL 让 H2 尽量模拟 MySQL 语法，便于复用 schema.sql。
     url: jdbc:h2:mem:java_demo;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
@@ -18,16 +18,27 @@ spring:
     password:
   sql:
     init:
-      # 每次测试启动都会初始化表结构，保证测试之间互相隔离。
+      # 每次测试启动都重新初始化表结构，保证测试相互隔离。
       mode: always
 
 app:
   jwt:
-    # 测试专用密钥，长度满足 HS256 要求，不用于真实环境。
+    # 测试专用密钥，不用于真实环境。
     secret: java-demo-test-secret-change-me-32chars
     expiration-seconds: 7200
 
+dubbo:
+  application:
+    name: java-demo-app-test
+    qos-enable: false
+  registry:
+    # provider 测试不需要连真实注册中心。
+    address: N/A
+  protocol:
+    name: dubbo
+    port: -1
+
 logging:
   file:
-    # 测试日志写入 target，避免自动化测试污染项目根目录 logs 运行目录。
+    # 测试日志写入 target，避免污染真实运行日志目录。
     name: target/test-logs/java-demo-app-test.log

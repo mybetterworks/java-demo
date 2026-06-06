@@ -1,88 +1,97 @@
 package com.example.javademo.task.client;
 
-import com.example.javademo.task.client.feign.UserFeignClient;
-import com.example.javademo.task.common.ApiResponse;
+import com.example.javademo.rpc.DubboAttachmentConstants;
+import com.example.javademo.rpc.user.UserRpcService;
+import com.example.javademo.rpc.user.UserSummaryRpcResponse;
 import com.example.javademo.task.common.BusinessException;
 import com.example.javademo.task.config.ServiceClientProperties;
 import com.example.javademo.task.security.AuthUser;
-import feign.FeignException;
-import feign.RetryableException;
+import org.apache.dubbo.rpc.RpcContext;
+import org.apache.dubbo.rpc.RpcException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
  * 用户服务客户端。
  *
- * <p>v0.6.1 开始内部实现从 RestTemplate 切换为 OpenFeign。对 TaskService 而言，这里仍然保留一个
- * 语义化包装层，用来集中处理日志、requestId、Authorization 透传和异常映射，避免把这些样板逻辑散落
- * 到业务服务中。</p>
+ * <p>v0.6.2 开始，这个包装层把负责人用户校验从 OpenFeign 切换到了 Dubbo。
+ * 业务层依然只需要调用语义化的 `requireUser`，
+ * 而 requestId 透传、RPC 调用日志、异常转换和 DTO 映射都继续收敛在这里。</p>
  */
 @Component
 public class UserServiceClient {
 
     private static final Logger log = LoggerFactory.getLogger(UserServiceClient.class);
 
-    private final UserFeignClient userFeignClient;
+    private final UserRpcService userRpcService;
     private final ServiceClientProperties properties;
 
-    public UserServiceClient(UserFeignClient userFeignClient, ServiceClientProperties properties) {
-        this.userFeignClient = userFeignClient;
+    public UserServiceClient(@Qualifier("userRpcServiceBridge") UserRpcService userRpcService,
+                             ServiceClientProperties properties) {
+        this.userRpcService = userRpcService;
         this.properties = properties;
     }
 
     /**
-     * 校验负责人的用户确实存在。
+     * 校验负责人用户确实存在。
      *
      * @param userId 待校验用户 ID
-     * @param currentUser 当前登录用户，用于透传 JWT
-     * @return 用户服务返回的最小用户信息
+     * @param currentUser 当前登录用户，用于记录操作人并串联日志
+     * @return 任务服务内部继续沿用的最小用户摘要
      */
     public UserProfileResponse requireUser(Long userId, AuthUser currentUser) {
         String targetServiceName = properties.getUserServiceName();
-        String authorization = buildAuthorizationHeader(currentUser);
         String requestId = currentRequestId();
         long startTime = System.currentTimeMillis();
 
         try {
             /*
-             * 这里显式透传 Authorization 和 requestId，而不是把任务服务自己的认证逻辑复制到下游。
-             * 这样 java-demo-app 仍然可以沿用“当前登录用户”语义做鉴权和审计。
+             * Dubbo provider 不会自动继承当前 HTTP 线程里的 MDC，
+             * 因此这里显式透传 requestId，方便 java-demo-app 在 provider 侧恢复日志上下文。
              */
-            log.info("Calling user service via OpenFeign to validate assignee, assigneeUserId={}, operatorUserId={}, targetService={}",
-                    userId, currentUser.getId(), sanitizeTarget(targetServiceName));
-            ApiResponse<UserProfileResponse> body = userFeignClient.getUser(userId, authorization, requestId);
-            if (body == null || body.getCode() != 0 || body.getData() == null || body.getData().getId() == null) {
-                throw BusinessException.downstream("User service returned invalid response");
+            if (requestId != null) {
+                RpcContext.getClientAttachment().setAttachment(DubboAttachmentConstants.REQUEST_ID, requestId);
             }
-            log.info("User service validation succeeded, assigneeUserId={}, durationMs={}, targetService={}",
-                    userId, System.currentTimeMillis() - startTime, sanitizeTarget(targetServiceName));
-            return body.getData();
-        } catch (RetryableException exception) {
+
+            log.info("Calling user service via Dubbo to validate assignee, assigneeUserId={}, operatorUserId={}, targetService={}",
+                    userId, resolveOperatorUserId(currentUser), sanitizeTarget(targetServiceName));
+            UserSummaryRpcResponse rpcResponse = userRpcService.getUserSummary(userId);
+
             /*
-             * RetryableException 主要对应连接失败、超时或下游实例暂不可达。这里统一转成 502，
-             * 让上层明确知道失败来自下游服务，而不是任务参数本身非法。
+             * provider 用 null 表达“用户不存在或已逻辑删除”，
+             * 这样 task-service 可以继续保留自己原有的 400 业务语义，而不会把这类场景误判成 502。
              */
-            log.warn("User service call failed, assigneeUserId={}, reason={}, targetService={}",
-                    userId, exception.getClass().getSimpleName(), sanitizeTarget(targetServiceName));
-            throw BusinessException.downstream("User service is unavailable");
-        } catch (FeignException exception) {
-            // 用户不存在属于可预期业务失败，应当转换为 400，而不是统一吞成 502。
-            if (exception.status() == 404) {
+            if (rpcResponse == null) {
                 throw BusinessException.badRequest("Assignee user does not exist");
             }
-            if (exception.status() == 401) {
-                throw BusinessException.unauthorized("User service rejected current token");
+            if (rpcResponse.getId() == null) {
+                throw BusinessException.downstream("User service returned invalid RPC response");
             }
-            log.warn("User service validation failed, assigneeUserId={}, status={}, targetService={}",
-                    userId, exception.status(), sanitizeTarget(targetServiceName));
+
+            UserProfileResponse response = toUserProfileResponse(rpcResponse);
+            log.info("User service validation succeeded, assigneeUserId={}, durationMs={}, targetService={}",
+                    userId, System.currentTimeMillis() - startTime, sanitizeTarget(targetServiceName));
+            return response;
+        } catch (RpcException exception) {
+            log.warn("User service Dubbo call failed, assigneeUserId={}, reason={}, targetService={}",
+                    userId, exception.getClass().getSimpleName(), sanitizeTarget(targetServiceName));
             throw BusinessException.downstream("User service is unavailable");
+        } catch (BusinessException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            log.warn("User service Dubbo call returned unexpected exception, assigneeUserId={}, reason={}, targetService={}",
+                    userId, exception.getClass().getSimpleName(), sanitizeTarget(targetServiceName));
+            throw BusinessException.downstream("User service is unavailable");
+        } finally {
+            RpcContext.removeClientAttachment();
         }
     }
 
     /**
-     * 读取当前 requestId，用于把 task-service 和 java-demo-app 的日志串起来。
+     * 读取当前 requestId，供 Dubbo 附件透传使用。
      */
     private String currentRequestId() {
         String requestId = MDC.get("requestId");
@@ -90,21 +99,25 @@ public class UserServiceClient {
     }
 
     /**
-     * 把当前用户 token 重新拼成标准 Bearer 头。
-     *
-     * <p>日志中绝不打印这个头，但下游服务仍需要它来沿用现有 JWT 鉴权链路。</p>
+     * 把 Dubbo DTO 转换成任务服务内部继续沿用的用户摘要对象。
      */
-    private String buildAuthorizationHeader(AuthUser currentUser) {
-        if (currentUser.getAccessToken() == null || currentUser.getAccessToken().isBlank()) {
-            throw BusinessException.unauthorized("Current user token is missing");
-        }
-        return "Bearer " + currentUser.getAccessToken();
+    private UserProfileResponse toUserProfileResponse(UserSummaryRpcResponse rpcResponse) {
+        UserProfileResponse response = new UserProfileResponse();
+        response.setId(rpcResponse.getId());
+        response.setUsername(rpcResponse.getUsername());
+        response.setStatus(rpcResponse.getStatus());
+        return response;
+    }
+
+    /**
+     * 提取日志里真正需要的操作人用户 ID。
+     */
+    private Long resolveOperatorUserId(AuthUser currentUser) {
+        return currentUser == null ? null : currentUser.getId();
     }
 
     /**
      * 对目标服务名或调试地址做兜底脱敏。
-     *
-     * <p>当前 v0.6.1 主路径使用的是纯服务名；这里仍保留参数脱敏，兼顾未来临时排障时可能引入的调试地址。</p>
      */
     private String sanitizeTarget(String value) {
         return value
