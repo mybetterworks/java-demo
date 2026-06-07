@@ -13,7 +13,8 @@ import java.sql.ResultSet;
  * 用户表轻量迁移器。
  *
  * <p>项目暂未引入 Flyway 或 Liquibase。v0.2 需要给 v0.1 已存在的 sys_user 表补充 role、
- * deleted、last_login_at 三个字段；如果只修改 CREATE TABLE IF NOT EXISTS，已有 MySQL 表不会自动新增列。
+ * deleted、last_login_at 三个字段；v0.9 继续补充头像 URL 和头像对象 key。
+ * 如果只修改 CREATE TABLE IF NOT EXISTS，已有 MySQL 表不会自动新增列。
  * 因此这里在应用启动时检查字段是否存在，缺失时执行最小 ALTER TABLE，保证本地旧数据也能继续运行。</p>
  */
 @Component
@@ -38,6 +39,8 @@ public class UserSchemaMigration implements ApplicationRunner {
         addColumnIfMissing("role", "ALTER TABLE sys_user ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'USER'");
         addColumnIfMissing("deleted", "ALTER TABLE sys_user ADD COLUMN deleted TINYINT NOT NULL DEFAULT 0");
         addColumnIfMissing("last_login_at", "ALTER TABLE sys_user ADD COLUMN last_login_at DATETIME NULL");
+        addColumnIfMissing("avatar_url", "ALTER TABLE sys_user ADD COLUMN avatar_url VARCHAR(512) NULL");
+        addColumnIfMissing("avatar_object_key", "ALTER TABLE sys_user ADD COLUMN avatar_object_key VARCHAR(512) NULL");
     }
 
     /**

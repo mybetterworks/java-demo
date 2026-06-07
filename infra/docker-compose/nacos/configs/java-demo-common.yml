@@ -15,7 +15,7 @@ spring:
 java-demo:
   redis:
     enabled: ${JAVA_DEMO_REDIS_ENABLED:true}
-    key-prefix: ${JAVA_DEMO_REDIS_KEY_PREFIX:java-demo:v0_8}
+    key-prefix: ${JAVA_DEMO_REDIS_KEY_PREFIX:java-demo:v0_9}
   cache:
     enabled: ${JAVA_DEMO_CACHE_ENABLED:true}
     user-ttl-seconds: ${JAVA_DEMO_USER_CACHE_TTL_SECONDS:300}
@@ -28,6 +28,17 @@ java-demo:
     user-query-limit: ${JAVA_DEMO_USER_QUERY_RATE_LIMIT:120}
     task-query-limit: ${JAVA_DEMO_TASK_QUERY_RATE_LIMIT:120}
     notification-query-limit: ${JAVA_DEMO_NOTIFICATION_QUERY_RATE_LIMIT:120}
+  minio:
+    enabled: ${JAVA_DEMO_MINIO_ENABLED:true}
+    endpoint: ${JAVA_DEMO_MINIO_ENDPOINT:http://127.0.0.1:9000}
+    public-endpoint: ${JAVA_DEMO_MINIO_PUBLIC_ENDPOINT:http://127.0.0.1:9000}
+    access-key: ${JAVA_DEMO_MINIO_ACCESS_KEY:java_demo_minio}
+    secret-key: ${JAVA_DEMO_MINIO_SECRET_KEY:java_demo_minio_pwd_123}
+    avatar-bucket: ${JAVA_DEMO_MINIO_AVATAR_BUCKET:java-demo-avatars}
+    task-attachment-bucket: ${JAVA_DEMO_MINIO_TASK_ATTACHMENT_BUCKET:java-demo-task-attachments}
+    avatar-public-url-prefix: ${JAVA_DEMO_AVATAR_PUBLIC_URL_PREFIX:/api/users/public/avatars}
+    max-avatar-size-bytes: ${JAVA_DEMO_MAX_AVATAR_SIZE_BYTES:2097152}
+    max-task-attachment-size-bytes: ${JAVA_DEMO_MAX_TASK_ATTACHMENT_SIZE_BYTES:10485760}
   runtime:
     config-source: nacos
-    config-label: v0.8-websocket
+    config-label: v0.9-minio

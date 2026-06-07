@@ -49,6 +49,10 @@ public class HealthController {
         data.put("cacheEnabled", environment.getProperty("java-demo.cache.enabled", Boolean.class, true));
         data.put("userCacheTtlSeconds", environment.getProperty("java-demo.cache.user-ttl-seconds", Long.class, 300L));
         data.put("rateLimitEnabled", environment.getProperty("java-demo.rate-limit.enabled", Boolean.class, true));
+        data.put("minioEnabled", environment.getProperty("java-demo.minio.enabled", Boolean.class, true));
+        data.put("minioEndpoint", environment.getProperty("java-demo.minio.endpoint", "http://127.0.0.1:9000"));
+        data.put("avatarBucket", environment.getProperty("java-demo.minio.avatar-bucket", "java-demo-avatars"));
+        data.put("maxAvatarSizeBytes", environment.getProperty("java-demo.minio.max-avatar-size-bytes", Long.class, 2097152L));
         data.put("userValidationProviderMode", environment.getProperty("java-demo.rpc.user-provider-mode", "dubbo"));
         data.put("dubboApplicationName", environment.getProperty("dubbo.application.name", "java-demo-app"));
         data.put("dubboRegistryGroup", environment.getProperty("dubbo.registry.group", "JAVA_DEMO_DUBBO"));

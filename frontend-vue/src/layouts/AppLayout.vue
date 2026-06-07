@@ -25,7 +25,7 @@
         </div>
 
         <div class="header-actions">
-          <el-avatar class="user-avatar">{{ avatarText }}</el-avatar>
+          <el-avatar class="user-avatar" :src="currentUser.avatarUrl || undefined">{{ avatarText }}</el-avatar>
           <div class="header-user">
             <strong>{{ currentUser.nickname || currentUser.username }}</strong>
             <el-tag :type="currentUser.status === 1 ? 'success' : 'warning'">

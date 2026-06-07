@@ -290,6 +290,15 @@ body {
   width: 100%;
 }
 
+.detail-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.attachment-card {
+  border-radius: 16px;
+}
+
 .table-subtext {
   display: inline-block;
   max-width: 460px;

@@ -105,6 +105,26 @@ class JwtGatewayFilterTest {
     }
 
     /**
+     * 测试：头像公开代理接口必须允许无 token 访问。
+     *
+     * <p>浏览器 img/avatar 请求不会自动携带 Authorization header，
+     * 因此头像展示路径需要在 Gateway 层放行；真正的头像上传接口仍然受 JWT 保护。</p>
+     */
+    @Test
+    void shouldAllowPublicAvatarPathWithoutToken() {
+        JwtGatewayFilter filter = createFilter();
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/users/public/avatars/1001").build()
+        );
+        AtomicBoolean chainCalled = new AtomicBoolean(false);
+
+        filter.filter(exchange, passChain(chainCalled)).block();
+
+        assertThat(chainCalled).isTrue();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    /**
      * 测试：受保护路径在没有 Token 的情况下会被拒绝访问，返回 401 未授权。
      */
     @Test

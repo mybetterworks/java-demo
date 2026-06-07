@@ -1,6 +1,15 @@
 import { onMounted, reactive, ref, unref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { createTask, deleteTask, getTask, pageTasks, updateTask, updateTaskStatus } from '../api/backend';
+import {
+  createTask,
+  deleteTask,
+  downloadTaskAttachment,
+  getTask,
+  pageTasks,
+  updateTask,
+  updateTaskStatus,
+  uploadTaskAttachment
+} from '../api/backend';
 import { recentTasksQueryStore } from '../storage/localStorage';
 
 const DEFAULT_QUERY = {
@@ -57,6 +66,8 @@ export function useTaskManagement(tokenRef) {
   const detailLoading = ref(false);
   const detailTask = ref(null);
   const statusChangingId = ref(null);
+  const attachmentUploading = ref(false);
+  const downloadingAttachmentId = ref(null);
 
   const queryForm = reactive({ ...DEFAULT_QUERY });
   const query = reactive({ ...DEFAULT_QUERY });
@@ -217,6 +228,46 @@ export function useTaskManagement(tokenRef) {
     }
   }
 
+  async function handleAttachmentChange(uploadFile) {
+    if (!detailTask.value || !uploadFile.raw) {
+      return;
+    }
+    attachmentUploading.value = true;
+    try {
+      await uploadTaskAttachment(unref(tokenRef), detailTask.value.id, uploadFile.raw);
+      ElMessage.success('附件已上传到 MinIO');
+      detailTask.value = await getTask(unref(tokenRef), detailTask.value.id);
+      await loadTasks(query);
+    } catch (error) {
+      ElMessage.error(error?.message || '上传附件失败');
+    } finally {
+      attachmentUploading.value = false;
+    }
+  }
+
+  async function handleDownloadAttachment(attachment) {
+    downloadingAttachmentId.value = attachment.id;
+    try {
+      /**
+       * 附件下载需要 Authorization header，所以不能直接使用普通链接。
+       * 先请求 Blob，再创建临时 object URL 触发浏览器下载。
+       */
+      const blob = await downloadTaskAttachment(unref(tokenRef), attachment);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.originalFilename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      ElMessage.error(error?.message || '下载附件失败');
+    } finally {
+      downloadingAttachmentId.value = null;
+    }
+  }
+
   function applyQuery(nextQuery) {
     Object.assign(query, normalizeQuery(nextQuery));
     Object.assign(queryForm, {
@@ -240,6 +291,8 @@ export function useTaskManagement(tokenRef) {
     detailLoading,
     detailTask,
     statusChangingId,
+    attachmentUploading,
+    downloadingAttachmentId,
     taskStatusOptions,
     taskPriorityOptions,
     handleQuery,
@@ -252,11 +305,14 @@ export function useTaskManagement(tokenRef) {
     handleSave,
     handleStatusChange,
     handleDelete,
+    handleAttachmentChange,
+    handleDownloadAttachment,
     taskStatusLabel,
     taskStatusTagType,
     taskPriorityLabel,
     taskPriorityTagType,
-    formatDateTime
+    formatDateTime,
+    formatFileSize
   };
 }
 
@@ -309,4 +365,17 @@ function taskPriorityTagType(priority) {
 
 function formatDateTime(value) {
   return value ? String(value).replace('T', ' ') : '-';
+}
+
+function formatFileSize(value) {
+  if (!value) {
+    return '0 B';
+  }
+  if (value < 1024) {
+    return `${value} B`;
+  }
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }

@@ -9,6 +9,7 @@ import com.example.javademo.app.dto.UpdateUserRequest;
 import com.example.javademo.app.dto.UserProfileResponse;
 import com.example.javademo.app.security.CurrentUserContext;
 import com.example.javademo.app.service.UserAccountService;
+import com.example.javademo.app.service.UserAvatarService;
 import com.example.javademo.app.service.UserManagementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,6 +25,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 用户信息与用户管理接口。
@@ -40,10 +46,12 @@ public class UserController {
 
     private final UserAccountService userAccountService;
     private final UserManagementService userManagementService;
+    private final UserAvatarService userAvatarService;
 
-    public UserController(UserAccountService userAccountService, UserManagementService userManagementService) {
+    public UserController(UserAccountService userAccountService, UserManagementService userManagementService, UserAvatarService userAvatarService) {
         this.userAccountService = userAccountService;
         this.userManagementService = userManagementService;
+        this.userAvatarService = userAvatarService;
     }
 
     /**
@@ -106,6 +114,38 @@ public class UserController {
     public ApiResponse<Void> changePassword(@PathVariable("id") Long id, @Valid @RequestBody ChangePasswordRequest request) {
         userManagementService.changePassword(id, request);
         return ApiResponse.success("password changed", null);
+    }
+
+    /**
+     * 上传当前登录用户头像。
+     *
+     * <p>上传接口需要 JWT，并使用 multipart/form-data 接收文件。后端会校验大小和类型，
+     * 然后把头像写入 MinIO，再把代理访问 URL 回写到当前用户资料。</p>
+     */
+    @Operation(summary = "上传当前用户头像", description = "上传 PNG、JPEG 或 WebP 头像，文件内容写入 MinIO，用户资料返回头像 URL。")
+    @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<UserProfileResponse> uploadMyAvatar(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.success("avatar uploaded", userAvatarService.uploadMyAvatar(CurrentUserContext.getRequired(), file));
+    }
+
+    /**
+     * 公开读取用户头像。
+     *
+     * <p>头像图片通常需要直接放进 img/avatar 组件，浏览器不会为普通图片请求自动携带 Bearer token。
+     * 因此本接口按用户 ID 公开读取当前头像对象，但不允许外部传入 MinIO objectKey。</p>
+     */
+    @Operation(summary = "公开读取用户头像", description = "根据用户 ID 读取当前头像对象，用于前端头像组件直接展示。")
+    @GetMapping("/public/avatars/{id:\\d+}")
+    public ResponseEntity<InputStreamResource> getPublicAvatar(@PathVariable("id") Long id) {
+        var storedObject = userAvatarService.getAvatarObject(id);
+        MediaType mediaType = storedObject.contentType() == null || storedObject.contentType().isBlank()
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(storedObject.contentType());
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .contentLength(storedObject.contentLength())
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
+                .body(new InputStreamResource(storedObject.inputStream()));
     }
 
     /**

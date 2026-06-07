@@ -57,6 +57,11 @@ public class BusinessException extends RuntimeException {
         return new BusinessException(409, message, HttpStatus.CONFLICT);
     }
 
+    /** 创建 502 Bad Gateway，表示对象存储等外部依赖当前不可用。 */
+    public static BusinessException storageUnavailable(String message) {
+        return new BusinessException(502, message, HttpStatus.BAD_GATEWAY);
+    }
+
     /**
      * 创建登录验证码必需错误。
      *

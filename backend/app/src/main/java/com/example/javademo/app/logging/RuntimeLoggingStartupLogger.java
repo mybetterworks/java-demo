@@ -29,7 +29,7 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         log.info(
-                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, appLevel={}, datasource={}, redisEnabled={}, redisAddress={}, cacheEnabled={}, userCacheTtlSeconds={}, rateLimitEnabled={}, userValidationProviderMode={}, dubboAppName={}, dubboRegistryAddress={}, dubboRegistryGroup={}, dubboProtocolName={}, dubboProtocolPort={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
+                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, appLevel={}, datasource={}, redisEnabled={}, redisAddress={}, cacheEnabled={}, userCacheTtlSeconds={}, rateLimitEnabled={}, minioEnabled={}, minioEndpoint={}, avatarBucket={}, maxAvatarSizeBytes={}, userValidationProviderMode={}, dubboAppName={}, dubboRegistryAddress={}, dubboRegistryGroup={}, dubboProtocolName={}, dubboProtocolPort={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
                 environment.getProperty("spring.application.name", "java-demo-app"),
                 environment.getProperty("local.server.port", environment.getProperty("server.port", "unknown")),
                 resolveProfiles(),
@@ -42,6 +42,10 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
                 environment.getProperty("java-demo.cache.enabled", "true"),
                 environment.getProperty("java-demo.cache.user-ttl-seconds", "300"),
                 environment.getProperty("java-demo.rate-limit.enabled", "true"),
+                environment.getProperty("java-demo.minio.enabled", "true"),
+                sanitizeConfigValue(environment.getProperty("java-demo.minio.endpoint", "http://127.0.0.1:9000")),
+                environment.getProperty("java-demo.minio.avatar-bucket", "java-demo-avatars"),
+                environment.getProperty("java-demo.minio.max-avatar-size-bytes", "2097152"),
                 environment.getProperty("java-demo.rpc.user-provider-mode", "dubbo"),
                 sanitizeConfigValue(environment.getProperty("dubbo.application.name", "java-demo-app")),
                 sanitizeConfigValue(environment.getProperty("dubbo.registry.address", "not-configured")),

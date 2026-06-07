@@ -5,7 +5,7 @@ import type { ApiResponse } from '../types';
  * - 开发环境默认留空，依赖 Vite proxy 把 /api 转发到 Spring Boot。
  * - 独立部署时可以通过 VITE_API_BASE_URL 指向后端完整地址。
  */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -35,7 +35,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const { token, headers, body, ...rest } = options;
   const requestHeaders = new Headers(headers);
 
-  if (!requestHeaders.has('Content-Type') && body !== undefined) {
+  if (!requestHeaders.has('Content-Type') && body !== undefined && !(body instanceof FormData)) {
     requestHeaders.set('Content-Type', 'application/json');
   }
   if (token) {
@@ -63,10 +63,46 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return payload.data as T;
 }
 
+/**
+ * 下载二进制文件的统一入口。
+ *
+ * 附件下载仍需要 Bearer token，但响应体不是 ApiResponse JSON，而是文件流。
+ * 这里单独封装 blob 请求，避免把文件流交给普通 request<T> 的 JSON 解析逻辑。
+ */
+export async function requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const { token, headers, body, ...rest } = options;
+  const requestHeaders = new Headers(headers);
+
+  if (token) {
+    requestHeaders.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...rest,
+    headers: requestHeaders,
+    body
+  });
+
+  if (!response.ok) {
+    const payload = await tryReadJson<ApiResponse<unknown>>(response);
+    throw new ApiError(payload?.message || `HTTP ${response.status}`, response.status, payload?.code, payload?.data);
+  }
+
+  return response.blob();
+}
+
 async function readJson<T>(response: Response): Promise<T> {
   try {
     return (await response.json()) as T;
   } catch {
     throw new ApiError('后端没有返回合法 JSON，请检查服务是否启动。', response.status);
+  }
+}
+
+async function tryReadJson<T>(response: Response): Promise<T | null> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return null;
   }
 }

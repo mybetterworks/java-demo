@@ -53,7 +53,8 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
     private static final List<String> PUBLIC_PREFIXES = List.of(
             "/v3/api-docs/",
             "/swagger-ui/",
-            "/webjars/"
+            "/webjars/",
+            "/api/users/public/avatars/"
     );
 
     /** 传递给下游的网关认证头。先删除再写入，避免客户端伪造同名头。 */

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-`v0.8 WebSocket` 已完成。当前 `notification-service` 已新增 `/ws/notifications` WebSocket 实时通知入口，Gateway 已新增 `/ws/notifications/**` 转发路由，React/Vue 登录后会自动建立实时通知连接并展示连接状态；通知创建、未读数变化和系统广播会通过统一 JSON 消息推送到在线客户端。自动化验证已覆盖有效 token 握手、`CONNECTION_ACK`、`SYSTEM_BROADCAST`、`NOTIFICATION_CREATED`、`UNREAD_COUNT_CHANGED` 和无效 token 拒绝；后端打包和双前端构建已通过。本轮 Docker Desktop API 不可访问，因此 Docker MySQL + Nacos + Redis + 四后端 jar 的完整真实联调未执行，后续恢复 Docker 后需要补做 Gateway WebSocket 真实转发复验。
+`v0.9 MinIO` 已完成。当前已新增 MinIO 单节点 Docker Compose，`java-demo-app` 支持当前用户头像上传和头像公开代理访问，`task-service` 支持任务附件上传、任务详情附件列表和带 JWT 的附件代理下载；React/Vue 首页均可上传头像，任务详情均可上传、查看和下载任务附件。自动化验证已覆盖头像上传/读取、任务附件上传/列表/下载和 Gateway 头像公开路径放行；后端打包、双前端构建、MinIO 容器健康检查和 Nacos 配置导入均已通过。
 
 `v0.5 Gateway JWT` 已实现并完成 Spring Cloud Gateway 模块、网关 JWT 校验过滤器、React/Vue 代理切换、Maven reactor package、前端构建回归、Gateway 真实接口联调和文档更新。
 
@@ -27,6 +27,8 @@ Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` �
 `v0.7 Redis Cache And Rate Limit` 已完成。用户摘要缓存使用跨服务统一 key `java-demo:v0_7:user:summary:{userId}`，任务列表使用版本 key `java-demo:v0_7:task:list:version` 避免扫描删除大量列表 key，通知未读数使用 `java-demo:v0_7:notification:unread:{userId}`；登录、用户查询、任务查询和通知查询均已覆盖 Redis 计数限流。
 
 `v0.8 WebSocket` 已完成。WebSocket endpoint 位于 `notification-service`，路径为 `/ws/notifications`；浏览器前端通过 `token` 查询参数完成握手鉴权；服务端使用单实例内存 session registry 支持同一用户多标签页；`NotificationService` 在事务提交后推送通知创建和未读数变化，避免数据库回滚后出现“幽灵通知”；React/Vue 均已接入断线重连和通知中心刷新。
+
+`v0.9 MinIO` 已完成。文件内容进入 MinIO，MySQL 只保存头像/附件元数据和 object key；头像读取使用 `/api/users/public/avatars/{userId}` 公开代理，适配浏览器图片组件不携带 Authorization header 的特性；任务附件下载继续要求 JWT，前端通过 fetch Blob 下载。MinIO accessKey/secretKey 只保存在服务端配置中，日志和响应均不暴露真实密钥。
 
 已完成：
 
@@ -127,13 +129,17 @@ Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` �
 | v0.8 Gateway 转发 | 已新增 `/ws/notifications/**` -> `${JAVA_DEMO_NOTIFICATION_WS_URI:lb:ws://notification-service}` 路由，HTTP API 路由保持不变 |
 | v0.8 React/Vue 前端接入 | 两套前端均已在登录后连接 WebSocket、展示连接状态、断线重连，并在通知中心收到业务推送后刷新通知列表和未读数 |
 | v0.8 验证与文档 | 已完成 Maven test/package、React/Vue 构建、README/PROGRESS/milestone 更新和 `notebook/v0_8.md` 面试知识整理；Docker 真实 Gateway WebSocket 联调因 Docker Desktop API 不可用待后续复验 |
+| v0.9 MinIO 基础设施 | 已新增 `infra/docker-compose/minio`，容器 `java-demo-minio-1`、镜像 `minio/minio:RELEASE.2025-09-07T16-13-09Z`、volume、network、API/Console 端口和健康检查均已记录 |
+| v0.9 用户头像实现 | `java-demo-app` 已新增 MinIO SDK 封装、头像上传接口 `/api/users/me/avatar`、头像公开代理 `/api/users/public/avatars/{userId}`、`avatarUrl`/`avatarObjectKey` 字段和旧表轻量迁移 |
+| v0.9 任务附件实现 | `task-service` 已新增 `task_attachment` 表、附件上传接口、附件列表、任务详情附件返回和带 JWT 的附件代理下载接口 |
+| v0.9 React/Vue 前端接入 | React/Vue 首页均可上传头像并刷新本地登录会话；任务详情均可上传附件、查看附件列表并带 token 下载 Blob |
+| v0.9 验证与文档 | 已完成 Maven test/package、React/Vue 构建、MinIO 容器健康检查、Nacos 配置导入、README/PROGRESS/milestone 更新和 `notebook/v0_9.md` 面试知识整理 |
 
 尚未完成：
 
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| v0.9 MinIO | 下一步，待在 `v0.8` 稳定后实施 |
 
 ## 环境观察
 
@@ -143,7 +149,7 @@ Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` �
 | Maven | 目标版本 Maven `3.9.16`，路径 `D:\software\apache-maven-3.9.16` |
 | Maven 本地仓库 | `D:\software\maven_download` |
 | Node.js | 目标版本 Node.js `22.x`，用于 React TypeScript 和 Vue JavaScript 前端开发 |
-| Docker | 本轮 v0.8 验证时 Docker Desktop API 不可访问，`docker ps` 无法连接 `dockerDesktopLinuxEngine`；历史 v0.7 已使用 Docker MySQL + Docker Nacos + Docker Redis 完成真实 Gateway 业务联调，后续恢复 Docker 后需要补做 v0.8 Gateway WebSocket 真实转发复验 |
+| Docker | 本轮 v0.9 验证时 Docker Desktop 可用；`java-demo-mysql`、`java-demo-nacos-1`、`java-demo-redis-1` 和新增 `java-demo-minio-1` 均可运行，其中 MinIO API ready health 与 Console 均返回 `200` |
 | Git | 已初始化 Git 仓库，用户已提交 GitHub；后续提交、tag 和推送由用户手动执行 |
 | 本机占用/保留端口 | `5112-5311`、`7991-8090`、`8146-8245`；当前项目端口规划已避开 |
 | Gateway | Spring Cloud Gateway `2023.0.3` 已接入，默认端口 `8092` |
@@ -155,8 +161,8 @@ Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` �
 | 直接执行 `D:\software\jdk-17.0.19\bin\java.exe -version` | 已确认 JDK `17.0.19` 可用 |
 | 直接执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -v` | 已确认 Maven `3.9.16` 可用 |
 | 临时设置 `JAVA_HOME=D:\software\jdk-17.0.19` 后执行 Maven | 已确认 Maven 可使用 Java `17.0.19` |
-| 本次执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test` | 已通过；五个 Maven 模块测试均成功 |
-| 本次执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -DskipTests package` | 已通过，生成四个 `0.6.2-SNAPSHOT` 可执行 jar 和一个 `java-demo-rpc-api-0.6.2-SNAPSHOT.jar` |
+| 本次执行 `.\mvnw.cmd test` | 已通过；六个 Maven 模块测试均成功，最新补跑时间为 2026-06-07 11:31:52 |
+| 本次执行 `.\mvnw.cmd -DskipTests package` | 已通过，生成四个 `0.9.0-SNAPSHOT` 可执行 jar 和一个 `java-demo-rpc-api-0.9.0-SNAPSHOT.jar` |
 | 本次执行 Nacos 配置导入脚本 | 已通过，五份配置已导入 `DEFAULT_GROUP`，并继续确认待发布 YAML 需保持 ASCII-only，Dubbo 独立注册分组为 `JAVA_DEMO_DUBBO` |
 | 访问 `GET /v3/api-docs` | 已确认返回 OpenAPI JSON |
 | 访问 `GET /swagger-ui.html` | 已确认返回 Swagger UI 页面 |
@@ -657,18 +663,34 @@ v0.4 Vue 项目结构记录：
 | Gateway WebSocket 转发 | 已完成配置实现；本轮 Docker Desktop API 不可访问，无法启动 Docker MySQL/Nacos/Redis 做完整真实转发联调。尝试使用临时端口 `8265/8266` 做轻量冒烟时，`spring-boot:run` test profile 被本机 Nacos 配置覆盖回 MySQL 数据源且 Docker MySQL 不可用，因此该项未纳入通过项 |
 | 安全日志 | WebSocket 握手、连接、推送和断开日志只记录 userId、username、sessionId、eventId、type 和在线 session 数等摘要，不打印完整 JWT、Authorization header 或 `token` 查询参数原文 |
 
+## v0.9 验证记录
+
+自动化、构建、容器和配置验证：
+
+| 验证项 | 结果 |
+|---|---|
+| Maven test | 已执行 `.\mvnw.cmd test`，通过；六个 Maven 模块均成功，新增测试覆盖当前用户头像上传、头像公开读取、任务附件上传、任务详情附件列表、附件代理下载和 Gateway 头像公开路径放行 |
+| Maven package | 已执行 `.\mvnw.cmd -DskipTests package`，通过；已生成四个 `0.9.0-SNAPSHOT` 可执行 jar 和一个 `java-demo-rpc-api-0.9.0-SNAPSHOT.jar` |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| MinIO 容器 | 已执行 `docker compose -f infra\docker-compose\minio\docker-compose.yml up -d`；`java-demo-minio-1` 为 `healthy`，`http://127.0.0.1:9000/minio/health/ready` 返回 `200`，控制台 `http://127.0.0.1:9001` 返回 `200` |
+| Nacos 配置导入 | 已执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infra\docker-compose\nacos\import-configs.ps1`，五份配置均导入成功；`java-demo-common.yml` 已保持 ASCII-only，并更新为 `config-label=v0.9-minio`、`java-demo:v0_9` Redis key 前缀和 MinIO 配置 |
+| React/Vue 用户可见能力 | 两套前端均已支持当前用户头像上传并刷新本地登录会话；任务详情均已支持附件上传、附件列表和携带 Bearer token 的 Blob 下载 |
+| 安全边界 | MinIO accessKey/secretKey 只在服务端配置中使用；响应不返回 object key；头像公开代理按 userId 读取当前头像对象；任务附件下载继续要求 JWT |
+| 真实三服务上传冒烟 | 本轮尝试临时启动 `java-demo-app:8260`、`task-service:8261`、`notification-service:8262` 走真实 MySQL/Nacos/Redis/MinIO 验证头像和附件上传下载；Windows `Start-Process` 启动临时 Java 进程时返回 `拒绝访问`，且未留下 `8260-8262` 监听进程，因此该真实冒烟未纳入通过项 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.8-websocket.md
+docs/milestones/v0.9-minio.md
 ```
 
-下一步尚未开始，待创建或细化：
+下一步尚未开始，待实现：
 
 ```text
-docs/milestones/v0.9-minio.md
+docs/milestones/v1.0-mq-rabbitmq-kafka.md
 ```
 
 ## 端口调整记录
@@ -739,6 +761,7 @@ docs/milestones/v0.9-minio.md
 | `v0.6.2` | 使用 Dubbo RPC 改造 `task-service -> java-demo-app` 用户校验链路，通知链路继续保留 Feign |
 | `v0.7` | 接入 Redis，覆盖登录风险状态、用户摘要、任务查询、通知未读数缓存和接口限流 |
 | `v0.8` | 接入 WebSocket，覆盖实时通知连接、系统广播、通知创建推送和未读数变化推送 |
+| `v0.9` | 接入 MinIO，覆盖当前用户头像上传、头像公开代理、任务附件上传和带 JWT 的附件代理下载 |
 | `v1.5` 前后 | 基于已有用户、任务、通知服务验证 Seata 和链路追踪 |
 
 部署路线：
@@ -752,17 +775,17 @@ docs/milestones/v0.9-minio.md
 
 ## 下一步建议
 
-1. 如需保存当前 `v0.8` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 下一次开发建议先创建或细化 `docs/milestones/v0.9-minio.md`，基于当前用户、任务和通知业务增加 MinIO 对象存储与文件上传能力。
-3. 继续保持 `task-service -> java-demo-app` 的 Dubbo 用户校验主路径，以及 `task-service -> notification-service` 的 Feign 通知主路径，不在 MinIO 版本顺手改动全部内部调用。
-4. 继续保持 `v0.5.5` 拼图验证码链路、`v0.6` Nacos 注册发现、`v0.6.2` Dubbo + Feign 混合调用、`v0.7` Redis 缓存/限流和 `v0.8` WebSocket 实时通知回归。
-5. 继续保持 `JAVA_DEMO_DUBBO` Dubbo 独立注册分组、Redis key 前缀、WebSocket `eventId` 和 `requestId` 跨 Dubbo/Feign 链路串联能力。
-6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL、Nacos、Redis 和后续 RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
+1. 如需保存当前 `v0.9` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
+2. 下一次开发建议进入 `docs/milestones/v1.0-mq-rabbitmq-kafka.md`，基于任务创建、任务状态变化、通知创建和登录审计设计异步事件入口。
+3. `v1.0` 中建议保留当前 `task-service -> notification-service` Feign 同步通知链路作为对照，再用 RabbitMQ/Kafka 增加异步消费链路，避免一次性切断已验证主路径。
+4. 继续保持 `v0.5.5` 拼图验证码链路、`v0.6` Nacos 注册发现、`v0.6.2` Dubbo + Feign 混合调用、`v0.7` Redis 缓存/限流、`v0.8` WebSocket 实时通知和 `v0.9` MinIO 文件上传回归。
+5. 继续保持 `JAVA_DEMO_DUBBO` Dubbo 独立注册分组、Redis key 前缀、WebSocket `eventId`、MinIO object key 不出服务端和 `requestId` 跨 Dubbo/Feign 链路串联能力。
+6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL、Nacos、Redis、MinIO 和后续 RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档。当前 `v0.8 WebSocket` 已完成，请在保留 Nacos 服务发现、Gateway 路由、Redis 缓存/限流、`task-service -> java-demo-app` Dubbo 用户校验主路径、`task-service -> notification-service` Feign 通知链路和 `notification-service` WebSocket 实时通知能力的前提下，实现下一个可运行版本。若进入 `v0.9 MinIO`，请优先设计对象存储容器、上传接口、文件元数据边界和 React/Vue 用户可见上传入口；完成后运行后端测试、前端构建和必要真实联调，并继续确认 `v0.5.5` 固定背景图随机拼图验证码、`v0.6` 注册发现链路、`v0.6.2` Dubbo + Feign 混合主路径、`v0.7` Redis 缓存/限流和 `v0.8` WebSocket 推送能力仍然可用，然后更新 README、docs/PROGRESS.md 和当前 milestone 文档。
+请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和当前 milestone 文档。当前 `v0.9 MinIO` 已完成，请在保留 Nacos 服务发现、Gateway 路由、Redis 缓存/限流、`task-service -> java-demo-app` Dubbo 用户校验主路径、`task-service -> notification-service` Feign 通知链路、`notification-service` WebSocket 实时通知能力和 MinIO 头像/附件上传能力的前提下，实现下一个可运行版本。若进入 `v1.0 MQ`，请优先设计 RabbitMQ/Kafka 单节点容器、事件模型、生产者/消费者边界、幂等处理、失败重试和 Feign 同步链路对照策略；完成后运行后端测试、前端构建和必要真实联调，并继续确认 `v0.5.5` 固定背景图随机拼图验证码、`v0.6` 注册发现链路、`v0.6.2` Dubbo + Feign 混合主路径、`v0.7` Redis 缓存/限流、`v0.8` WebSocket 推送和 `v0.9` MinIO 上传访问能力仍然可用，然后更新 README、docs/PROGRESS.md 和当前 milestone 文档。
 ```
 
 ## 完成记录
@@ -784,7 +807,7 @@ docs/milestones/v0.9-minio.md
 | `v0.6.2` | 已完成 | 2026-06-05 | Dubbo RPC 用户校验；已新增 `backend/rpc-api`、共享 `UserRpcService` 契约、Dubbo requestId 附件透传、Maven test/package、React 构建、Vue 备用输出目录构建和真实 Gateway 联调 |
 | `v0.7` | 已完成 | 2026-06-06 | Redis 缓存与限流；已新增 Redis 单节点 Compose、用户/任务/通知缓存、登录风险 Redis TTL、四类接口限流、Maven test/package、React/Vue 构建和真实 Gateway 联调 |
 | `v0.8` | 已完成 | 2026-06-07 | WebSocket 实时通知；已新增通知服务 WebSocket endpoint、JWT 握手鉴权、Gateway WS 路由、通知创建/未读数 after-commit 推送、系统广播、React/Vue 连接状态与通知中心刷新、Maven test/package 和双前端构建 |
-| `v0.9` | 未开始 | - | MinIO |
+| `v0.9` | 已完成 | 2026-06-07 | MinIO 文件上传与对象存储；已新增 MinIO 单节点 Compose、用户头像上传与公开代理、任务附件上传/列表/代理下载、React/Vue 上传入口、Maven test/package、双前端构建、MinIO 健康检查和 Nacos 配置导入 |
 | `v1.0` | 未开始 | - | RabbitMQ 与 Kafka |
 | `v1.1` | 未开始 | - | Elasticsearch |
 | `v1.2` | 未开始 | - | InfluxDB |
@@ -823,6 +846,10 @@ docs/milestones/v0.9-minio.md
 | 后端能力已完成但前端未同步 | 用户只能通过 Swagger 或脚本验证任务/通知，影响全栈学习闭环 | 遵守 `docs/decisions/0013-frontend-backend-feature-sync.md`，后端用户可见能力变化时自动评估并补齐 React/Vue 前端 |
 | React 和 Vue 功能漂移 | 两套前端如果功能、布局或操作路径不一致，会降低对比学习价值 | v0.5.3 开始要求双端菜单、页面结构、字段、操作和错误提示保持一致，代码结构仍保留各自框架特点 |
 | v0.8 WebSocket session registry 仍是单实例内存 | 如果 `notification-service` 多实例部署，用户连接在实例 A、通知创建请求落到实例 B 时，实例 B 无法直接推送给实例 A 上的连接 | 后续在 Redis Pub/Sub、MQ 或独立 WebSocket 网关版本中补齐跨实例分发；短期真实部署可配合 sticky session 降低错发概率 |
+| v0.9 MinIO 仍是单节点 | 当前 `java-demo-minio-1` 只适合本地学习验证，不具备生产级多副本、高可用和纠删码能力 | 后续如进入部署或高可用专题，再按 MinIO 多节点或云对象存储方案扩展；当前 milestone 不提前复杂化 |
+| v0.9 用户头像公开代理 | `/api/users/public/avatars/{userId}` 为了适配浏览器 `<img>` 请求不携带 Bearer token 而公开放行，如果头像被视为隐私数据会扩大可访问范围 | 当前只用于学习项目的头像展示；如后续需要隐私头像，应改成短期签名 URL、带权限的图片代理或前端 Blob 鉴权加载 |
+| v0.9 object key 暴露风险 | 如果把 MinIO object key 直接返回前端，可能让客户端绑定内部存储路径并增加越权访问风险 | 当前响应只返回头像代理 URL 和附件元数据，真实 object key 只保存在服务端数据库中，后续继续保持该边界 |
+| v0.9 真实三服务上传冒烟未通过环境验证 | 本轮临时启动 `8260-8262` 三个 Java 进程时 Windows `Start-Process` 返回 `拒绝访问`，因此真实 MySQL/Nacos/Redis/MinIO 上传链路未计入通过项 | 已用自动化测试、MinIO 容器健康检查、Nacos 配置导入和双前端构建覆盖主风险；后续可在权限正常的终端复跑真实冒烟 |
 | v0.5.4 单机登录风险状态不适合多实例 | 如果登录失败计数、验证码 challenge 和验证 token 只保存在单机内存，多实例部署时会出现状态不一致 | v0.5.4 明确作为 MVP 单机方案，v0.7 Redis 再迁移为 Redis TTL 状态存储 |
 | v0.5.5 拼图验证码仍非专业风控 | 固定背景图随机拼图能防止脚本只靠接口字段计算答案，但专业识图、打码平台或人工介入仍可能绕过 | 后续结合 `v0.7 Redis` 限流、登录安全审计、设备/行为分析或第三方验证码平台继续增强 |
 | 后续中间件容器边界混乱 | 如果多个服务共用一个容器，后续难以单独扩缩容或集群化 | 遵守 `docs/decisions/0010-docker-service-containerization.md`，每个服务和每个集群节点独立容器 |

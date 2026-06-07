@@ -10,10 +10,13 @@ import com.example.javademo.task.client.UserServiceClient;
 import com.example.javademo.task.common.BusinessException;
 import com.example.javademo.task.dto.CreateTaskRequest;
 import com.example.javademo.task.dto.PageResponse;
+import com.example.javademo.task.dto.TaskAttachmentResponse;
 import com.example.javademo.task.dto.TaskResponse;
 import com.example.javademo.task.dto.UpdateTaskRequest;
 import com.example.javademo.task.dto.UpdateTaskStatusRequest;
+import com.example.javademo.task.entity.TaskAttachment;
 import com.example.javademo.task.entity.TaskItem;
+import com.example.javademo.task.mapper.TaskAttachmentMapper;
 import com.example.javademo.task.mapper.TaskMapper;
 import com.example.javademo.task.security.AuthUser;
 import org.slf4j.Logger;
@@ -45,12 +48,14 @@ public class TaskService {
     private static final Set<String> ALLOWED_PRIORITIES = Set.of("LOW", "MEDIUM", "HIGH");
 
     private final TaskMapper taskMapper;
+    private final TaskAttachmentMapper taskAttachmentMapper;
     private final UserServiceClient userServiceClient;
     private final NotificationServiceClient notificationServiceClient;
     private final TaskCacheService taskCacheService;
 
-    public TaskService(TaskMapper taskMapper, UserServiceClient userServiceClient, NotificationServiceClient notificationServiceClient, TaskCacheService taskCacheService) {
+    public TaskService(TaskMapper taskMapper, TaskAttachmentMapper taskAttachmentMapper, UserServiceClient userServiceClient, NotificationServiceClient notificationServiceClient, TaskCacheService taskCacheService) {
         this.taskMapper = taskMapper;
+        this.taskAttachmentMapper = taskAttachmentMapper;
         this.userServiceClient = userServiceClient;
         this.notificationServiceClient = notificationServiceClient;
         this.taskCacheService = taskCacheService;
@@ -166,6 +171,7 @@ public class TaskService {
         }
         TaskItem task = getExistingTask(id);
         TaskResponse response = TaskResponse.from(task);
+        attachTaskAttachments(response);
         taskCacheService.putTask(response);
         log.debug("Task detail loaded, taskId={}, status={}, assigneeUserId={}",
                 task.getId(), task.getStatus(), task.getAssigneeUserId());
@@ -273,6 +279,24 @@ public class TaskService {
                 .map(TaskResponse::from)
                 .toList();
         return new PageResponse<>(page.getCurrent(), page.getSize(), page.getTotal(), page.getPages(), records);
+    }
+
+    /**
+     * 给任务详情响应附加附件列表。
+     *
+     * <p>列表页不额外加载附件，避免分页查询出现 N+1；详情接口才加载附件元数据。
+     * 上传附件后 TaskAttachmentService 会驱逐任务详情缓存，因此这里可以安全缓存带附件的详情响应。</p>
+     */
+    private void attachTaskAttachments(TaskResponse response) {
+        List<TaskAttachmentResponse> attachments = taskAttachmentMapper.selectList(Wrappers.<TaskAttachment>lambdaQuery()
+                        .eq(TaskAttachment::getTaskId, response.getId())
+                        .orderByDesc(TaskAttachment::getCreatedAt)
+                        .orderByDesc(TaskAttachment::getId))
+                .stream()
+                .map(TaskAttachmentResponse::from)
+                .toList();
+        response.setAttachments(attachments);
+        response.setAttachmentCount(attachments.size());
     }
 
     private TaskItem getExistingTask(Long id) {

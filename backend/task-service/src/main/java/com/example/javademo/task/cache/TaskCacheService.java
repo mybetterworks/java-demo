@@ -208,7 +208,7 @@ public class TaskCacheService {
     }
 
     private String prefix() {
-        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_8");
+        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_9");
     }
 
     private String normalizePart(String value) {

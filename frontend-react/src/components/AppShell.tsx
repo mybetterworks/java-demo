@@ -58,7 +58,9 @@ export function AppShell({ currentUser, activeView, realtimeStatus, onViewChange
             <Tag color={realtimeStatus === 'connected' ? 'green' : realtimeStatus === 'idle' ? 'default' : 'orange'}>
               实时通知：{realtimeStatusLabel(realtimeStatus)}
             </Tag>
-            <Avatar className="user-avatar">{currentUser.nickname?.slice(0, 1) || currentUser.username.slice(0, 1)}</Avatar>
+            <Avatar className="user-avatar" src={currentUser.avatarUrl || undefined}>
+              {currentUser.nickname?.slice(0, 1) || currentUser.username.slice(0, 1)}
+            </Avatar>
             <div className="header-user">
               <Typography.Text strong>{currentUser.nickname || currentUser.username}</Typography.Text>
               <Tag color={currentUser.status === 1 ? 'green' : 'orange'}>{currentUser.role || 'USER'}</Tag>

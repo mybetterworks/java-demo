@@ -148,6 +148,15 @@ export function RootApp() {
     setActiveView('dashboard'); // 切换到首页视图
   }
 
+  async function handleCurrentUserChange(user: UserProfile) {
+    setCurrentUser(user);
+    if (session) {
+      const refreshed = { ...session, username: user.username, user };
+      setSession(refreshed);
+      await authSessionStore.put(refreshed);
+    }
+  }
+
   // 处理登出逻辑
   async function handleLogout() {
     await authSessionStore.clear(); // 清理本地会话
@@ -183,7 +192,14 @@ export function RootApp() {
           onLogout={() => void handleLogout()} // 处理登出的回调
       >
         {/* 根据当前视图渲染不同的页面组件。暂不引入路由库，便于学习阶段观察最小页面切换机制。 */}
-        {activeView === 'dashboard' && <Dashboard currentUser={currentUser} onNavigate={setActiveView} />}
+        {activeView === 'dashboard' && (
+          <Dashboard
+            token={session.accessToken}
+            currentUser={currentUser}
+            onNavigate={setActiveView}
+            onCurrentUserChange={(user) => void handleCurrentUserChange(user)}
+          />
+        )}
         {activeView === 'users' && <UserManagement token={session.accessToken} />}
         {activeView === 'tasks' && <TaskManagement token={session.accessToken} />}
         {activeView === 'notifications' && (

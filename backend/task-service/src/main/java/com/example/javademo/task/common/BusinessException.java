@@ -35,6 +35,10 @@ public class BusinessException extends RuntimeException {
         return new BusinessException(502, message, HttpStatus.BAD_GATEWAY);
     }
 
+    public static BusinessException storageUnavailable(String message) {
+        return new BusinessException(502, message, HttpStatus.BAD_GATEWAY);
+    }
+
     public int getCode() {
         return code;
     }

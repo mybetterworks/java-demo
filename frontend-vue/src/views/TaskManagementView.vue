@@ -178,10 +178,41 @@
           </el-descriptions-item>
           <el-descriptions-item label="创建人ID">{{ detailTask.creatorUserId }}</el-descriptions-item>
           <el-descriptions-item label="负责人ID">{{ detailTask.assigneeUserId }}</el-descriptions-item>
+          <el-descriptions-item label="附件数">{{ detailTask.attachmentCount || detailTask.attachments?.length || 0 }}</el-descriptions-item>
           <el-descriptions-item label="截止时间">{{ formatDateTime(detailTask.dueTime) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDateTime(detailTask.createdAt) }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ formatDateTime(detailTask.updatedAt) }}</el-descriptions-item>
         </el-descriptions>
+
+        <div v-if="detailTask" class="attachment-panel">
+          <div class="attachment-header">
+            <strong>任务附件</strong>
+            <el-upload
+              accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,application/zip"
+              :auto-upload="false"
+              :show-file-list="false"
+              :on-change="handleAttachmentChange"
+            >
+              <el-button size="small" :loading="attachmentUploading">上传附件</el-button>
+            </el-upload>
+          </div>
+          <el-empty v-if="!detailTask.attachments?.length" description="暂无附件" />
+          <div v-else class="attachment-list">
+            <div v-for="attachment in detailTask.attachments" :key="attachment.id" class="attachment-item">
+              <div>
+                <strong>{{ attachment.originalFilename }}</strong>
+                <p>{{ attachment.contentType }} · {{ formatFileSize(attachment.fileSize) }} · 上传者 {{ attachment.uploaderUserId }}</p>
+              </div>
+              <el-button
+                size="small"
+                :loading="downloadingAttachmentId === attachment.id"
+                @click="handleDownloadAttachment(attachment)"
+              >
+                下载
+              </el-button>
+            </div>
+          </div>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -217,6 +248,8 @@ const {
   detailLoading,
   detailTask,
   statusChangingId,
+  attachmentUploading,
+  downloadingAttachmentId,
   taskStatusOptions,
   taskPriorityOptions,
   handleQuery,
@@ -229,10 +262,13 @@ const {
   handleSave,
   handleStatusChange,
   handleDelete,
+  handleAttachmentChange,
+  handleDownloadAttachment,
   taskStatusLabel,
   taskStatusTagType,
   taskPriorityLabel,
   taskPriorityTagType,
-  formatDateTime
+  formatDateTime,
+  formatFileSize
 } = useTaskManagement(toRef(props, 'token'));
 </script>

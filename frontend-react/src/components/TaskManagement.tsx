@@ -5,6 +5,7 @@ import {
   Form,
   Input,
   InputNumber,
+  List,
   Modal,
   Popconfirm,
   Select,
@@ -12,15 +13,26 @@ import {
   Table,
   Tag,
   Typography,
+  Upload,
   message
 } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { useEffect, useState } from 'react';
-import { createTask, deleteTask, getTask, pageTasks, updateTask, updateTaskStatus } from '../api/backend';
+import {
+  createTask,
+  deleteTask,
+  downloadTaskAttachment,
+  getTask,
+  pageTasks,
+  updateTask,
+  updateTaskStatus,
+  uploadTaskAttachment
+} from '../api/backend';
 import { recentTasksQueryStore } from '../storage/indexedDb';
 import type {
   CreateTaskRequest,
   PageResponse,
+  TaskAttachment,
   TaskItem,
   TaskPriority,
   TasksQuery,
@@ -97,6 +109,8 @@ export function TaskManagement({ token }: TaskManagementProps) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailTask, setDetailTask] = useState<TaskItem | null>(null);
   const [statusChangingId, setStatusChangingId] = useState<number | null>(null);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<number | null>(null);
 
   useEffect(() => {
     void restoreQueryAndLoad();
@@ -204,6 +218,46 @@ export function TaskManagement({ token }: TaskManagementProps) {
       await loadTasks(query);
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '删除任务失败');
+    }
+  }
+
+  async function handleAttachmentUpload(file: File) {
+    if (!detailTask) {
+      return;
+    }
+    setAttachmentUploading(true);
+    try {
+      await uploadTaskAttachment(token, detailTask.id, file);
+      messageApi.success('附件已上传到 MinIO');
+      setDetailTask(await getTask(token, detailTask.id));
+      await loadTasks(query);
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '上传附件失败');
+    } finally {
+      setAttachmentUploading(false);
+    }
+  }
+
+  async function handleAttachmentDownload(attachment: TaskAttachment) {
+    setDownloadingAttachmentId(attachment.id);
+    try {
+      /**
+       * 附件下载接口需要 Bearer token，不能直接用 <a href>。
+       * 这里先 fetch 为 Blob，再创建临时 object URL 触发浏览器下载。
+       */
+      const blob = await downloadTaskAttachment(token, attachment);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.originalFilename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '下载附件失败');
+    } finally {
+      setDownloadingAttachmentId(null);
     }
   }
 
@@ -396,22 +450,63 @@ export function TaskManagement({ token }: TaskManagementProps) {
         destroyOnHidden
       >
         {detailTask && (
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="任务ID">{detailTask.id}</Descriptions.Item>
-            <Descriptions.Item label="标题">{detailTask.title}</Descriptions.Item>
-            <Descriptions.Item label="描述">{detailTask.description || '-'}</Descriptions.Item>
-            <Descriptions.Item label="状态">
-              <TaskStatusTag status={detailTask.status} />
-            </Descriptions.Item>
-            <Descriptions.Item label="优先级">
-              <TaskPriorityTag priority={detailTask.priority} />
-            </Descriptions.Item>
-            <Descriptions.Item label="创建人ID">{detailTask.creatorUserId}</Descriptions.Item>
-            <Descriptions.Item label="负责人ID">{detailTask.assigneeUserId}</Descriptions.Item>
-            <Descriptions.Item label="截止时间">{displayDateTime(detailTask.dueTime)}</Descriptions.Item>
-            <Descriptions.Item label="创建时间">{displayDateTime(detailTask.createdAt)}</Descriptions.Item>
-            <Descriptions.Item label="更新时间">{displayDateTime(detailTask.updatedAt)}</Descriptions.Item>
-          </Descriptions>
+          <div className="detail-stack">
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="任务ID">{detailTask.id}</Descriptions.Item>
+              <Descriptions.Item label="标题">{detailTask.title}</Descriptions.Item>
+              <Descriptions.Item label="描述">{detailTask.description || '-'}</Descriptions.Item>
+              <Descriptions.Item label="状态">
+                <TaskStatusTag status={detailTask.status} />
+              </Descriptions.Item>
+              <Descriptions.Item label="优先级">
+                <TaskPriorityTag priority={detailTask.priority} />
+              </Descriptions.Item>
+              <Descriptions.Item label="创建人ID">{detailTask.creatorUserId}</Descriptions.Item>
+              <Descriptions.Item label="负责人ID">{detailTask.assigneeUserId}</Descriptions.Item>
+              <Descriptions.Item label="附件数">{detailTask.attachmentCount ?? detailTask.attachments?.length ?? 0}</Descriptions.Item>
+              <Descriptions.Item label="截止时间">{displayDateTime(detailTask.dueTime)}</Descriptions.Item>
+              <Descriptions.Item label="创建时间">{displayDateTime(detailTask.createdAt)}</Descriptions.Item>
+              <Descriptions.Item label="更新时间">{displayDateTime(detailTask.updatedAt)}</Descriptions.Item>
+            </Descriptions>
+
+            <Card size="small" title="任务附件" className="attachment-card">
+              <Space direction="vertical" className="full-width-control">
+                <Upload
+                  accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,application/zip"
+                  showUploadList={false}
+                  beforeUpload={(file) => {
+                    void handleAttachmentUpload(file);
+                    return Upload.LIST_IGNORE;
+                  }}
+                >
+                  <Button loading={attachmentUploading}>上传附件</Button>
+                </Upload>
+                <List
+                  locale={{ emptyText: '暂无附件' }}
+                  dataSource={detailTask.attachments ?? []}
+                  renderItem={(attachment) => (
+                    <List.Item
+                      actions={[
+                        <Button
+                          key="download"
+                          size="small"
+                          loading={downloadingAttachmentId === attachment.id}
+                          onClick={() => void handleAttachmentDownload(attachment)}
+                        >
+                          下载
+                        </Button>
+                      ]}
+                    >
+                      <List.Item.Meta
+                        title={attachment.originalFilename}
+                        description={`${attachment.contentType} · ${formatFileSize(attachment.fileSize)} · 上传者 ${attachment.uploaderUserId}`}
+                      />
+                    </List.Item>
+                  )}
+                />
+              </Space>
+            </Card>
+          </div>
         )}
       </Modal>
     </div>
@@ -461,4 +556,17 @@ function normalizeTaskPayload(values: TaskFormValues): CreateTaskRequest & Updat
 
 function displayDateTime(value?: string | null) {
   return value ? value.replace('T', ' ') : '-';
+}
+
+function formatFileSize(value?: number | null) {
+  if (!value) {
+    return '0 B';
+  }
+  if (value < 1024) {
+    return `${value} B`;
+  }
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }

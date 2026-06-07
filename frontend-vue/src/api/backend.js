@@ -1,4 +1,4 @@
-import { request } from './client';
+import { request, requestBlob } from './client';
 
 export function loginApi(data) {
   return request('/api/auth/login', {
@@ -23,6 +23,16 @@ export function verifySliderCaptchaApi(data) {
 
 export function fetchCurrentUser(token) {
   return request('/api/users/me', { token });
+}
+
+export function uploadMyAvatar(token, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request('/api/users/me/avatar', {
+    method: 'POST',
+    token,
+    body: formData
+  });
 }
 
 export function pageUsers(token, query) {
@@ -86,6 +96,20 @@ export function pageTasks(token, query) {
 
 export function getTask(token, id) {
   return request(`/api/tasks/${id}`, { token });
+}
+
+export function uploadTaskAttachment(token, taskId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request(`/api/tasks/${taskId}/attachments`, {
+    method: 'POST',
+    token,
+    body: formData
+  });
+}
+
+export function downloadTaskAttachment(token, attachment) {
+  return requestBlob(attachment.downloadUrl, { token });
 }
 
 export function createTask(token, data) {

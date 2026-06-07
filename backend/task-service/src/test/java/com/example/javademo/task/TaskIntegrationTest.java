@@ -5,6 +5,8 @@ import com.example.javademo.rpc.user.UserSummaryRpcResponse;
 import com.example.javademo.task.client.CreateNotificationRequest;
 import com.example.javademo.task.client.feign.NotificationFeignClient;
 import com.example.javademo.task.common.ApiResponse;
+import com.example.javademo.task.storage.ObjectStorageService;
+import com.example.javademo.task.storage.StoredObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,8 +30,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
 import javax.crypto.SecretKey;
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -72,6 +78,9 @@ class TaskIntegrationTest {
 
     @MockBean
     private NotificationFeignClient notificationFeignClient;
+
+    @MockBean
+    private ObjectStorageService objectStorageService;
 
     @BeforeEach
     void setUp() {
@@ -140,6 +149,41 @@ class TaskIntegrationTest {
         );
         assertThat(detailResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(readJson(detailResponse).path("data").path("id").asLong()).isEqualTo(taskId);
+
+        // 任务附件内容写入对象存储，任务详情只返回附件元数据和代理下载 URL。
+        byte[] attachmentBytes = "attachment-content".getBytes(StandardCharsets.UTF_8);
+        ResponseEntity<String> uploadAttachmentResponse = restTemplate.exchange(
+                "/api/tasks/" + taskId + "/attachments",
+                HttpMethod.POST,
+                new HttpEntity<>(multipartBody("notes.txt", MediaType.TEXT_PLAIN, attachmentBytes), multipartHeaders(token, REQUEST_ID)),
+                String.class
+        );
+        assertThat(uploadAttachmentResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        long attachmentId = readJson(uploadAttachmentResponse).path("data").path("id").asLong();
+        assertThat(readJson(uploadAttachmentResponse).path("data").path("originalFilename").asText()).isEqualTo("notes.txt");
+        assertThat(readJson(uploadAttachmentResponse).path("data").path("downloadUrl").asText())
+                .isEqualTo("/api/tasks/" + taskId + "/attachments/" + attachmentId + "/content");
+
+        ResponseEntity<String> detailWithAttachmentResponse = restTemplate.exchange(
+                "/api/tasks/" + taskId,
+                HttpMethod.GET,
+                new HttpEntity<>(authHeaders),
+                String.class
+        );
+        JsonNode detailWithAttachmentJson = readJson(detailWithAttachmentResponse);
+        assertThat(detailWithAttachmentJson.path("data").path("attachmentCount").asInt()).isEqualTo(1);
+        assertThat(detailWithAttachmentJson.path("data").path("attachments").get(0).path("originalFilename").asText()).isEqualTo("notes.txt");
+
+        when(objectStorageService.getObject(eq("java-demo-task-attachments"), anyString()))
+                .thenReturn(new StoredObject(new ByteArrayInputStream(attachmentBytes), MediaType.TEXT_PLAIN_VALUE, attachmentBytes.length));
+        ResponseEntity<byte[]> downloadResponse = restTemplate.exchange(
+                "/api/tasks/" + taskId + "/attachments/" + attachmentId + "/content",
+                HttpMethod.GET,
+                new HttpEntity<>(authHeaders),
+                byte[].class
+        );
+        assertThat(downloadResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(downloadResponse.getBody()).isEqualTo(attachmentBytes);
 
         // 3. 状态变化会更新任务并再次创建通知。
         ResponseEntity<String> statusResponse = restTemplate.exchange(
@@ -302,6 +346,28 @@ class TaskIntegrationTest {
         headers.setBearerAuth(token);
         headers.set("X-Request-Id", requestId);
         return headers;
+    }
+
+    private HttpHeaders multipartHeaders(String token, String requestId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.setBearerAuth(token);
+        headers.set("X-Request-Id", requestId);
+        return headers;
+    }
+
+    private MultiValueMap<String, Object> multipartBody(String filename, MediaType contentType, byte[] bytes) {
+        HttpHeaders fileHeaders = new HttpHeaders();
+        fileHeaders.setContentType(contentType);
+        fileHeaders.setContentDispositionFormData("file", filename);
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new HttpEntity<>(new ByteArrayResource(bytes) {
+            @Override
+            public String getFilename() {
+                return filename;
+            }
+        }, fileHeaders));
+        return body;
     }
 
     private String createToken(Long userId, String username) {

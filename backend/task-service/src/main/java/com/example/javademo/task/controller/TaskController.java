@@ -4,10 +4,12 @@ import com.example.javademo.task.common.ApiResponse;
 import com.example.javademo.task.config.OpenApiConfig;
 import com.example.javademo.task.dto.CreateTaskRequest;
 import com.example.javademo.task.dto.PageResponse;
+import com.example.javademo.task.dto.TaskAttachmentResponse;
 import com.example.javademo.task.dto.TaskResponse;
 import com.example.javademo.task.dto.UpdateTaskRequest;
 import com.example.javademo.task.dto.UpdateTaskStatusRequest;
 import com.example.javademo.task.security.CurrentUserContext;
+import com.example.javademo.task.service.TaskAttachmentService;
 import com.example.javademo.task.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /**
  * 任务接口。
@@ -36,9 +47,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class TaskController {
 
     private final TaskService taskService;
+    private final TaskAttachmentService taskAttachmentService;
 
-    public TaskController(TaskService taskService) {
+    public TaskController(TaskService taskService, TaskAttachmentService taskAttachmentService) {
         this.taskService = taskService;
+        this.taskAttachmentService = taskAttachmentService;
     }
 
     @Operation(summary = "创建任务", description = "当前登录用户创建任务，可指定负责人；创建成功后会生成任务通知。")
@@ -70,6 +83,37 @@ public class TaskController {
     @GetMapping("/{id:\\d+}")
     public ApiResponse<TaskResponse> getTask(@PathVariable("id") Long id) {
         return ApiResponse.success(taskService.getTask(id));
+    }
+
+    @Operation(summary = "上传任务附件", description = "为指定任务上传附件，文件内容写入 MinIO，元数据写入 task_attachment。")
+    @PostMapping(value = "/{id:\\d+}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<TaskAttachmentResponse> uploadAttachment(@PathVariable("id") Long id, @RequestParam("file") MultipartFile file) {
+        return ApiResponse.success("attachment uploaded", taskAttachmentService.uploadAttachment(id, file, CurrentUserContext.getRequired()));
+    }
+
+    @Operation(summary = "任务附件列表", description = "查询指定任务的附件元数据列表。")
+    @GetMapping("/{id:\\d+}/attachments")
+    public ApiResponse<List<TaskAttachmentResponse>> listAttachments(@PathVariable("id") Long id) {
+        return ApiResponse.success(taskAttachmentService.listAttachments(id));
+    }
+
+    @Operation(summary = "下载任务附件", description = "通过 task-service 代理下载 MinIO 中的任务附件。")
+    @GetMapping("/{taskId:\\d+}/attachments/{attachmentId:\\d+}/content")
+    public ResponseEntity<InputStreamResource> downloadAttachment(@PathVariable("taskId") Long taskId, @PathVariable("attachmentId") Long attachmentId) {
+        var download = taskAttachmentService.openAttachment(taskId, attachmentId);
+        var attachment = download.attachment();
+        var storedObject = download.storedObject();
+        MediaType mediaType = storedObject.contentType() == null || storedObject.contentType().isBlank()
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(storedObject.contentType());
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(attachment.getOriginalFilename(), StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .contentLength(storedObject.contentLength())
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(new InputStreamResource(storedObject.inputStream()));
     }
 
     @Operation(summary = "更新任务", description = "更新标题、描述、负责人、优先级和截止时间。负责人变化时会重新生成通知。")

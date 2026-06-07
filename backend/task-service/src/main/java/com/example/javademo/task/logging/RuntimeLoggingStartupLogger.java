@@ -29,7 +29,7 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         log.info(
-                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, taskLevel={}, datasource={}, redisEnabled={}, redisAddress={}, cacheEnabled={}, userCacheTtlSeconds={}, taskCacheTtlSeconds={}, rateLimitEnabled={}, serviceCallMode={}, userValidationMode={}, notificationCallMode={}, userServiceName={}, notificationServiceName={}, dubboAppName={}, dubboRegistryAddress={}, dubboRegistryGroup={}, dubboConsumerTimeoutMs={}, dubboConsumerRetries={}, dubboConsumerCheck={}, feignConnectTimeoutMs={}, feignReadTimeoutMs={}, feignLoggerLevel={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
+                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, taskLevel={}, datasource={}, redisEnabled={}, redisAddress={}, cacheEnabled={}, userCacheTtlSeconds={}, taskCacheTtlSeconds={}, rateLimitEnabled={}, minioEnabled={}, minioEndpoint={}, taskAttachmentBucket={}, maxTaskAttachmentSizeBytes={}, serviceCallMode={}, userValidationMode={}, notificationCallMode={}, userServiceName={}, notificationServiceName={}, dubboAppName={}, dubboRegistryAddress={}, dubboRegistryGroup={}, dubboConsumerTimeoutMs={}, dubboConsumerRetries={}, dubboConsumerCheck={}, feignConnectTimeoutMs={}, feignReadTimeoutMs={}, feignLoggerLevel={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
                 environment.getProperty("spring.application.name", "task-service"),
                 environment.getProperty("local.server.port", environment.getProperty("server.port", "unknown")),
                 resolveProfiles(),
@@ -43,6 +43,10 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
                 environment.getProperty("java-demo.cache.user-ttl-seconds", "300"),
                 environment.getProperty("java-demo.cache.task-ttl-seconds", "60"),
                 environment.getProperty("java-demo.rate-limit.enabled", "true"),
+                environment.getProperty("java-demo.minio.enabled", "true"),
+                sanitizeConfigValue(environment.getProperty("java-demo.minio.endpoint", "http://127.0.0.1:9000")),
+                environment.getProperty("java-demo.minio.task-attachment-bucket", "java-demo-task-attachments"),
+                environment.getProperty("java-demo.minio.max-task-attachment-size-bytes", "10485760"),
                 "mixed-dubbo-feign",
                 environment.getProperty("java-demo.rpc.user-validation-mode", "dubbo"),
                 environment.getProperty("java-demo.rpc.notification-mode", "openfeign"),

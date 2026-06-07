@@ -26,6 +26,10 @@ public class UserProfileResponse {
     @Schema(description = "昵称", example = "Alice")
     private String nickname;
 
+    /** 用户头像 URL。该 URL 由后端代理 MinIO 对象生成，不暴露 MinIO object key。 */
+    @Schema(description = "用户头像公开访问 URL", example = "/api/users/public/avatars/1?v=1710000000000")
+    private String avatarUrl;
+
     /** 用户状态，当前 1 表示启用。 */
     @Schema(description = "用户状态，1 表示启用", example = "1")
     private Integer status;
@@ -53,10 +57,11 @@ public class UserProfileResponse {
     public UserProfileResponse() {
     }
 
-    public UserProfileResponse(Long id, String username, String nickname, Integer status, String role, Integer deleted, LocalDateTime lastLoginAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public UserProfileResponse(Long id, String username, String nickname, String avatarUrl, Integer status, String role, Integer deleted, LocalDateTime lastLoginAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.username = username;
         this.nickname = nickname;
+        this.avatarUrl = avatarUrl;
         this.status = status;
         this.role = role;
         this.deleted = deleted;
@@ -75,6 +80,7 @@ public class UserProfileResponse {
                 user.getId(),
                 user.getUsername(),
                 user.getNickname(),
+                user.getAvatarUrl(),
                 user.getStatus(),
                 user.getRole(),
                 user.getDeleted(),
@@ -106,6 +112,14 @@ public class UserProfileResponse {
 
     public void setNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public Integer getStatus() {

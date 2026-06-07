@@ -31,6 +31,12 @@ public class User {
     /** 用户昵称，v0.1 没有单独个人资料表，因此直接放在用户表中。 */
     private String nickname;
 
+    /** 用户头像公开访问 URL，前端可以直接作为图片地址使用。 */
+    private String avatarUrl;
+
+    /** 用户头像在 MinIO 中的对象 key，只供服务端读取对象内容。 */
+    private String avatarObjectKey;
+
     /** 用户状态，当前约定 1 表示启用，后续可扩展禁用、锁定等状态。 */
     private Integer status;
 
@@ -85,6 +91,22 @@ public class User {
 
     public void setNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public String getAvatarObjectKey() {
+        return avatarObjectKey;
+    }
+
+    public void setAvatarObjectKey(String avatarObjectKey) {
+        this.avatarObjectKey = avatarObjectKey;
     }
 
     public Integer getStatus() {

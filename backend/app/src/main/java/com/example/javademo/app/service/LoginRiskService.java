@@ -813,7 +813,7 @@ public class LoginRiskService {
     }
 
     private String redisKeyPrefix() {
-        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_8");
+        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_9");
     }
 
     private String failureKey(String riskKey) {

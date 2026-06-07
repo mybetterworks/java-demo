@@ -31,7 +31,7 @@ export async function request(path, options = {}) {
   const { token, headers, body, ...rest } = options;
   const requestHeaders = new Headers(headers);
 
-  if (!requestHeaders.has('Content-Type') && body !== undefined) {
+  if (!requestHeaders.has('Content-Type') && body !== undefined && !(body instanceof FormData)) {
     requestHeaders.set('Content-Type', 'application/json');
   }
   if (token) {
@@ -59,10 +59,46 @@ export async function request(path, options = {}) {
   return payload.data;
 }
 
+/**
+ * 下载二进制文件的请求入口。
+ *
+ * 附件下载需要 Bearer token，但响应不是统一 JSON，而是 Blob 文件流。
+ * 因此单独封装，避免普通 request 把文件流当 JSON 解析。
+ */
+export async function requestBlob(path, options = {}) {
+  const { token, headers, body, ...rest } = options;
+  const requestHeaders = new Headers(headers);
+
+  if (token) {
+    requestHeaders.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...rest,
+    headers: requestHeaders,
+    body
+  });
+
+  if (!response.ok) {
+    const payload = await tryReadJson(response);
+    throw new ApiError(payload?.message || `HTTP ${response.status}`, response.status, payload?.code, payload?.data);
+  }
+
+  return response.blob();
+}
+
 async function readJson(response) {
   try {
     return await response.json();
   } catch {
     throw new ApiError('后端没有返回合法 JSON，请检查服务是否启动。', response.status);
+  }
+}
+
+async function tryReadJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
   }
 }

@@ -4,6 +4,7 @@ import com.example.javademo.task.entity.TaskItem;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 任务响应对象。
@@ -22,6 +23,8 @@ public class TaskResponse {
     private String priority;
     private LocalDateTime dueTime;
     private Integer deleted;
+    private Integer attachmentCount;
+    private List<TaskAttachmentResponse> attachments;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -36,6 +39,8 @@ public class TaskResponse {
         response.setPriority(task.getPriority());
         response.setDueTime(task.getDueTime());
         response.setDeleted(task.getDeleted());
+        response.setAttachmentCount(0);
+        response.setAttachments(List.of());
         response.setCreatedAt(task.getCreatedAt());
         response.setUpdatedAt(task.getUpdatedAt());
         return response;
@@ -111,6 +116,22 @@ public class TaskResponse {
 
     public void setDeleted(Integer deleted) {
         this.deleted = deleted;
+    }
+
+    public Integer getAttachmentCount() {
+        return attachmentCount;
+    }
+
+    public void setAttachmentCount(Integer attachmentCount) {
+        this.attachmentCount = attachmentCount;
+    }
+
+    public List<TaskAttachmentResponse> getAttachments() {
+        return attachments;
+    }
+
+    public void setAttachments(List<TaskAttachmentResponse> attachments) {
+        this.attachments = attachments;
     }
 
     public LocalDateTime getCreatedAt() {

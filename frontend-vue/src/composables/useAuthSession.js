@@ -56,6 +56,19 @@ export function useAuthSession() {
     activeView.value = 'dashboard';
   }
 
+  async function updateCurrentUser(user) {
+    currentUser.value = user;
+    if (session.value) {
+      const refreshed = {
+        ...session.value,
+        username: user.username,
+        user
+      };
+      session.value = refreshed;
+      await authSessionStore.put(refreshed);
+    }
+  }
+
   return {
     booting,
     session,
@@ -63,6 +76,7 @@ export function useAuthSession() {
     activeView,
     restoreSession,
     handleLogin,
-    handleLogout
+    handleLogout,
+    updateCurrentUser
   };
 }

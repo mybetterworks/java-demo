@@ -13,6 +13,7 @@ export interface UserProfile {
   id: number;
   username: string;
   nickname: string;
+  avatarUrl?: string | null;
   status: number;
   role: string;
   deleted: number;
@@ -110,6 +111,17 @@ export type TaskScope = 'my' | 'all';
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 
+export interface TaskAttachment {
+  id: number;
+  taskId: number;
+  uploaderUserId: number;
+  originalFilename: string;
+  contentType: string;
+  fileSize: number;
+  downloadUrl: string;
+  createdAt?: string | null;
+}
+
 export interface TaskItem {
   id: number;
   title: string;
@@ -120,6 +132,8 @@ export interface TaskItem {
   priority: TaskPriority;
   dueTime?: string | null;
   deleted: number;
+  attachmentCount: number;
+  attachments: TaskAttachment[];
   createdAt?: string | null;
   updatedAt?: string | null;
 }

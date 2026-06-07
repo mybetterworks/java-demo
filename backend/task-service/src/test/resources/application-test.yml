@@ -34,6 +34,8 @@ java-demo:
     enabled: false
   rate-limit:
     enabled: false
+  minio:
+    enabled: false
   services:
     # 集成测试通过 @MockBean 替换 Dubbo 用户校验与 Feign 通知调用，不依赖真实下游实例。
     user-service-name: java-demo-app

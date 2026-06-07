@@ -46,6 +46,10 @@ public class HealthController {
         data.put("userCacheTtlSeconds", environment.getProperty("java-demo.cache.user-ttl-seconds", Long.class, 300L));
         data.put("taskCacheTtlSeconds", environment.getProperty("java-demo.cache.task-ttl-seconds", Long.class, 60L));
         data.put("rateLimitEnabled", environment.getProperty("java-demo.rate-limit.enabled", Boolean.class, true));
+        data.put("minioEnabled", environment.getProperty("java-demo.minio.enabled", Boolean.class, true));
+        data.put("minioEndpoint", environment.getProperty("java-demo.minio.endpoint", "http://127.0.0.1:9000"));
+        data.put("taskAttachmentBucket", environment.getProperty("java-demo.minio.task-attachment-bucket", "java-demo-task-attachments"));
+        data.put("maxTaskAttachmentSizeBytes", environment.getProperty("java-demo.minio.max-task-attachment-size-bytes", Long.class, 10485760L));
         data.put("dubboApplicationName", environment.getProperty("dubbo.application.name", "task-service"));
         data.put("dubboRegistryGroup", environment.getProperty("dubbo.registry.group", "JAVA_DEMO_DUBBO"));
         data.put("dubboConsumerTimeoutMs", environment.getProperty("dubbo.consumer.timeout", "3000"));

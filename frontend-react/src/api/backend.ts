@@ -1,4 +1,4 @@
-import { request } from './client';
+import { request, requestBlob } from './client';
 import type {
   CreateTaskRequest,
   CreateUserRequest,
@@ -9,6 +9,7 @@ import type {
   NotificationsQuery,
   PageResponse,
   TaskItem,
+  TaskAttachment,
   TasksQuery,
   TaskStatus,
   SliderCaptchaChallengeRequest,
@@ -46,6 +47,16 @@ export function verifySliderCaptchaApi(data: SliderCaptchaVerifyRequest) {
 
 export function fetchCurrentUser(token: string) {
   return request<UserProfile>('/api/users/me', { token });
+}
+
+export function uploadMyAvatar(token: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request<UserProfile>('/api/users/me/avatar', {
+    method: 'POST',
+    token,
+    body: formData
+  });
 }
 
 export function pageUsers(token: string, query: UsersQuery) {
@@ -110,6 +121,20 @@ export function pageTasks(token: string, query: TasksQuery) {
 
 export function getTask(token: string, id: number) {
   return request<TaskItem>(`/api/tasks/${id}`, { token });
+}
+
+export function uploadTaskAttachment(token: string, taskId: number, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request<TaskAttachment>(`/api/tasks/${taskId}/attachments`, {
+    method: 'POST',
+    token,
+    body: formData
+  });
+}
+
+export function downloadTaskAttachment(token: string, attachment: TaskAttachment) {
+  return requestBlob(attachment.downloadUrl, { token });
 }
 
 export function createTask(token: string, data: CreateTaskRequest) {

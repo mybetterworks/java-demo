@@ -1,20 +1,40 @@
-import { Button, Card, Col, Descriptions, Row, Space, Statistic, Typography } from 'antd';
+import { Button, Card, Col, Descriptions, Row, Space, Statistic, Typography, Upload, message } from 'antd';
+import { uploadMyAvatar } from '../api/backend';
 import type { UserProfile } from '../types';
 
 type ViewKey = 'dashboard' | 'users' | 'tasks' | 'notifications';
 
 interface DashboardProps {
+  token: string;
   currentUser: UserProfile;
   onNavigate: (view: ViewKey) => void;
+  onCurrentUserChange: (user: UserProfile) => void;
 }
 
 /**
  * 首页用于确认“登录态已经恢复并能读取当前用户”。
  * 这比单纯跳转到列表更适合作为学习项目的健康面板。
  */
-export function Dashboard({ currentUser, onNavigate }: DashboardProps) {
+export function Dashboard({ token, currentUser, onNavigate, onCurrentUserChange }: DashboardProps) {
+  const [messageApi, contextHolder] = message.useMessage();
+
+  async function handleAvatarUpload(file: File) {
+    try {
+      /**
+       * Ant Design Upload 默认会自己发请求；这里关闭默认上传，改为调用项目统一 API 封装。
+       * 上传成功后把后端返回的用户资料交给根组件，保证顶部头像、首页资料和 IndexedDB 会话同步刷新。
+       */
+      const updatedUser = await uploadMyAvatar(token, file);
+      onCurrentUserChange(updatedUser);
+      messageApi.success('头像已上传到 MinIO');
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '头像上传失败');
+    }
+  }
+
   return (
     <div className="page-stack">
+      {contextHolder}
       <section className="page-hero-card">
         <Typography.Text className="hero-kicker">Session Restored</Typography.Text>
         <Typography.Title level={2}>当前用户已通过 JWT 接入后端</Typography.Title>
@@ -52,6 +72,21 @@ export function Dashboard({ currentUser, onNavigate }: DashboardProps) {
         <Descriptions column={{ xs: 1, md: 2 }} bordered>
           <Descriptions.Item label="用户名">{currentUser.username}</Descriptions.Item>
           <Descriptions.Item label="昵称">{currentUser.nickname || '-'}</Descriptions.Item>
+          <Descriptions.Item label="头像">
+            <Space>
+              {currentUser.avatarUrl ? '已上传' : '未上传'}
+              <Upload
+                accept="image/png,image/jpeg,image/webp"
+                showUploadList={false}
+                beforeUpload={(file) => {
+                  void handleAvatarUpload(file);
+                  return Upload.LIST_IGNORE;
+                }}
+              >
+                <Button size="small">上传头像</Button>
+              </Upload>
+            </Space>
+          </Descriptions.Item>
           <Descriptions.Item label="最近登录">{currentUser.lastLoginAt || '-'}</Descriptions.Item>
           <Descriptions.Item label="创建时间">{currentUser.createdAt || '-'}</Descriptions.Item>
         </Descriptions>

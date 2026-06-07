@@ -2,9 +2,13 @@ package com.example.javademo.app;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.javademo.app.storage.ObjectStorageService;
+import com.example.javademo.app.storage.StoredObject;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -13,11 +17,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.io.ByteArrayInputStream;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 /**
  * v0.2 用户管理集成测试。
@@ -34,6 +44,9 @@ class UserManagementIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+    private ObjectStorageService objectStorageService;
 
     @Test
     void shouldManageUsersAfterLogin() throws Exception {
@@ -148,6 +161,57 @@ class UserManagementIntegrationTest {
         assertThat(afterDeleteListResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(recordsContainUserId(readJson(afterDeleteListResponse), managedUserId)).isFalse();
         assertThat(loginStatus(managedUsername, "newSecret123")).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+    }
+
+    @Test
+    void shouldUploadCurrentUserAvatarAndReadPublicAvatar() throws Exception {
+        String username = "avatar_" + System.nanoTime();
+        String token = registerAndLogin(username, "avatarSecret123");
+
+        HttpHeaders authHeaders = jsonHeaders();
+        authHeaders.setBearerAuth(token);
+        ResponseEntity<String> meResponse = restTemplate.exchange(
+                "/api/users/me",
+                HttpMethod.GET,
+                new HttpEntity<>(authHeaders),
+                String.class
+        );
+        long currentUserId = readJson(meResponse).path("data").path("id").asLong();
+
+        byte[] avatarBytes = "fake-png-avatar".getBytes();
+        HttpHeaders fileHeaders = new HttpHeaders();
+        fileHeaders.setContentType(MediaType.IMAGE_PNG);
+        fileHeaders.setContentDispositionFormData("file", "avatar.png");
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new HttpEntity<>(new ByteArrayResource(avatarBytes) {
+            @Override
+            public String getFilename() {
+                return "avatar.png";
+            }
+        }, fileHeaders));
+
+        HttpHeaders multipartHeaders = new HttpHeaders();
+        multipartHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+        multipartHeaders.setBearerAuth(token);
+
+        // 头像内容写入 MinIO 的动作由 ObjectStorageService Mock 承接；测试重点验证 HTTP、数据库字段和公开代理链路。
+        ResponseEntity<String> uploadResponse = restTemplate.exchange(
+                "/api/users/me/avatar",
+                HttpMethod.POST,
+                new HttpEntity<>(body, multipartHeaders),
+                String.class
+        );
+        assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String avatarUrl = readJson(uploadResponse).path("data").path("avatarUrl").asText();
+        assertThat(avatarUrl).startsWith("/api/users/public/avatars/" + currentUserId + "?v=");
+
+        when(objectStorageService.getObject(eq("java-demo-avatars"), anyString()))
+                .thenReturn(new StoredObject(new ByteArrayInputStream(avatarBytes), MediaType.IMAGE_PNG_VALUE, avatarBytes.length));
+
+        ResponseEntity<byte[]> avatarResponse = restTemplate.getForEntity(avatarUrl, byte[].class);
+        assertThat(avatarResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(avatarResponse.getHeaders().getContentType()).isEqualTo(MediaType.IMAGE_PNG);
+        assertThat(avatarResponse.getBody()).isEqualTo(avatarBytes);
     }
 
     /**

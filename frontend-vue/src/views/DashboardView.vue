@@ -37,6 +37,19 @@
       <el-descriptions :column="2" border>
         <el-descriptions-item label="用户名">{{ currentUser.username }}</el-descriptions-item>
         <el-descriptions-item label="昵称">{{ currentUser.nickname || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="头像">
+          <div class="avatar-upload-row">
+            <span>{{ currentUser.avatarUrl ? '已上传' : '未上传' }}</span>
+            <el-upload
+              accept="image/png,image/jpeg,image/webp"
+              :auto-upload="false"
+              :show-file-list="false"
+              :on-change="handleAvatarChange"
+            >
+              <el-button size="small" :loading="avatarUploading">上传头像</el-button>
+            </el-upload>
+          </div>
+        </el-descriptions-item>
         <el-descriptions-item label="最近登录">{{ currentUser.lastLoginAt || '-' }}</el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ currentUser.createdAt || '-' }}</el-descriptions-item>
       </el-descriptions>
@@ -66,12 +79,42 @@
 </template>
 
 <script setup>
-defineEmits(['navigate']);
+import { ref } from 'vue';
+import { ElMessage } from 'element-plus';
+import { uploadMyAvatar } from '../api/backend';
 
-defineProps({
+const emit = defineEmits(['navigate', 'current-user-change']);
+
+const props = defineProps({
+  token: {
+    type: String,
+    required: true
+  },
   currentUser: {
     type: Object,
     required: true
   }
 });
+
+const avatarUploading = ref(false);
+
+async function handleAvatarChange(uploadFile) {
+  if (!uploadFile.raw) {
+    return;
+  }
+  avatarUploading.value = true;
+  try {
+    /**
+     * Element Plus Upload 在这里只负责选择文件；真正上传走统一 API 封装。
+     * 上传成功后通知 App.vue 更新 currentUser 和 localStorage 会话，保证刷新前后头像一致。
+     */
+    const updatedUser = await uploadMyAvatar(props.token, uploadFile.raw);
+    emit('current-user-change', updatedUser);
+    ElMessage.success('头像已上传到 MinIO');
+  } catch (error) {
+    ElMessage.error(error?.message || '头像上传失败');
+  } finally {
+    avatarUploading.value = false;
+  }
+}
 </script>

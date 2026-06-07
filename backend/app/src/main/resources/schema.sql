@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS sys_user (
     -- 用户昵称，注册时为空则默认使用 username。
     nickname VARCHAR(64) NOT NULL,
 
+    -- 用户头像公开访问 URL，v0.9 起由后端代理 MinIO 对象生成。
+    avatar_url VARCHAR(512) NULL,
+
+    -- 用户头像在 MinIO 中的对象 key，只保存在服务端，不直接返回给前端。
+    avatar_object_key VARCHAR(512) NULL,
+
     -- 用户状态，当前约定 1 表示启用。
     status TINYINT NOT NULL DEFAULT 1,
 

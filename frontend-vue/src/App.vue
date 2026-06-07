@@ -14,7 +14,13 @@
     @view-change="activeView = $event"
     @logout="handleLogout"
   >
-    <DashboardView v-if="activeView === 'dashboard'" :current-user="currentUser" @navigate="activeView = $event" />
+    <DashboardView
+      v-if="activeView === 'dashboard'"
+      :token="session.accessToken"
+      :current-user="currentUser"
+      @navigate="activeView = $event"
+      @current-user-change="updateCurrentUser"
+    />
     <UserManagementView v-else-if="activeView === 'users'" :token="session.accessToken" />
     <TaskManagementView v-else-if="activeView === 'tasks'" :token="session.accessToken" />
     <NotificationCenterView
@@ -56,7 +62,8 @@ const {
   activeView,
   restoreSession,
   handleLogin,
-  handleLogout
+  handleLogout,
+  updateCurrentUser
 } = useAuthSession();
 
 const notificationSocketToken = computed(() => session.value?.accessToken || '');

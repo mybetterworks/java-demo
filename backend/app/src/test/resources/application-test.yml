@@ -35,6 +35,8 @@ java-demo:
     enabled: false
   rate-limit:
     enabled: false
+  minio:
+    enabled: false
 
 dubbo:
   application:
