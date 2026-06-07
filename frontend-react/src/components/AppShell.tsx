@@ -1,13 +1,14 @@
 import { Layout, Menu, Typography, Button, Space, Avatar, Tag } from 'antd';
 import type { MenuProps } from 'antd';
 import type { ReactNode } from 'react';
-import type { UserProfile } from '../types';
+import type { NotificationSocketStatus, UserProfile } from '../types';
 
 type ViewKey = 'dashboard' | 'users' | 'tasks' | 'notifications';
 
 interface AppShellProps {
   currentUser: UserProfile;
   activeView: ViewKey;
+  realtimeStatus: NotificationSocketStatus;
   onViewChange: (view: ViewKey) => void;
   onLogout: () => void;
   children: ReactNode;
@@ -27,7 +28,7 @@ const menuItems: MenuProps['items'] = [
  * v0.5.3 页面增加到四个，但仍然可以用 view state 讲清楚“菜单 -> 页面组件”的最小闭环；
  * 等后续页面继续增多或需要浏览器地址栏路由时，再单独引入路由库会更自然。
  */
-export function AppShell({ currentUser, activeView, onViewChange, onLogout, children }: AppShellProps) {
+export function AppShell({ currentUser, activeView, realtimeStatus, onViewChange, onLogout, children }: AppShellProps) {
   return (
     <Layout className="app-shell">
       <Layout.Sider className="app-sider" breakpoint="lg" collapsedWidth={0}>
@@ -54,6 +55,9 @@ export function AppShell({ currentUser, activeView, onViewChange, onLogout, chil
             <Typography.Title level={3}>用户、任务与通知练习台</Typography.Title>
           </div>
           <Space>
+            <Tag color={realtimeStatus === 'connected' ? 'green' : realtimeStatus === 'idle' ? 'default' : 'orange'}>
+              实时通知：{realtimeStatusLabel(realtimeStatus)}
+            </Tag>
             <Avatar className="user-avatar">{currentUser.nickname?.slice(0, 1) || currentUser.username.slice(0, 1)}</Avatar>
             <div className="header-user">
               <Typography.Text strong>{currentUser.nickname || currentUser.username}</Typography.Text>
@@ -66,4 +70,16 @@ export function AppShell({ currentUser, activeView, onViewChange, onLogout, chil
       </Layout>
     </Layout>
   );
+}
+
+function realtimeStatusLabel(status: NotificationSocketStatus) {
+  const labels: Record<NotificationSocketStatus, string> = {
+    idle: '未连接',
+    connecting: '连接中',
+    connected: '已连接',
+    reconnecting: '重连中',
+    closed: '已断开',
+    error: '异常'
+  };
+  return labels[status] ?? status;
 }

@@ -10,20 +10,27 @@
     v-else
     :current-user="currentUser"
     :active-view="activeView"
+    :realtime-status="socketStatus"
     @view-change="activeView = $event"
     @logout="handleLogout"
   >
     <DashboardView v-if="activeView === 'dashboard'" :current-user="currentUser" @navigate="activeView = $event" />
     <UserManagementView v-else-if="activeView === 'users'" :token="session.accessToken" />
     <TaskManagementView v-else-if="activeView === 'tasks'" :token="session.accessToken" />
-    <NotificationCenterView v-else :token="session.accessToken" />
+    <NotificationCenterView
+      v-else
+      :token="session.accessToken"
+      :realtime-status="socketStatus"
+      :realtime-message="lastSocketMessage"
+    />
   </AppLayout>
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { Loading } from '@element-plus/icons-vue';
 import { useAuthSession } from './composables/useAuthSession';
+import { useNotificationSocket } from './composables/useNotificationSocket';
 import AppLayout from './layouts/AppLayout.vue';
 import DashboardView from './views/DashboardView.vue';
 import LoginView from './views/LoginView.vue';
@@ -51,6 +58,9 @@ const {
   handleLogin,
   handleLogout
 } = useAuthSession();
+
+const notificationSocketToken = computed(() => session.value?.accessToken || '');
+const { socketStatus, lastSocketMessage } = useNotificationSocket(notificationSocketToken);
 
 onMounted(() => {
   void restoreSession();

@@ -65,7 +65,7 @@ app:
 java-demo:
   redis:
     enabled: ${JAVA_DEMO_REDIS_ENABLED:true}
-    key-prefix: ${JAVA_DEMO_REDIS_KEY_PREFIX:java-demo:v0_7}
+    key-prefix: ${JAVA_DEMO_REDIS_KEY_PREFIX:java-demo:v0_8}
   cache:
     enabled: ${JAVA_DEMO_CACHE_ENABLED:true}
     notification-unread-ttl-seconds: ${JAVA_DEMO_NOTIFICATION_UNREAD_CACHE_TTL_SECONDS:60}

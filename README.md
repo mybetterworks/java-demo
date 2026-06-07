@@ -4,11 +4,11 @@
 
 ## 当前版本
 
-当前已完成 `v0.7 Redis Cache And Rate Limit`。Gateway、`java-demo-app`、`task-service` 和 `notification-service` 继续使用 Nacos 服务注册发现与配置中心；`task-service -> java-demo-app` 的负责人用户校验主路径继续走 Dubbo RPC，`task-service -> notification-service` 的通知创建链路继续保留 OpenFeign。本版本在不改变前端操作路径的前提下新增 Redis 单节点基础设施，并把用户摘要、任务查询、通知未读数、登录失败计数、拼图验证码 challenge、一次性 captchaToken 和接口限流迁移到 Redis TTL。
+当前已完成 `v0.8 WebSocket`。Gateway、`java-demo-app`、`task-service` 和 `notification-service` 继续使用 Nacos 服务注册发现与配置中心；`task-service -> java-demo-app` 的负责人用户校验主路径继续走 Dubbo RPC，`task-service -> notification-service` 的通知创建链路继续保留 OpenFeign。本版本在 `v0.7 Redis Cache And Rate Limit` 的基础上，为 `notification-service` 新增 `/ws/notifications` WebSocket 实时通知入口，并让 React/Vue 在登录后自动建立连接、展示连接状态、接收系统广播、通知创建和未读数变化推送。
 
-当前直连与经 Gateway 访问健康检查时，`java-demo-app` 会返回 `redisEnabled`、`cacheEnabled`、`rateLimitEnabled`、`userValidationProviderMode=dubbo`、`dubboRegistryGroup=JAVA_DEMO_DUBBO` 和 `dubboProtocolPort=20881`；`task-service` 会额外返回 `serviceCallMode=mixed-dubbo-feign`、`userValidationMode=dubbo`、`notificationCallMode=openfeign`、`taskCacheTtlSeconds`、`userServiceName=java-demo-app` 和 `notificationServiceName=notification-service`；`notification-service` 会返回 `notificationUnreadCacheTtlSeconds`，便于联调时快速确认 Redis、缓存、限流和混合调用主路径。
+当前直连与经 Gateway 访问健康检查时，`java-demo-app` 会返回 `redisEnabled`、`cacheEnabled`、`rateLimitEnabled`、`userValidationProviderMode=dubbo`、`dubboRegistryGroup=JAVA_DEMO_DUBBO` 和 `dubboProtocolPort=20881`；`task-service` 会额外返回 `serviceCallMode=mixed-dubbo-feign`、`userValidationMode=dubbo`、`notificationCallMode=openfeign`、`taskCacheTtlSeconds`、`userServiceName=java-demo-app` 和 `notificationServiceName=notification-service`；`notification-service` 会返回 `notificationUnreadCacheTtlSeconds`、`webSocketEndpoint=/ws/notifications` 和 `webSocketOnlineSessions`，便于联调时快速确认 Redis、缓存、限流、混合调用主路径和 WebSocket 在线连接状态。
 
-下一步进入 `v0.8 WebSocket`，准备在当前任务和通知业务闭环上增加实时通知能力。
+下一步进入 `v0.9 MinIO`，准备在当前用户、任务和通知业务闭环上增加对象存储与文件上传能力。
 
 | 版本 | 规划内容 | 状态 |
 |---|---|---|
@@ -19,13 +19,14 @@
 | `v0.6.1` | `task-service` 使用 OpenFeign 调用用户服务和通知服务 | 已完成 |
 | `v0.6.2` | `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC | 已完成 |
 | `v0.7` | Redis 缓存、未读数缓存与接口限流 | 已完成 |
-| `v0.8` | WebSocket 实时通知 | 下一步 |
+| `v0.8` | WebSocket 实时通知 | 已完成 |
+| `v0.9` | MinIO 文件上传与对象存储 | 下一步 |
 
-补充说明：当前实际版本已更新为 `v0.7 Redis Cache And Rate Limit`，下一步进入 `v0.8 WebSocket`。
+补充说明：当前实际版本已更新为 `v0.8 WebSocket`，下一步进入 `v0.9 MinIO`。
 
 | 项目 | 内容 |
 |---|---|
-| 核心能力 | 注册、登录、登录失败风险判断、固定背景图随机拼图验证码、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、Redis 缓存、Redis TTL 登录风险状态、接口限流、后端运行日志、React 任务/通知管理端、Vue 任务/通知管理端 |
+| 核心能力 | 注册、登录、登录失败风险判断、固定背景图随机拼图验证码、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、Redis 缓存、Redis TTL 登录风险状态、接口限流、WebSocket 实时通知、后端运行日志、React 任务/通知管理端、Vue 任务/通知管理端 |
 | 后端 | Spring Boot `3.3.5` |
 | 网关 | Spring Cloud Gateway `2023.0.3`，默认端口 `8092` |
 | 任务服务 | `task-service`，默认端口 `8093` |
@@ -35,9 +36,9 @@
 | 认证 | JWT |
 | 日志 | SLF4J + Logback，控制台日志、`logs/*.log` 文件日志、`requestId`、可配置级别 |
 | 登录安全能力 | `v0.5.5` 已实现登录拼图滑块验证码：5 分钟内登录失败 3 次后要求账号密码 + 固定背景图随机拼图验证码；后端保存真实答案并校验坐标、耗时、基础轨迹和一次性状态 |
-| 当前基础设施能力 | `v0.6` Nacos 服务注册发现和配置中心；`v0.7` Redis 单节点缓存与限流状态 |
+| 当前基础设施能力 | `v0.6` Nacos 服务注册发现和配置中心；`v0.7` Redis 单节点缓存与限流状态；`v0.8` WebSocket 实时通知通道 |
 | 当前服务调用能力 | `v0.6.2` 混合同步调用：`task-service -> java-demo-app` 使用 Dubbo RPC，`task-service -> notification-service` 使用 OpenFeign |
-| 下一步演进重点 | `v0.8` WebSocket 实时通知 |
+| 下一步演进重点 | `v0.9` MinIO 文件上传与对象存储 |
 | 接口文档 | Springdoc OpenAPI `2.6.0`、Swagger UI |
 | 前端 | React `18`、TypeScript、Ant Design `5`；Vue `3`、JavaScript、Element Plus |
 | 前端缓存 | React 端使用 IndexedDB；Vue 端使用 localStorage |
@@ -237,18 +238,18 @@ docker compose -f infra\docker-compose\redis\docker-compose.yml stop
 .\mvnw.cmd package
 ```
 
-当前 `v0.7` 实际验证使用 `D:\software\apache-maven-3.9.16\bin\mvn.cmd`，并统一复用项目既定的本地 Maven 仓库 `D:\software\maven_download` 完成，结果如下：
+当前 `v0.8` 实际验证使用 Maven Wrapper 和项目既定的本地 Maven 仓库 `D:\software\maven_download` 完成，结果如下：
 
 | 验证项 | 结果 |
 |---|---|
-| 后端 `test` | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；六个 Maven 模块测试均成功 |
-| 后端 `-DskipTests package` | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -DskipTests package`，通过；生成四个 `0.7.0-SNAPSHOT` 可执行 jar 和一个 `java-demo-rpc-api-0.7.0-SNAPSHOT.jar` |
+| 后端 `test` | 已执行 `.\mvnw.cmd test`，通过；六个 Maven 模块测试均成功；`NotificationIntegrationTest` 覆盖 WebSocket 有效 token 握手、`CONNECTION_ACK`、系统广播、通知创建推送、未读数变化推送和无效 token 拒绝 |
+| 后端 `-DskipTests package` | 已执行 `.\mvnw.cmd -DskipTests package`，通过；生成四个 `0.8.0-SNAPSHOT` 可执行 jar 和一个 `java-demo-rpc-api-0.8.0-SNAPSHOT.jar` |
 | React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
 | Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
-| Redis 容器 | 已使用 `java-demo-redis-1` 完成验证；本机 `6379` 被 Windows 拒绝绑定，本次通过 `JAVA_DEMO_REDIS_HOST_PORT=16380` 覆盖宿主机端口，容器内 `redis-cli ping` 返回 `PONG` |
-| 真实运行态联调 | 已通过 Docker MySQL + Docker Nacos + Docker Redis + 四个后端 jar 完成真实 Gateway 联调，并确认 Redis 缓存、Redis TTL 验证码状态、四类限流、Dubbo 用户校验、Feign 通知创建、Nacos 配置读取、拼图验证码回归和 requestId 日志串联均可用 |
+| WebSocket Gateway 冒烟 | 本轮尝试使用临时端口 `8265/8266` 做轻量 Gateway WebSocket 转发冒烟；当前 Docker Desktop API 不可用，且 `spring-boot:run` 临时 test profile 被本机 Nacos 配置覆盖回 MySQL 数据源，导致该真实转发冒烟未纳入通过项 |
+| Docker 真实联调 | 本轮未执行 Docker MySQL + Docker Nacos + Docker Redis + 四后端 jar 的完整真实联调，原因是 Docker Desktop API 当前不可访问；`v0.8` 完成状态以自动化集成测试、后端打包和双前端构建为准 |
 
-当前集成测试代码覆盖注册、重复注册、登录、登录失败风险判断、拼图验证码触发、错误位置、过短耗时、异常轨迹、图片差分求解、一次性 token、验证码通过后登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、验证码公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
+当前集成测试代码覆盖注册、重复注册、登录、登录失败风险判断、拼图验证码触发、错误位置、过短耗时、异常轨迹、图片差分求解、一次性 token、验证码通过后登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记、WebSocket 推送和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、验证码公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
 
 ## 启动后端
 
@@ -261,7 +262,7 @@ docker compose -f infra\docker-compose\redis\docker-compose.yml stop
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.6.2-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.8.0-SNAPSHOT.jar
 ```
 
 后端默认端口：
@@ -288,7 +289,7 @@ D:\software\jdk-17.0.19\bin\java.exe -jar backend\app\target\java-demo-app-0.6.2
 方式二：运行已打包 jar。
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\gateway\target\java-demo-gateway-0.6.2-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\gateway\target\java-demo-gateway-0.8.0-SNAPSHOT.jar
 ```
 
 Gateway 默认端口：
@@ -314,8 +315,8 @@ Gateway 当前默认使用 `lb://java-demo-app`、`lb://task-service` 和 `lb://
 或运行已打包 jar：
 
 ```powershell
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\task-service\target\java-demo-task-service-0.6.2-SNAPSHOT.jar
-D:\software\jdk-17.0.19\bin\java.exe -jar backend\notification-service\target\java-demo-notification-service-0.6.2-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\task-service\target\java-demo-task-service-0.8.0-SNAPSHOT.jar
+D:\software\jdk-17.0.19\bin\java.exe -jar backend\notification-service\target\java-demo-notification-service-0.8.0-SNAPSHOT.jar
 ```
 
 服务地址：
@@ -509,8 +510,36 @@ Vue 管理端保持与 React 管理端一致的业务功能和操作路径，但
 | `GET` | `/api/notifications/my/unread-count` | 查询当前用户未读通知数 | 是 |
 | `PUT` | `/api/notifications/{id}/read` | 标记单条通知已读 | 是 |
 | `PUT` | `/api/notifications/read-all` | 当前用户通知全部已读 | 是 |
+| `POST` | `/api/notifications/system/broadcast` | 推送一条不入库的 WebSocket 系统广播，用于本地验证实时推送 | 是 |
 
 `POST /api/auth/login` 在 `v0.5.4` 起支持风险验证语义：5 分钟内登录失败 3 次后，如果请求未携带有效验证码 token，后端返回业务码 `4601`；验证码错误、过期、轨迹异常或 token 无效时返回业务码 `4602`。为了保持现有统一响应结构兼容，当前仍使用数字业务码。`v0.5.5` 继续复用验证码接口路径，但 challenge 响应已经从简单滑块参数升级为背景缺口图、拼图块图和基础尺寸信息，真实缺口坐标只保存在服务端。
+
+WebSocket 实时通知入口：
+
+| 项目 | 内容 |
+|---|---|
+| Gateway 入口 | `ws://localhost:8092/ws/notifications?token={JWT}` |
+| notification-service 直连入口 | `ws://localhost:8094/ws/notifications?token={JWT}` |
+| 鉴权方式 | 握手阶段解析 JWT；服务端兼容 `Authorization: Bearer ...`，浏览器前端使用 `token` 查询参数 |
+| Gateway 路由 | `/ws/notifications/**` -> `${JAVA_DEMO_NOTIFICATION_WS_URI:lb:ws://notification-service}` |
+| 前端行为 | React/Vue 登录后自动连接，登出后关闭；断线后延迟重连；通知中心收到业务推送后刷新通知列表和未读数 |
+| 消息类型 | `CONNECTION_ACK`、`NOTIFICATION_CREATED`、`UNREAD_COUNT_CHANGED`、`SYSTEM_BROADCAST`、`PONG` |
+
+WebSocket 消息体保持一个简单 JSON 协议，不引入 STOMP。常用字段如下：
+
+```json
+{
+  "eventId": "uuid",
+  "type": "NOTIFICATION_CREATED",
+  "receiverUserId": 1,
+  "title": "实时任务提醒",
+  "content": "你有一个新的任务通知",
+  "notification": {},
+  "unreadCount": 1,
+  "onlineSessionCount": 1,
+  "createdAt": "2026-06-07T08:00:00+08:00"
+}
+```
 
 验证码必需响应示例：
 
@@ -635,6 +664,7 @@ http://localhost:8092/v3/api-docs
 | `JAVA_DEMO_BACKEND_URI` | `lb://java-demo-app` | Gateway 转发到用户/认证服务的默认路由 |
 | `JAVA_DEMO_TASK_SERVICE_URI` | `lb://task-service` | Gateway 转发到任务服务的默认路由 |
 | `JAVA_DEMO_NOTIFICATION_SERVICE_URI` | `lb://notification-service` | Gateway 转发到通知服务的默认路由 |
+| `JAVA_DEMO_NOTIFICATION_WS_URI` | `lb:ws://notification-service` | Gateway 转发 WebSocket 通知连接的默认路由 |
 | `JAVA_DEMO_USER_SERVICE_NAME` | `java-demo-app` | task-service 记录用户服务逻辑目标名，并用于 Dubbo 用户校验链路的运行摘要 |
 | `JAVA_DEMO_NOTIFICATION_SERVICE_NAME` | `notification-service` | task-service 通过 OpenFeign 调用通知服务时使用的 Nacos 服务名 |
 | `JAVA_DEMO_USER_VALIDATION_MODE` | `dubbo` | task-service 健康检查中展示的用户校验主路径 |
@@ -655,7 +685,7 @@ http://localhost:8092/v3/api-docs
 | `JAVA_DEMO_REDIS_PASSWORD` | 空 | Redis 密码；默认单节点学习环境不设置密码，日志不会打印该值 |
 | `JAVA_DEMO_REDIS_TIMEOUT` | `2s` | Redis 命令超时时间 |
 | `JAVA_DEMO_REDIS_ENABLED` | `true` | 是否启用 Redis 主存储；关闭后缓存和限流会走进程内存降级 |
-| `JAVA_DEMO_REDIS_KEY_PREFIX` | `java-demo:v0_7` | Redis key 前缀，用于隔离本项目 milestone 数据 |
+| `JAVA_DEMO_REDIS_KEY_PREFIX` | `java-demo:v0_8` | Redis key 前缀，用于隔离本项目 milestone 数据 |
 | `JAVA_DEMO_CACHE_ENABLED` | `true` | 是否启用业务缓存 |
 | `JAVA_DEMO_USER_CACHE_TTL_SECONDS` | `300` | 用户摘要缓存 TTL |
 | `JAVA_DEMO_TASK_CACHE_TTL_SECONDS` | `60` | 任务列表/详情缓存 TTL |
@@ -684,11 +714,11 @@ http://localhost:8092/v3/api-docs
 |---|---|---|
 | `java-demo-app` | `logs/java-demo-app.log` | 服务启动摘要、请求入口/完成、注册、登录、JWT 解析、用户管理、验证码状态、用户缓存、登录/用户查询限流、异常处理 |
 | `task-service` | `logs/task-service.log` | 服务启动摘要、请求入口/完成、任务创建、查询、状态流转、任务缓存、任务查询限流、服务间调用、异常处理 |
-| `notification-service` | `logs/notification-service.log` | 服务启动摘要、请求入口/完成、通知创建、查询、未读数缓存、通知查询限流、已读标记、异常处理 |
+| `notification-service` | `logs/notification-service.log` | 服务启动摘要、请求入口/完成、通知创建、查询、未读数缓存、通知查询限流、已读标记、WebSocket 握手鉴权、连接建立/断开、点对点推送、广播推送、异常处理 |
 
-日志格式包含服务名、线程和 `requestId`。外部请求可以传入 `X-Request-Id`；未传时业务服务会自动生成。`v0.6.2` 以后，`task-service` 调用 `java-demo-app` 时会通过 Dubbo attachment 透传 `requestId`，调用 `notification-service` 时继续通过 Feign 请求头透传 `X-Request-Id`，便于在多个日志文件中串起同一次任务/通知链路。`v0.7` 启动摘要会额外打印 `redisEnabled`、Redis 地址、`cacheEnabled`、缓存 TTL 和 `rateLimitEnabled`，限流触发会以 WARN 级别输出；缓存命中/未命中默认是 DEBUG，调试时可临时提高业务包日志级别。
+日志格式包含服务名、线程和 `requestId`。外部请求可以传入 `X-Request-Id`；未传时业务服务会自动生成。`v0.6.2` 以后，`task-service` 调用 `java-demo-app` 时会通过 Dubbo attachment 透传 `requestId`，调用 `notification-service` 时继续通过 Feign 请求头透传 `X-Request-Id`，便于在多个日志文件中串起同一次任务/通知链路。`v0.7` 启动摘要会额外打印 `redisEnabled`、Redis 地址、`cacheEnabled`、缓存 TTL 和 `rateLimitEnabled`，限流触发会以 WARN 级别输出；`v0.8` 的 `notification-service` 启动摘要会额外打印 `webSocketEndpoint=/ws/notifications`，WebSocket 握手成功、鉴权失败、连接断开、推送完成和推送失败均会记录 userId、sessionId、eventId、type 和在线 session 数等脱敏摘要；缓存命中/未命中默认是 DEBUG，调试时可临时提高业务包日志级别。
 
-本项目日志规则要求：不打印明文密码、密码哈希、完整 JWT、Authorization header、数据库密码、验证码答案、验证码 token 或真实密钥。调试时可以临时开启业务包 DEBUG：
+本项目日志规则要求：不打印明文密码、密码哈希、完整 JWT、Authorization header、WebSocket `token` 查询参数原文、数据库密码、验证码答案、验证码 token 或真实密钥。调试时可以临时开启业务包 DEBUG：
 
 ```powershell
 $env:JAVA_DEMO_APP_LOG_LEVEL='DEBUG'
@@ -876,13 +906,25 @@ $env:JAVA_DEMO_LOG_LEVEL_ROOT='WARN'
 | 限流验证 | 临时把用户/任务/通知查询 limit 设为 `2`，第三次分别返回 `429`；登录接口用独立 `X-Forwarded-For` 验证第三次错误登录返回 `429`，四类限流均生成 Redis `rate:*` key |
 | 临时进程清理 | 真实联调结束后已停止本次临时启动的 `8252-8255` Java 进程；Docker MySQL、Nacos、Redis 容器保留运行，便于继续手动复查 |
 
+本次 `v0.8` 验证内容：
+
+| 验证项 | 结果 |
+|---|---|
+| Maven test | 已执行 `.\mvnw.cmd test`，通过；`NotificationIntegrationTest` 新增 WebSocket 有效 token 握手、`CONNECTION_ACK`、`SYSTEM_BROADCAST`、`NOTIFICATION_CREATED`、`UNREAD_COUNT_CHANGED` 和无效 token 拒绝验证 |
+| Maven package | 已执行 `.\mvnw.cmd -DskipTests package`，通过；生成 `0.8.0-SNAPSHOT` 后端 jar 和 `rpc-api` 契约 jar |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| 前端联动 | React/Vue 登录后会建立 `/ws/notifications` 连接，顶部展示实时通知状态；通知中心收到业务推送后刷新通知列表和未读数 |
+| WebSocket 安全 | 握手阶段校验 JWT；浏览器前端使用 `token` 查询参数；日志只记录 userId、sessionId、eventId 和 type，不打印完整 JWT、Authorization header 或 token 原文 |
+| Gateway/Docker 真实联调 | 本轮 Docker Desktop API 不可访问；尝试用临时端口 `8265/8266` 做轻量 Gateway WebSocket 冒烟时，`spring-boot:run` test profile 被本机 Nacos 配置覆盖回 MySQL 数据源且 Docker MySQL 不可用，因此该项未纳入通过项 |
+
 ## 下一步
 
-下一步进入 `v0.8 WebSocket`，准备基于当前任务与通知业务补齐实时通知链路。基础设施服务继续按当前规则使用 Docker Desktop 独立容器运行，并且后续回归验证仍需确认 `v0.5.5` 拼图验证码链路、`v0.6` 的 Nacos 注册发现能力、`v0.6.2` 的 Dubbo + Feign 混合主路径以及 `v0.7` Redis 缓存/限流能力保持可用。
+下一步进入 `v0.9 MinIO`，准备在当前用户、任务和通知业务基础上补齐对象存储与文件上传能力。基础设施服务继续按当前规则使用 Docker Desktop 独立容器运行，并且后续回归验证仍需确认 `v0.5.5` 拼图验证码链路、`v0.6` 的 Nacos 注册发现能力、`v0.6.2` 的 Dubbo + Feign 混合主路径、`v0.7` Redis 缓存/限流能力以及 `v0.8` WebSocket 实时通知能力保持可用。
 
 | 重点 | 说明 |
 |---|---|
-| WebSocket 能力 | 为通知中心增加实时推送入口，优先承接任务通知创建后的用户可见提醒 |
-| 调用边界 | 保持 `task-service -> java-demo-app` 继续走 Dubbo，`task-service -> notification-service` 继续走 OpenFeign，不在 `v0.8` 顺手改动同步调用主路径 |
-| 请求链路 | 继续保留 `requestId`、JWT 语义、Dubbo 附件透传、Feign 头透传、Redis key 前缀和关键调用日志可观察 |
-| 回归验证 | 保持注册登录、拼图验证码、Redis 缓存/限流、用户管理、任务通知链路、Gateway 白名单、Nacos 配置加载和 React/Vue 构建可用 |
+| MinIO 能力 | 为后续头像、任务附件或通知附件准备对象存储入口 |
+| 调用边界 | 保持 `task-service -> java-demo-app` 继续走 Dubbo，`task-service -> notification-service` 继续走 OpenFeign，不在 `v0.9` 顺手改动同步调用主路径 |
+| 请求链路 | 继续保留 `requestId`、JWT 语义、Dubbo 附件透传、Feign 头透传、Redis key 前缀、WebSocket 消息 eventId 和关键调用日志可观察 |
+| 回归验证 | 保持注册登录、拼图验证码、Redis 缓存/限流、用户管理、任务通知链路、WebSocket 推送、Gateway 白名单、Nacos 配置加载和 React/Vue 构建可用 |

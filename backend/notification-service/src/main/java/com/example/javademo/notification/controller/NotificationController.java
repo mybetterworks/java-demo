@@ -5,6 +5,7 @@ import com.example.javademo.notification.config.OpenApiConfig;
 import com.example.javademo.notification.dto.CreateNotificationRequest;
 import com.example.javademo.notification.dto.NotificationResponse;
 import com.example.javademo.notification.dto.PageResponse;
+import com.example.javademo.notification.dto.SystemBroadcastRequest;
 import com.example.javademo.notification.security.CurrentUserContext;
 import com.example.javademo.notification.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,5 +75,11 @@ public class NotificationController {
     public ApiResponse<Map<String, Long>> markAllRead() {
         long count = notificationService.markAllRead(CurrentUserContext.getRequired());
         return ApiResponse.success("read all", Map.of("count", count));
+    }
+
+    @Operation(summary = "WebSocket 系统广播", description = "推送一条不入库的系统广播，用于验证后端主动 WebSocket 推送。")
+    @PostMapping("/system/broadcast")
+    public ApiResponse<Map<String, Object>> broadcastSystemMessage(@Valid @RequestBody SystemBroadcastRequest request) {
+        return ApiResponse.success("broadcasted", notificationService.broadcastSystemMessage(request, CurrentUserContext.getRequired()));
     }
 }

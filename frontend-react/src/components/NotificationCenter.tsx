@@ -1,4 +1,4 @@
-import { Badge, Button, Card, Form, Popconfirm, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Badge, Button, Card, Form, Popconfirm, Select, Space, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { useEffect, useState } from 'react';
 import {
@@ -8,10 +8,12 @@ import {
   pageNotifications
 } from '../api/backend';
 import { recentNotificationsQueryStore } from '../storage/indexedDb';
-import type { NotificationItem, NotificationsQuery, PageResponse } from '../types';
+import type { NotificationItem, NotificationsQuery, NotificationSocketMessage, NotificationSocketStatus, PageResponse } from '../types';
 
 interface NotificationCenterProps {
   token: string;
+  realtimeStatus: NotificationSocketStatus;
+  realtimeMessage: NotificationSocketMessage | null;
 }
 
 const DEFAULT_QUERY: NotificationsQuery = {
@@ -45,7 +47,7 @@ const TYPE_LABELS: Record<string, string> = {
  * 该页面承接 notification-service：展示当前用户通知、未读数量、单条已读和全部已读。
  * 查询条件会保存到 IndexedDB，保持 React 端与用户列表、任务列表一致的本地缓存学习路径。
  */
-export function NotificationCenter({ token }: NotificationCenterProps) {
+export function NotificationCenter({ token, realtimeStatus, realtimeMessage }: NotificationCenterProps) {
   const [messageApi, contextHolder] = message.useMessage();
   const [queryForm] = Form.useForm<NotificationsQuery>();
   const [query, setQuery] = useState<NotificationsQuery>(DEFAULT_QUERY);
@@ -58,6 +60,16 @@ export function NotificationCenter({ token }: NotificationCenterProps) {
   useEffect(() => {
     void restoreQueryAndLoad();
   }, []);
+
+  useEffect(() => {
+    if (!realtimeMessage || realtimeMessage.type === 'CONNECTION_ACK' || realtimeMessage.type === 'PONG') {
+      return;
+    }
+    if (typeof realtimeMessage.unreadCount === 'number') {
+      setUnreadCount(realtimeMessage.unreadCount);
+    }
+    void loadNotifications(query);
+  }, [realtimeMessage?.eventId]);
 
   async function restoreQueryAndLoad() {
     const recent = await recentNotificationsQueryStore.get();
@@ -180,6 +192,17 @@ export function NotificationCenter({ token }: NotificationCenterProps) {
     <div className="page-stack">
       {contextHolder}
       <Card variant="borderless" className="toolbar-card">
+        <Alert
+          className="realtime-alert"
+          type={realtimeStatus === 'connected' ? 'success' : 'warning'}
+          showIcon
+          message={`WebSocket 实时通知：${realtimeStatusLabel(realtimeStatus)}`}
+          description={
+            realtimeMessage?.title
+              ? `最近推送：${realtimeMessage.title}${typeof realtimeMessage.unreadCount === 'number' ? `，未读 ${realtimeMessage.unreadCount} 条` : ''}`
+              : '连接建立后，任务通知、未读数变化和系统广播会自动刷新当前通知中心。'
+          }
+        />
         <div className="toolbar-title">
           <div>
             <Typography.Text className="hero-kicker">Notification Inbox</Typography.Text>
@@ -245,6 +268,18 @@ export function NotificationCenter({ token }: NotificationCenterProps) {
       </Card>
     </div>
   );
+}
+
+function realtimeStatusLabel(status: NotificationSocketStatus) {
+  const labels: Record<NotificationSocketStatus, string> = {
+    idle: '未连接',
+    connecting: '连接中',
+    connected: '已连接',
+    reconnecting: '重连中',
+    closed: '已断开',
+    error: '异常'
+  };
+  return labels[status] ?? status;
 }
 
 function normalizeQuery(query: NotificationsQuery): NotificationsQuery {

@@ -9,16 +9,23 @@ import com.example.javademo.notification.common.BusinessException;
 import com.example.javademo.notification.dto.CreateNotificationRequest;
 import com.example.javademo.notification.dto.NotificationResponse;
 import com.example.javademo.notification.dto.PageResponse;
+import com.example.javademo.notification.dto.SystemBroadcastRequest;
 import com.example.javademo.notification.entity.NotificationMessage;
 import com.example.javademo.notification.mapper.NotificationMapper;
 import com.example.javademo.notification.security.AuthUser;
+import com.example.javademo.notification.websocket.NotificationWebSocketMessage;
+import com.example.javademo.notification.websocket.NotificationWebSocketPushResult;
+import com.example.javademo.notification.websocket.NotificationWebSocketPushService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalLong;
 
 /**
@@ -38,10 +45,14 @@ public class NotificationService {
 
     private final NotificationMapper notificationMapper;
     private final NotificationCacheService notificationCacheService;
+    private final NotificationWebSocketPushService webSocketPushService;
 
-    public NotificationService(NotificationMapper notificationMapper, NotificationCacheService notificationCacheService) {
+    public NotificationService(NotificationMapper notificationMapper,
+                               NotificationCacheService notificationCacheService,
+                               NotificationWebSocketPushService webSocketPushService) {
         this.notificationMapper = notificationMapper;
         this.notificationCacheService = notificationCacheService;
+        this.webSocketPushService = webSocketPushService;
     }
 
     /**
@@ -72,7 +83,14 @@ public class NotificationService {
         log.info("Notification created, notificationId={}, receiverUserId={}, bizType={}, bizId={}, operatorUserId={}",
                 message.getId(), message.getReceiverUserId(), message.getBizType(), message.getBizId(), currentUser.getId());
         notificationCacheService.evictUnreadCount(message.getReceiverUserId(), "notification_created");
-        return NotificationResponse.from(message);
+        NotificationResponse response = NotificationResponse.from(message);
+        /*
+         * WebSocket 推送必须放到事务提交之后：
+         * 如果这里在 insert 后立即推送，但后续事务因为其他异常回滚，前端就会收到数据库里不存在的“幽灵通知”。
+         * afterCommit 可以保证推送只发生在主数据真正落库之后。
+         */
+        publishAfterCommit(() -> pushNotificationCreated(response));
+        return response;
     }
 
     /**
@@ -129,6 +147,7 @@ public class NotificationService {
             notificationCacheService.evictUnreadCount(currentUser.getId(), "notification_mark_read");
             // 单条已读是用户可见状态变化，记录通知 ID 和接收人即可，不记录通知正文。
             log.info("Notification marked read, notificationId={}, receiverUserId={}", message.getId(), currentUser.getId());
+            publishAfterCommit(() -> pushUnreadCountChanged(currentUser.getId(), "notification_mark_read"));
         } else {
             log.debug("Notification already read, notificationId={}, receiverUserId={}", message.getId(), currentUser.getId());
         }
@@ -152,9 +171,34 @@ public class NotificationService {
         }
         if (!unreadMessages.isEmpty()) {
             notificationCacheService.evictUnreadCount(currentUser.getId(), "notification_mark_all_read");
+            publishAfterCommit(() -> pushUnreadCountChanged(currentUser.getId(), "notification_mark_all_read"));
         }
         log.info("All notifications marked read, receiverUserId={}, count={}", currentUser.getId(), unreadMessages.size());
         return unreadMessages.size();
+    }
+
+    /**
+     * 广播系统消息。
+     *
+     * <p>该接口不写入 notification_message 表，只用于验证“后端主动推送系统消息”的 WebSocket 能力。
+     * 操作人 ID 只写入日志，不进入消息体，避免把不必要的用户上下文暴露给其他在线客户端。</p>
+     */
+    public Map<String, Object> broadcastSystemMessage(SystemBroadcastRequest request, AuthUser currentUser) {
+        String title = requireNonBlank(request.getTitle(), "Broadcast title must not be blank");
+        String content = requireNonBlank(request.getContent(), "Broadcast content must not be blank");
+        NotificationWebSocketMessage message = NotificationWebSocketMessage.systemBroadcast(
+                title,
+                content,
+                webSocketPushService.totalOnlineSessionCount()
+        );
+        NotificationWebSocketPushResult result = webSocketPushService.broadcast(message);
+        log.info("System broadcast pushed, operatorUserId={}, eventId={}, onlineSessionCount={}, deliveredSessionCount={}",
+                currentUser.getId(), message.getEventId(), result.onlineSessionCount(), result.deliveredSessionCount());
+        return Map.of(
+                "eventId", message.getEventId(),
+                "onlineSessionCount", (long) result.onlineSessionCount(),
+                "deliveredSessionCount", (long) result.deliveredSessionCount()
+        );
     }
 
     private NotificationMessage getMyNotification(Long id, AuthUser currentUser) {
@@ -209,5 +253,58 @@ public class NotificationService {
             return "GENERAL";
         }
         return bizType.trim().toUpperCase();
+    }
+
+    private void pushNotificationCreated(NotificationResponse notification) {
+        long unreadCount = refreshUnreadCountCache(notification.getReceiverUserId());
+        int onlineCount = webSocketPushService.onlineSessionCount(notification.getReceiverUserId());
+        NotificationWebSocketMessage createdMessage = NotificationWebSocketMessage.notificationCreated(notification, unreadCount, onlineCount);
+        webSocketPushService.sendToUser(notification.getReceiverUserId(), createdMessage);
+        NotificationWebSocketMessage unreadMessage = NotificationWebSocketMessage.unreadCountChanged(
+                notification.getReceiverUserId(),
+                unreadCount,
+                "notification_created",
+                onlineCount
+        );
+        webSocketPushService.sendToUser(notification.getReceiverUserId(), unreadMessage);
+    }
+
+    private void pushUnreadCountChanged(Long userId, String reason) {
+        long unreadCount = refreshUnreadCountCache(userId);
+        int onlineCount = webSocketPushService.onlineSessionCount(userId);
+        NotificationWebSocketMessage message = NotificationWebSocketMessage.unreadCountChanged(userId, unreadCount, reason, onlineCount);
+        webSocketPushService.sendToUser(userId, message);
+    }
+
+    private long refreshUnreadCountCache(Long userId) {
+        long unreadCount = countUnreadForUser(userId);
+        notificationCacheService.putUnreadCount(userId, unreadCount);
+        return unreadCount;
+    }
+
+    private long countUnreadForUser(Long userId) {
+        return notificationMapper.selectCount(Wrappers.<NotificationMessage>lambdaQuery()
+                .eq(NotificationMessage::getReceiverUserId, userId)
+                .eq(NotificationMessage::getReadStatus, UNREAD));
+    }
+
+    private void publishAfterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
+    }
+
+    private String requireNonBlank(String value, String message) {
+        if (value == null || value.trim().isEmpty()) {
+            throw BusinessException.badRequest(message);
+        }
+        return value.trim();
     }
 }

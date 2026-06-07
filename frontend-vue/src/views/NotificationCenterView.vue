@@ -19,6 +19,15 @@
         </div>
       </div>
 
+      <el-alert
+        class="realtime-alert"
+        :type="realtimeStatus === 'connected' ? 'success' : 'warning'"
+        show-icon
+        :closable="false"
+        :title="`WebSocket 实时通知：${realtimeStatusText}`"
+        :description="realtimeDescription"
+      />
+
       <el-form :model="queryForm" inline class="query-form" @submit.prevent>
         <el-form-item label="已读状态">
           <el-select v-model="queryForm.readStatus" clearable placeholder="全部通知" class="query-select">
@@ -112,6 +121,14 @@ const props = defineProps({
   token: {
     type: String,
     required: true
+  },
+  realtimeStatus: {
+    type: String,
+    default: 'idle'
+  },
+  realtimeMessage: {
+    type: Object,
+    default: null
   }
 });
 
@@ -135,8 +152,10 @@ const {
   handleMarkRead,
   handleMarkAllRead,
   loadNotifications,
+  realtimeStatusText,
+  realtimeDescription,
   notificationTypeLabel,
   notificationTypeTagType,
   formatDateTime
-} = useNotificationCenter(toRef(props, 'token'));
+} = useNotificationCenter(toRef(props, 'token'), toRef(props, 'realtimeMessage'), toRef(props, 'realtimeStatus'));
 </script>

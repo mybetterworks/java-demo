@@ -179,6 +179,20 @@ export interface MarkAllReadResponse {
   count: number;
 }
 
+export type NotificationSocketStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'closed' | 'error';
+
+export interface NotificationSocketMessage {
+  eventId: string;
+  type: 'CONNECTION_ACK' | 'NOTIFICATION_CREATED' | 'UNREAD_COUNT_CHANGED' | 'SYSTEM_BROADCAST' | 'PONG' | string;
+  receiverUserId?: number | null;
+  title?: string | null;
+  content?: string | null;
+  notification?: NotificationItem | null;
+  unreadCount?: number | null;
+  onlineSessionCount?: number | null;
+  createdAt?: string | null;
+}
+
 export interface AuthSession {
   id: 'current';
   tokenType: string;

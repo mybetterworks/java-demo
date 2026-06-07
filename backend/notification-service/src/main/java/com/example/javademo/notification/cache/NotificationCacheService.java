@@ -130,7 +130,7 @@ public class NotificationCacheService {
     }
 
     private String unreadKey(Long userId) {
-        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_7") + ":notification:unread:" + userId;
+        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_8") + ":notification:unread:" + userId;
     }
 
     private record MemoryEntry(long value, Instant expiresAt) {

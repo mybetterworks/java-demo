@@ -1,6 +1,7 @@
-import { Spin } from 'antd'; // 从 Ant Design 引入 Spin 组件，用于加载状态的展示
-import { useEffect, useState } from 'react'; // React 的两个 Hook，用于管理组件状态和副作用
+import { message, Spin } from 'antd'; // 从 Ant Design 引入反馈组件，用于加载和实时消息提示
+import { useEffect, useRef, useState } from 'react'; // React Hook，用于管理组件状态、副作用和 WebSocket 引用
 import { fetchCurrentUser } from './api/backend'; // 引入后端 API，用于获取当前用户信息
+import { buildNotificationWebSocketUrl } from './api/realtime'; // v0.8 WebSocket 地址构造工具
 import { AppShell } from './components/AppShell'; // 应用的布局组件，包含侧边菜单、顶部用户信息等
 import { Dashboard } from './components/Dashboard'; // 首页概览组件，展示当前登录用户信息
 import { LoginPage } from './components/LoginPage'; // 登录页面组件，处理用户登录
@@ -8,7 +9,7 @@ import { NotificationCenter } from './components/NotificationCenter'; // 通知�
 import { TaskManagement } from './components/TaskManagement'; // 任务管理页面组件，处理任务查询、创建、编辑和状态流转
 import { UserManagement } from './components/UserManagement'; // 用户管理页面组件，处理用户的增删改查
 import { authSessionStore } from './storage/indexedDb'; // IndexedDB 封装，用于存储登录会话
-import type { AuthSession, LoginResponse, UserProfile } from './types'; // 引入类型定义，确保代码类型安全
+import type { AuthSession, LoginResponse, NotificationSocketMessage, NotificationSocketStatus, UserProfile } from './types'; // 引入类型定义，确保代码类型安全
 
 // 定义页面视图的类型。v0.5.3 新增任务管理和通知中心，用同一套 view state 保持页面切换简单可读。
 type ViewKey = 'dashboard' | 'users' | 'tasks' | 'notifications';
@@ -25,11 +26,90 @@ export function RootApp() {
   const [session, setSession] = useState<AuthSession | null>(null); // 当前登录会话
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null); // 当前登录用户信息
   const [activeView, setActiveView] = useState<ViewKey>('dashboard'); // 当前激活的页面视图
+  const [socketStatus, setSocketStatus] = useState<NotificationSocketStatus>('idle'); // v0.8 实时通知连接状态
+  const [lastSocketMessage, setLastSocketMessage] = useState<NotificationSocketMessage | null>(null); // 最近一条服务端推送
+  const reconnectTimerRef = useRef<number | null>(null); // 断线重连计时器，登出时需要清理
 
   // 组件挂载时调用，尝试恢复登录态
   useEffect(() => {
     void restoreSession(); // 调用恢复登录态的异步函数
   }, []);
+
+  useEffect(() => {
+    if (!session?.accessToken) {
+      setSocketStatus('idle');
+      setLastSocketMessage(null);
+      return;
+    }
+    const accessToken = session.accessToken;
+
+    let closedByEffect = false;
+    let retryCount = 0;
+    let socket: WebSocket | null = null;
+
+    function clearReconnectTimer() {
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    }
+
+    function scheduleReconnect() {
+      if (closedByEffect) {
+        return;
+      }
+      setSocketStatus('reconnecting');
+      clearReconnectTimer();
+      reconnectTimerRef.current = window.setTimeout(() => {
+        retryCount += 1;
+        connect();
+      }, Math.min(3000 + retryCount * 1000, 8000));
+    }
+
+    function connect() {
+      clearReconnectTimer();
+      setSocketStatus(retryCount === 0 ? 'connecting' : 'reconnecting');
+      socket = new WebSocket(buildNotificationWebSocketUrl(accessToken));
+
+      socket.onopen = () => {
+        retryCount = 0;
+        setSocketStatus('connected');
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as NotificationSocketMessage;
+          setLastSocketMessage(payload);
+          if (payload.type !== 'CONNECTION_ACK' && payload.title) {
+            message.info(payload.title);
+          }
+        } catch {
+          message.warning('收到无法解析的实时通知消息');
+        }
+      };
+
+      socket.onerror = () => {
+        setSocketStatus('error');
+      };
+
+      socket.onclose = () => {
+        setSocketStatus('closed');
+        scheduleReconnect();
+      };
+    }
+
+    /**
+     * 登录态建立后立即连接 WebSocket，保证用户不进入通知中心页面时也能看到连接状态。
+     * 真正的通知列表刷新仍放在 NotificationCenter 中处理，保持页面数据加载职责清晰。
+     */
+    connect();
+
+    return () => {
+      closedByEffect = true;
+      clearReconnectTimer();
+      socket?.close();
+    };
+  }, [session?.accessToken]);
 
   // 异步函数：从 IndexedDB 恢复登录态
   async function restoreSession() {
@@ -73,6 +153,8 @@ export function RootApp() {
     await authSessionStore.clear(); // 清理本地会话
     setSession(null); // 清空会话状态
     setCurrentUser(null); // 清空当前用户信息
+    setSocketStatus('idle'); // 登出后同步重置 WebSocket 状态
+    setLastSocketMessage(null); // 清空最近一条实时消息，避免下次登录误触发刷新
     setActiveView('dashboard'); // 切换到首页视图
   }
 
@@ -96,6 +178,7 @@ export function RootApp() {
       <AppShell
           currentUser={currentUser} // 当前用户信息
           activeView={activeView} // 当前激活的页面视图
+          realtimeStatus={socketStatus} // v0.8 顶部展示实时通知连接状态
           onViewChange={setActiveView} // 切换页面视图的回调
           onLogout={() => void handleLogout()} // 处理登出的回调
       >
@@ -103,7 +186,13 @@ export function RootApp() {
         {activeView === 'dashboard' && <Dashboard currentUser={currentUser} onNavigate={setActiveView} />}
         {activeView === 'users' && <UserManagement token={session.accessToken} />}
         {activeView === 'tasks' && <TaskManagement token={session.accessToken} />}
-        {activeView === 'notifications' && <NotificationCenter token={session.accessToken} />}
+        {activeView === 'notifications' && (
+          <NotificationCenter
+            token={session.accessToken}
+            realtimeStatus={socketStatus}
+            realtimeMessage={lastSocketMessage}
+          />
+        )}
       </AppShell>
   );
 }

@@ -27,7 +27,7 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         log.info(
-                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, notificationLevel={}, datasource={}, redisEnabled={}, redisAddress={}, cacheEnabled={}, notificationUnreadCacheTtlSeconds={}, rateLimitEnabled={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
+                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, notificationLevel={}, datasource={}, redisEnabled={}, redisAddress={}, cacheEnabled={}, notificationUnreadCacheTtlSeconds={}, rateLimitEnabled={}, webSocketEndpoint={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
                 environment.getProperty("spring.application.name", "notification-service"),
                 environment.getProperty("local.server.port", environment.getProperty("server.port", "unknown")),
                 resolveProfiles(),
@@ -40,6 +40,7 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
                 environment.getProperty("java-demo.cache.enabled", "true"),
                 environment.getProperty("java-demo.cache.notification-unread-ttl-seconds", "60"),
                 environment.getProperty("java-demo.rate-limit.enabled", "true"),
+                "/ws/notifications",
                 environment.getProperty("spring.cloud.nacos.discovery.enabled", "true"),
                 environment.getProperty("spring.cloud.nacos.config.enabled", "true"),
                 sanitizeConfigValue(environment.getProperty("spring.cloud.nacos.discovery.server-addr", "not-configured")),

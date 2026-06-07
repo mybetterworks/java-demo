@@ -97,7 +97,7 @@ public class UserValidationCacheService {
     }
 
     private String userKey(Long userId) {
-        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_7") + USER_SUMMARY_KEY_PART + userId;
+        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_8") + USER_SUMMARY_KEY_PART + userId;
     }
 
     private Optional<UserProfileResponse> readMemory(String key) {

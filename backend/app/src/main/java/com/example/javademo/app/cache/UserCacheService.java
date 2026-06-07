@@ -143,7 +143,7 @@ public class UserCacheService {
     }
 
     private String redisKeyPrefix() {
-        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_7");
+        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_8");
     }
 
     private Optional<UserProfileResponse> readMemory(String key) {

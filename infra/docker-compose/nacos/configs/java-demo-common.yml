@@ -15,7 +15,7 @@ spring:
 java-demo:
   redis:
     enabled: ${JAVA_DEMO_REDIS_ENABLED:true}
-    key-prefix: ${JAVA_DEMO_REDIS_KEY_PREFIX:java-demo:v0_7}
+    key-prefix: ${JAVA_DEMO_REDIS_KEY_PREFIX:java-demo:v0_8}
   cache:
     enabled: ${JAVA_DEMO_CACHE_ENABLED:true}
     user-ttl-seconds: ${JAVA_DEMO_USER_CACHE_TTL_SECONDS:300}
@@ -30,4 +30,4 @@ java-demo:
     notification-query-limit: ${JAVA_DEMO_NOTIFICATION_QUERY_RATE_LIMIT:120}
   runtime:
     config-source: nacos
-    config-label: v0.7-redis
+    config-label: v0.8-websocket

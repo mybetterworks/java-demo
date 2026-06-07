@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -15,14 +16,23 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * notification-service 集成测试。
@@ -41,6 +51,9 @@ class NotificationIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @LocalServerPort
+    private int port;
 
     @Test
     void shouldManageMyNotificationsWithJwt() throws Exception {
@@ -114,6 +127,70 @@ class NotificationIntegrationTest {
         assertThat(readJson(readAllResponse).path("data").path("count").asLong()).isEqualTo(0);
     }
 
+    @Test
+    void shouldPushNotificationsThroughWebSocket() throws Exception {
+        String token = createToken(2001L, "websocket_user");
+        StandardWebSocketClient client = new StandardWebSocketClient();
+        BlockingQueue<JsonNode> messages = new LinkedBlockingQueue<>();
+        WebSocketSession session = client.execute(new QueueingWebSocketHandler(messages), webSocketUrl(token))
+                .get(5, TimeUnit.SECONDS);
+
+        try {
+            JsonNode ackMessage = takeMessageOfType(messages, "CONNECTION_ACK");
+            assertThat(ackMessage.path("receiverUserId").asLong()).isEqualTo(2001L);
+
+            HttpHeaders authHeaders = jsonHeaders();
+            authHeaders.setBearerAuth(token);
+
+            Map<String, Object> broadcastRequest = Map.of(
+                    "title", "系统广播",
+                    "content", "v0.8 WebSocket broadcast"
+            );
+            ResponseEntity<String> broadcastResponse = restTemplate.exchange(
+                    "/api/notifications/system/broadcast",
+                    HttpMethod.POST,
+                    new HttpEntity<>(broadcastRequest, authHeaders),
+                    String.class
+            );
+            assertThat(broadcastResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+            JsonNode broadcastMessage = takeMessageOfType(messages, "SYSTEM_BROADCAST");
+            assertThat(broadcastMessage.path("title").asText()).isEqualTo("系统广播");
+
+            Map<String, Object> createRequest = Map.of(
+                    "receiverUserId", 2001L,
+                    "title", "实时任务提醒",
+                    "content", "你有一个新的 WebSocket 验收任务",
+                    "type", "TASK",
+                    "bizType", "TASK",
+                    "bizId", 9101L
+            );
+            ResponseEntity<String> createResponse = restTemplate.exchange(
+                    "/api/notifications",
+                    HttpMethod.POST,
+                    new HttpEntity<>(createRequest, authHeaders),
+                    String.class
+            );
+            assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+            JsonNode createdMessage = takeMessageOfType(messages, "NOTIFICATION_CREATED");
+            assertThat(createdMessage.path("notification").path("title").asText()).isEqualTo("实时任务提醒");
+            assertThat(createdMessage.path("unreadCount").asLong()).isEqualTo(1L);
+
+            JsonNode unreadMessage = takeMessageOfType(messages, "UNREAD_COUNT_CHANGED");
+            assertThat(unreadMessage.path("unreadCount").asLong()).isEqualTo(1L);
+        } finally {
+            session.close();
+        }
+    }
+
+    @Test
+    void shouldRejectWebSocketWithoutValidToken() {
+        StandardWebSocketClient client = new StandardWebSocketClient();
+        assertThatThrownBy(() -> client.execute(new TextWebSocketHandler(), webSocketUrl("broken-token"))
+                .get(5, TimeUnit.SECONDS))
+                .isInstanceOf(Exception.class);
+    }
+
     /**
      * 创建 JSON 请求头，后续再追加 Authorization。
      */
@@ -138,10 +215,40 @@ class NotificationIntegrationTest {
                 .compact();
     }
 
+    private String webSocketUrl(String token) {
+        return "ws://localhost:" + port + "/ws/notifications?token=" + token;
+    }
+
+    private JsonNode takeMessageOfType(BlockingQueue<JsonNode> messages, String type) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < deadline) {
+            JsonNode message = messages.poll(250, TimeUnit.MILLISECONDS);
+            if (message != null && type.equals(message.path("type").asText())) {
+                return message;
+            }
+        }
+        fail("Did not receive WebSocket message type: " + type);
+        return objectMapper.createObjectNode();
+    }
+
     /**
      * 将 HTTP 响应体解析为 JsonNode，便于断言统一响应结构中的嵌套字段。
      */
     private JsonNode readJson(ResponseEntity<String> response) throws Exception {
         return objectMapper.readTree(response.getBody());
+    }
+
+    private class QueueingWebSocketHandler extends TextWebSocketHandler {
+
+        private final BlockingQueue<JsonNode> messages;
+
+        private QueueingWebSocketHandler(BlockingQueue<JsonNode> messages) {
+            this.messages = messages;
+        }
+
+        @Override
+        protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+            messages.offer(objectMapper.readTree(message.getPayload()));
+        }
     }
 }

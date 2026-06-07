@@ -1,4 +1,4 @@
-import { onMounted, reactive, ref, unref } from 'vue';
+import { computed, onMounted, reactive, ref, unref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import {
   fetchUnreadCount,
@@ -31,7 +31,7 @@ const typeLabels = {
  * 与 React 通知中心保持一致：恢复筛选条件、分页查询通知、刷新未读数、单条已读和全部已读。
  * 通知查询和未读数并行请求，页面打开时能同时验证列表接口和统计接口。
  */
-export function useNotificationCenter(tokenRef) {
+export function useNotificationCenter(tokenRef, realtimeMessageRef = ref(null), realtimeStatusRef = ref('idle')) {
   const loading = ref(true);
   const readingId = ref(null);
   const readingAll = ref(false);
@@ -49,6 +49,41 @@ export function useNotificationCenter(tokenRef) {
 
   onMounted(() => {
     void restoreQueryAndLoad();
+  });
+
+  watch(
+    () => unref(realtimeMessageRef)?.eventId,
+    () => {
+      const message = unref(realtimeMessageRef);
+      if (!message || message.type === 'CONNECTION_ACK' || message.type === 'PONG') {
+        return;
+      }
+      if (typeof message.unreadCount === 'number') {
+        unreadCount.value = message.unreadCount;
+      }
+      void loadNotifications(query);
+    }
+  );
+
+  const realtimeStatusText = computed(() => {
+    const labels = {
+      idle: '未连接',
+      connecting: '连接中',
+      connected: '已连接',
+      reconnecting: '重连中',
+      closed: '已断开',
+      error: '异常'
+    };
+    return labels[unref(realtimeStatusRef)] || unref(realtimeStatusRef);
+  });
+
+  const realtimeDescription = computed(() => {
+    const message = unref(realtimeMessageRef);
+    if (message?.title) {
+      const unreadText = typeof message.unreadCount === 'number' ? `，未读 ${message.unreadCount} 条` : '';
+      return `最近推送：${message.title}${unreadText}`;
+    }
+    return '连接建立后，任务通知、未读数变化和系统广播会自动刷新当前通知中心。';
   });
 
   async function restoreQueryAndLoad() {
@@ -161,6 +196,8 @@ export function useNotificationCenter(tokenRef) {
     handleMarkRead,
     handleMarkAllRead,
     loadNotifications,
+    realtimeStatusText,
+    realtimeDescription,
     notificationTypeLabel,
     notificationTypeTagType,
     formatDateTime

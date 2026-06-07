@@ -80,7 +80,7 @@ public class RateLimitService {
     }
 
     private String redisKey(String bucket, String identity) {
-        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_7") + ":rate:" + bucket + ":" + hash(identity);
+        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_8") + ":rate:" + bucket + ":" + hash(identity);
     }
 
     private String hash(String value) {

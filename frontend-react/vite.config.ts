@@ -19,6 +19,15 @@ export default defineConfig({
       '/v3/api-docs': {
         target: 'http://localhost:8092',
         changeOrigin: true
+      },
+      /**
+       * v0.8 WebSocket 实时通知沿用 Gateway 作为统一入口。
+       * Vite 开发服务器需要显式开启 ws 代理，否则浏览器连接 /ws/notifications 时会停留在前端端口。
+       */
+      '/ws': {
+        target: 'ws://localhost:8092',
+        ws: true,
+        changeOrigin: true
       }
     }
   }

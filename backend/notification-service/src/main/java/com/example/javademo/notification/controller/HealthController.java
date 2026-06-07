@@ -1,6 +1,7 @@
 package com.example.javademo.notification.controller;
 
 import com.example.javademo.notification.common.ApiResponse;
+import com.example.javademo.notification.websocket.NotificationWebSocketPushService;
 import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,9 +19,11 @@ import java.util.Map;
 public class HealthController {
 
     private final Environment environment;
+    private final NotificationWebSocketPushService webSocketPushService;
 
-    public HealthController(Environment environment) {
+    public HealthController(Environment environment, NotificationWebSocketPushService webSocketPushService) {
         this.environment = environment;
+        this.webSocketPushService = webSocketPushService;
     }
 
     @GetMapping("/api/notifications/health")
@@ -38,6 +41,8 @@ public class HealthController {
         data.put("cacheEnabled", environment.getProperty("java-demo.cache.enabled", Boolean.class, true));
         data.put("notificationUnreadCacheTtlSeconds", environment.getProperty("java-demo.cache.notification-unread-ttl-seconds", Long.class, 60L));
         data.put("rateLimitEnabled", environment.getProperty("java-demo.rate-limit.enabled", Boolean.class, true));
+        data.put("webSocketEndpoint", "/ws/notifications");
+        data.put("webSocketOnlineSessions", webSocketPushService.totalOnlineSessionCount());
         return ApiResponse.success(data);
     }
 }

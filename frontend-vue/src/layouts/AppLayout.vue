@@ -32,6 +32,9 @@
               {{ currentUser.role || 'USER' }}
             </el-tag>
           </div>
+          <el-tag :type="realtimeStatus === 'connected' ? 'success' : realtimeStatus === 'idle' ? 'info' : 'warning'">
+            实时通知：{{ realtimeStatusLabel }}
+          </el-tag>
           <el-button @click="$emit('logout')">退出</el-button>
         </div>
       </el-header>
@@ -54,6 +57,10 @@ const props = defineProps({
   activeView: {
     type: String,
     required: true
+  },
+  realtimeStatus: {
+    type: String,
+    default: 'idle'
   }
 });
 
@@ -66,6 +73,18 @@ const emit = defineEmits(['view-change', 'logout']);
  */
 const avatarText = computed(() => {
   return (props.currentUser.nickname || props.currentUser.username || 'U').slice(0, 1);
+});
+
+const realtimeStatusLabel = computed(() => {
+  const labels = {
+    idle: '未连接',
+    connecting: '连接中',
+    connected: '已连接',
+    reconnecting: '重连中',
+    closed: '已断开',
+    error: '异常'
+  };
+  return labels[props.realtimeStatus] || props.realtimeStatus;
 });
 
 function handleSelect(key) {

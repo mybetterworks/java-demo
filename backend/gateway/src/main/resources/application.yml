@@ -40,6 +40,10 @@ spring:
           uri: ${JAVA_DEMO_NOTIFICATION_SERVICE_URI:lb://notification-service}
           predicates:
             - Path=/api/notifications/**
+        - id: java-demo-notification-websocket
+          uri: ${JAVA_DEMO_NOTIFICATION_WS_URI:lb:ws://notification-service}
+          predicates:
+            - Path=/ws/notifications/**
       globalcors:
         cors-configurations:
           '[/**]':
