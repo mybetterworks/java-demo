@@ -31,6 +31,13 @@ spring:
     url: jdbc:mysql://localhost:3306/java_demo_notification?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
     username: ${JAVA_DEMO_NOTIFICATION_DB_USERNAME:java_demo}
     password: ${JAVA_DEMO_NOTIFICATION_DB_PASSWORD:java_demo_pwd}
+  data:
+    redis:
+      host: ${JAVA_DEMO_REDIS_HOST:127.0.0.1}
+      port: ${JAVA_DEMO_REDIS_PORT:6379}
+      database: ${JAVA_DEMO_REDIS_DATABASE:0}
+      password: ${JAVA_DEMO_REDIS_PASSWORD:}
+      timeout: ${JAVA_DEMO_REDIS_TIMEOUT:2s}
   sql:
     init:
       mode: always
@@ -54,6 +61,18 @@ app:
   jwt:
     secret: ${JAVA_DEMO_JWT_SECRET:java-demo-v0-1-local-secret-change-me-32chars}
     expiration-seconds: ${JAVA_DEMO_JWT_EXPIRATION_SECONDS:7200}
+
+java-demo:
+  redis:
+    enabled: ${JAVA_DEMO_REDIS_ENABLED:true}
+    key-prefix: ${JAVA_DEMO_REDIS_KEY_PREFIX:java-demo:v0_7}
+  cache:
+    enabled: ${JAVA_DEMO_CACHE_ENABLED:true}
+    notification-unread-ttl-seconds: ${JAVA_DEMO_NOTIFICATION_UNREAD_CACHE_TTL_SECONDS:60}
+  rate-limit:
+    enabled: ${JAVA_DEMO_RATE_LIMIT_ENABLED:true}
+    window-seconds: ${JAVA_DEMO_RATE_LIMIT_WINDOW_SECONDS:60}
+    notification-query-limit: ${JAVA_DEMO_NOTIFICATION_QUERY_RATE_LIMIT:120}
 
 logging:
   file:

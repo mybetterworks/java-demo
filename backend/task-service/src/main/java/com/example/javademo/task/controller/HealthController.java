@@ -39,6 +39,13 @@ public class HealthController {
         data.put("notificationCallMode", environment.getProperty("java-demo.rpc.notification-mode", "openfeign"));
         data.put("userServiceName", environment.getProperty("java-demo.services.user-service-name", "java-demo-app"));
         data.put("notificationServiceName", environment.getProperty("java-demo.services.notification-service-name", "notification-service"));
+        data.put("redisEnabled", environment.getProperty("java-demo.redis.enabled", Boolean.class, true));
+        data.put("redisHost", environment.getProperty("spring.data.redis.host", "127.0.0.1"));
+        data.put("redisPort", environment.getProperty("spring.data.redis.port", Integer.class, 6379));
+        data.put("cacheEnabled", environment.getProperty("java-demo.cache.enabled", Boolean.class, true));
+        data.put("userCacheTtlSeconds", environment.getProperty("java-demo.cache.user-ttl-seconds", Long.class, 300L));
+        data.put("taskCacheTtlSeconds", environment.getProperty("java-demo.cache.task-ttl-seconds", Long.class, 60L));
+        data.put("rateLimitEnabled", environment.getProperty("java-demo.rate-limit.enabled", Boolean.class, true));
         data.put("dubboApplicationName", environment.getProperty("dubbo.application.name", "task-service"));
         data.put("dubboRegistryGroup", environment.getProperty("dubbo.registry.group", "JAVA_DEMO_DUBBO"));
         data.put("dubboConsumerTimeoutMs", environment.getProperty("dubbo.consumer.timeout", "3000"));

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.javademo.app.cache.UserCacheService;
 import com.example.javademo.app.common.BusinessException;
 import com.example.javademo.app.dto.ChangePasswordRequest;
 import com.example.javademo.app.dto.CreateUserRequest;
@@ -51,10 +52,12 @@ public class UserManagementService {
 
     private final UserMapper userMapper;
     private final PasswordService passwordService;
+    private final UserCacheService userCacheService;
 
-    public UserManagementService(UserMapper userMapper, PasswordService passwordService) {
+    public UserManagementService(UserMapper userMapper, PasswordService passwordService, UserCacheService userCacheService) {
         this.userMapper = userMapper;
         this.passwordService = passwordService;
+        this.userCacheService = userCacheService;
     }
 
     /**
@@ -96,7 +99,13 @@ public class UserManagementService {
      * <p>如果用户已被逻辑删除，MyBatis Plus 会让 selectById 返回 null，因此调用方会看到 404。</p>
      */
     public UserProfileResponse getUser(Long id) {
+        UserProfileResponse cachedUser = userCacheService.getUser(id).orElse(null);
+        if (cachedUser != null) {
+            log.debug("User detail loaded from cache, userId={}, username={}", cachedUser.getId(), cachedUser.getUsername());
+            return cachedUser;
+        }
         User user = getExistingUser(id);
+        userCacheService.putUser(UserProfileResponse.from(user));
         log.debug("User detail loaded, userId={}, username={}", user.getId(), user.getUsername());
         return UserProfileResponse.from(user);
     }
@@ -127,6 +136,7 @@ public class UserManagementService {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         userMapper.insert(user);
+        userCacheService.putUser(UserProfileResponse.from(user));
         log.info("Managed user created, userId={}, username={}, status={}, role={}",
                 user.getId(), user.getUsername(), user.getStatus(), user.getRole());
         return UserProfileResponse.from(user);
@@ -161,6 +171,8 @@ public class UserManagementService {
 
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(user);
+        // 用户资料变化会影响 /api/users/{id}、/api/users/me 以及 task-service 的负责人校验缓存。
+        userCacheService.evictUser(user.getId(), "managed_user_updated");
         log.info("Managed user updated, userId={}, nicknameChanged={}, status={}, role={}",
                 user.getId(), request.getNickname() != null, user.getStatus(), user.getRole());
         return UserProfileResponse.from(user);
@@ -176,6 +188,7 @@ public class UserManagementService {
     public void deleteUser(Long id) {
         getExistingUser(id);
         userMapper.deleteById(id);
+        userCacheService.evictUser(id, "managed_user_deleted");
         log.info("Managed user deleted logically, userId={}", id);
     }
 
@@ -191,6 +204,7 @@ public class UserManagementService {
         user.setPasswordHash(passwordService.hash(request.getPassword()));
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(user);
+        userCacheService.evictUser(id, "managed_user_password_changed");
         // 改密日志只记录目标用户 ID，不打印明文密码或 BCrypt 哈希。
         log.info("Managed user password changed, userId={}", id);
     }

@@ -43,6 +43,12 @@ public class HealthController {
         data.put("configLabel", environment.getProperty("java-demo.runtime.config-label", "not-configured"));
         data.put("serviceRole", environment.getProperty("java-demo.runtime.service-role", "user-service"));
         data.put("jwtExpirationSeconds", environment.getProperty("app.jwt.expiration-seconds", Long.class, 7200L));
+        data.put("redisEnabled", environment.getProperty("java-demo.redis.enabled", Boolean.class, true));
+        data.put("redisHost", environment.getProperty("spring.data.redis.host", "127.0.0.1"));
+        data.put("redisPort", environment.getProperty("spring.data.redis.port", Integer.class, 6379));
+        data.put("cacheEnabled", environment.getProperty("java-demo.cache.enabled", Boolean.class, true));
+        data.put("userCacheTtlSeconds", environment.getProperty("java-demo.cache.user-ttl-seconds", Long.class, 300L));
+        data.put("rateLimitEnabled", environment.getProperty("java-demo.rate-limit.enabled", Boolean.class, true));
         data.put("userValidationProviderMode", environment.getProperty("java-demo.rpc.user-provider-mode", "dubbo"));
         data.put("dubboApplicationName", environment.getProperty("dubbo.application.name", "java-demo-app"));
         data.put("dubboRegistryGroup", environment.getProperty("dubbo.registry.group", "JAVA_DEMO_DUBBO"));

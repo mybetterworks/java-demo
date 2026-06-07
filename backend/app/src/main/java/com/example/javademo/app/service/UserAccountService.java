@@ -1,6 +1,7 @@
 package com.example.javademo.app.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.example.javademo.app.cache.UserCacheService;
 import com.example.javademo.app.common.BusinessException;
 import com.example.javademo.app.dto.CaptchaTrackPoint;
 import com.example.javademo.app.dto.LoginRequest;
@@ -48,12 +49,14 @@ public class UserAccountService {
     private final PasswordService passwordService;
     private final JwtService jwtService;
     private final LoginRiskService loginRiskService;
+    private final UserCacheService userCacheService;
 
-    public UserAccountService(UserMapper userMapper, PasswordService passwordService, JwtService jwtService, LoginRiskService loginRiskService) {
+    public UserAccountService(UserMapper userMapper, PasswordService passwordService, JwtService jwtService, LoginRiskService loginRiskService, UserCacheService userCacheService) {
         this.userMapper = userMapper;
         this.passwordService = passwordService;
         this.jwtService = jwtService;
         this.loginRiskService = loginRiskService;
+        this.userCacheService = userCacheService;
     }
 
     /**
@@ -86,6 +89,8 @@ public class UserAccountService {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         userMapper.insert(user);
+        // 注册成功后把用户基础资料写入 Redis 缓存，后续 /api/users/me 或 Dubbo 用户校验可以直接复用。
+        userCacheService.putUser(UserProfileResponse.from(user));
         log.info("User registered, userId={}, username={}", user.getId(), user.getUsername());
         return UserProfileResponse.from(user);
     }
@@ -141,6 +146,8 @@ public class UserAccountService {
         user.setLastLoginAt(now);
         user.setUpdatedAt(now);
         userMapper.updateById(user);
+        // 登录会更新 lastLoginAt，必须刷新用户缓存，避免当前用户接口展示旧的最近登录时间。
+        userCacheService.putUser(UserProfileResponse.from(user));
 
         String token = jwtService.createToken(user.getId(), user.getUsername());
         loginRiskService.clearLoginState(username, clientIp);
@@ -188,11 +195,23 @@ public class UserAccountService {
      * @return 当前用户基础资料
      */
     public UserProfileResponse getProfile(AuthUser currentUser) {
+        // 当前用户资料属于高频接口，先读缓存；缓存未命中再回表，并在成功后写入缓存。
+        UserProfileResponse cachedUser = userCacheService.getUser(currentUser.getId()).orElse(null);
+        if (cachedUser != null) {
+            if (cachedUser.getStatus() == null || cachedUser.getStatus() != STATUS_ENABLED) {
+                log.warn("Current user profile rejected from cache, userId={}, reason=missing_or_disabled", currentUser.getId());
+                throw BusinessException.notFound("Current user does not exist");
+            }
+            log.debug("Current user profile loaded from cache, userId={}, username={}", cachedUser.getId(), cachedUser.getUsername());
+            return cachedUser;
+        }
+
         User user = userMapper.selectById(currentUser.getId());
         if (user == null || user.getStatus() == null || user.getStatus() != STATUS_ENABLED) {
             log.warn("Current user profile rejected, userId={}, reason=missing_or_disabled", currentUser.getId());
             throw BusinessException.notFound("Current user does not exist");
         }
+        userCacheService.putUser(UserProfileResponse.from(user));
         log.debug("Current user profile loaded, userId={}, username={}", user.getId(), user.getUsername());
         return UserProfileResponse.from(user);
     }

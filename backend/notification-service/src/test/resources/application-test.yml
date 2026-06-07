@@ -27,6 +27,14 @@ app:
     secret: java-demo-test-secret-change-me-32chars
     expiration-seconds: 7200
 
+java-demo:
+  redis:
+    enabled: false
+  cache:
+    enabled: false
+  rate-limit:
+    enabled: false
+
 logging:
   file:
     # 测试日志写入 target，避免和真实运行日志混在一起。

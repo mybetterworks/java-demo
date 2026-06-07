@@ -27,6 +27,15 @@ app:
     secret: java-demo-test-secret-change-me-32chars
     expiration-seconds: 7200
 
+java-demo:
+  redis:
+    # 自动化测试默认不依赖真实 Redis；需要验证限流降级时可在测试类里单独开启 rate-limit。
+    enabled: false
+  cache:
+    enabled: false
+  rate-limit:
+    enabled: false
+
 dubbo:
   application:
     name: java-demo-app-test

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.javademo.notification.cache.NotificationCacheService;
 import com.example.javademo.notification.common.BusinessException;
 import com.example.javademo.notification.dto.CreateNotificationRequest;
 import com.example.javademo.notification.dto.NotificationResponse;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.OptionalLong;
 
 /**
  * 通知业务服务。
@@ -35,9 +37,11 @@ public class NotificationService {
     private static final long MAX_PAGE_SIZE = 100;
 
     private final NotificationMapper notificationMapper;
+    private final NotificationCacheService notificationCacheService;
 
-    public NotificationService(NotificationMapper notificationMapper) {
+    public NotificationService(NotificationMapper notificationMapper, NotificationCacheService notificationCacheService) {
         this.notificationMapper = notificationMapper;
+        this.notificationCacheService = notificationCacheService;
     }
 
     /**
@@ -67,6 +71,7 @@ public class NotificationService {
         // 通知正文可能来自用户输入，日志只记录可定位链路的 ID 和业务类型。
         log.info("Notification created, notificationId={}, receiverUserId={}, bizType={}, bizId={}, operatorUserId={}",
                 message.getId(), message.getReceiverUserId(), message.getBizType(), message.getBizId(), currentUser.getId());
+        notificationCacheService.evictUnreadCount(message.getReceiverUserId(), "notification_created");
         return NotificationResponse.from(message);
     }
 
@@ -95,9 +100,15 @@ public class NotificationService {
      * 查询当前用户未读通知数。
      */
     public long countMyUnread(AuthUser currentUser) {
+        // 未读数是通知中心高频入口，优先读取 Redis 缓存；缓存未命中再回表 count 并写回短 TTL。
+        OptionalLong cachedCount = notificationCacheService.getUnreadCount(currentUser.getId());
+        if (cachedCount.isPresent()) {
+            return cachedCount.getAsLong();
+        }
         long unreadCount = notificationMapper.selectCount(Wrappers.<NotificationMessage>lambdaQuery()
                 .eq(NotificationMessage::getReceiverUserId, currentUser.getId())
                 .eq(NotificationMessage::getReadStatus, UNREAD));
+        notificationCacheService.putUnreadCount(currentUser.getId(), unreadCount);
         log.debug("Unread notifications counted, userId={}, unreadCount={}", currentUser.getId(), unreadCount);
         return unreadCount;
     }
@@ -115,6 +126,7 @@ public class NotificationService {
             message.setReadStatus(READ);
             message.setReadAt(LocalDateTime.now());
             notificationMapper.updateById(message);
+            notificationCacheService.evictUnreadCount(currentUser.getId(), "notification_mark_read");
             // 单条已读是用户可见状态变化，记录通知 ID 和接收人即可，不记录通知正文。
             log.info("Notification marked read, notificationId={}, receiverUserId={}", message.getId(), currentUser.getId());
         } else {
@@ -137,6 +149,9 @@ public class NotificationService {
             message.setReadStatus(READ);
             message.setReadAt(now);
             notificationMapper.updateById(message);
+        }
+        if (!unreadMessages.isEmpty()) {
+            notificationCacheService.evictUnreadCount(currentUser.getId(), "notification_mark_all_read");
         }
         log.info("All notifications marked read, receiverUserId={}, count={}", currentUser.getId(), unreadMessages.size());
         return unreadMessages.size();

@@ -3,6 +3,7 @@ package com.example.javademo.task.client;
 import com.example.javademo.rpc.DubboAttachmentConstants;
 import com.example.javademo.rpc.user.UserRpcService;
 import com.example.javademo.rpc.user.UserSummaryRpcResponse;
+import com.example.javademo.task.cache.UserValidationCacheService;
 import com.example.javademo.task.common.BusinessException;
 import com.example.javademo.task.config.ServiceClientProperties;
 import com.example.javademo.task.security.AuthUser;
@@ -28,11 +29,14 @@ public class UserServiceClient {
 
     private final UserRpcService userRpcService;
     private final ServiceClientProperties properties;
+    private final UserValidationCacheService userValidationCacheService;
 
     public UserServiceClient(@Qualifier("userRpcServiceBridge") UserRpcService userRpcService,
-                             ServiceClientProperties properties) {
+                             ServiceClientProperties properties,
+                             UserValidationCacheService userValidationCacheService) {
         this.userRpcService = userRpcService;
         this.properties = properties;
+        this.userValidationCacheService = userValidationCacheService;
     }
 
     /**
@@ -43,6 +47,13 @@ public class UserServiceClient {
      * @return 任务服务内部继续沿用的最小用户摘要
      */
     public UserProfileResponse requireUser(Long userId, AuthUser currentUser) {
+        UserProfileResponse cachedUser = userValidationCacheService.getUser(userId).orElse(null);
+        if (cachedUser != null) {
+            log.info("User service validation cache hit, assigneeUserId={}, operatorUserId={}",
+                    userId, resolveOperatorUserId(currentUser));
+            return cachedUser;
+        }
+
         String targetServiceName = properties.getUserServiceName();
         String requestId = currentRequestId();
         long startTime = System.currentTimeMillis();
@@ -72,6 +83,8 @@ public class UserServiceClient {
             }
 
             UserProfileResponse response = toUserProfileResponse(rpcResponse);
+            // Dubbo 校验成功后写入跨服务共享用户缓存，后续相同负责人校验可以直接复用 Redis。
+            userValidationCacheService.putUser(response);
             log.info("User service validation succeeded, assigneeUserId={}, durationMs={}, targetService={}",
                     userId, System.currentTimeMillis() - startTime, sanitizeTarget(targetServiceName));
             return response;

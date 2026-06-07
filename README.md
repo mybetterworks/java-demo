@@ -4,11 +4,11 @@
 
 ## 当前版本
 
-当前已完成 `v0.6.2 Dubbo RPC User Validation`。Gateway、`java-demo-app`、`task-service` 和 `notification-service` 继续使用 Nacos 服务注册发现与配置中心；在新增共享契约模块 `backend/rpc-api` 后，`task-service` 的内部同步调用主路径已经切换为混合模式：`task-service -> java-demo-app` 的负责人用户校验改为 Dubbo RPC，`task-service -> notification-service` 的通知创建链路继续保留 OpenFeign。
+当前已完成 `v0.7 Redis Cache And Rate Limit`。Gateway、`java-demo-app`、`task-service` 和 `notification-service` 继续使用 Nacos 服务注册发现与配置中心；`task-service -> java-demo-app` 的负责人用户校验主路径继续走 Dubbo RPC，`task-service -> notification-service` 的通知创建链路继续保留 OpenFeign。本版本在不改变前端操作路径的前提下新增 Redis 单节点基础设施，并把用户摘要、任务查询、通知未读数、登录失败计数、拼图验证码 challenge、一次性 captchaToken 和接口限流迁移到 Redis TTL。
 
-当前直连与经 Gateway 访问健康检查时，`java-demo-app` 会返回 `userValidationProviderMode=dubbo`、`dubboRegistryGroup=JAVA_DEMO_DUBBO` 和 `dubboProtocolPort=20881`；`task-service` 会额外返回 `serviceCallMode=mixed-dubbo-feign`、`userValidationMode=dubbo`、`notificationCallMode=openfeign`、`userServiceName=java-demo-app` 和 `notificationServiceName=notification-service`，便于联调时快速确认当前主路径。
+当前直连与经 Gateway 访问健康检查时，`java-demo-app` 会返回 `redisEnabled`、`cacheEnabled`、`rateLimitEnabled`、`userValidationProviderMode=dubbo`、`dubboRegistryGroup=JAVA_DEMO_DUBBO` 和 `dubboProtocolPort=20881`；`task-service` 会额外返回 `serviceCallMode=mixed-dubbo-feign`、`userValidationMode=dubbo`、`notificationCallMode=openfeign`、`taskCacheTtlSeconds`、`userServiceName=java-demo-app` 和 `notificationServiceName=notification-service`；`notification-service` 会返回 `notificationUnreadCacheTtlSeconds`，便于联调时快速确认 Redis、缓存、限流和混合调用主路径。
 
-下一步进入 `v0.7 Redis Cache And Rate Limit`，准备在保持 `v0.5.5` 拼图验证码、`v0.6` Nacos 注册发现和 `v0.6.2` 混合 Dubbo + Feign 调用链路稳定的前提下，引入缓存、未读数缓存和接口限流。
+下一步进入 `v0.8 WebSocket`，准备在当前任务和通知业务闭环上增加实时通知能力。
 
 | 版本 | 规划内容 | 状态 |
 |---|---|---|
@@ -18,13 +18,14 @@
 | `v0.6` | Nacos 服务注册发现和配置中心 | 已完成 |
 | `v0.6.1` | `task-service` 使用 OpenFeign 调用用户服务和通知服务 | 已完成 |
 | `v0.6.2` | `task-service -> java-demo-app` 用户校验链路改为 Dubbo RPC | 已完成 |
-| `v0.7` | Redis 缓存、未读数缓存与接口限流 | 下一步 |
+| `v0.7` | Redis 缓存、未读数缓存与接口限流 | 已完成 |
+| `v0.8` | WebSocket 实时通知 | 下一步 |
 
-补充说明：当前实际版本已更新为 `v0.6.2 Dubbo RPC User Validation`，下一步进入 `v0.7 Redis Cache And Rate Limit`。
+补充说明：当前实际版本已更新为 `v0.7 Redis Cache And Rate Limit`，下一步进入 `v0.8 WebSocket`。
 
 | 项目 | 内容 |
 |---|---|
-| 核心能力 | 注册、登录、登录失败风险判断、固定背景图随机拼图验证码、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、后端运行日志、React 任务/通知管理端、Vue 任务/通知管理端 |
+| 核心能力 | 注册、登录、登录失败风险判断、固定背景图随机拼图验证码、JWT 签发、网关 JWT 校验、获取当前登录用户、用户管理 CRUD、任务创建/分配/状态流转、通知创建/查询/未读数/已读标记、Redis 缓存、Redis TTL 登录风险状态、接口限流、后端运行日志、React 任务/通知管理端、Vue 任务/通知管理端 |
 | 后端 | Spring Boot `3.3.5` |
 | 网关 | Spring Cloud Gateway `2023.0.3`，默认端口 `8092` |
 | 任务服务 | `task-service`，默认端口 `8093` |
@@ -34,9 +35,9 @@
 | 认证 | JWT |
 | 日志 | SLF4J + Logback，控制台日志、`logs/*.log` 文件日志、`requestId`、可配置级别 |
 | 登录安全能力 | `v0.5.5` 已实现登录拼图滑块验证码：5 分钟内登录失败 3 次后要求账号密码 + 固定背景图随机拼图验证码；后端保存真实答案并校验坐标、耗时、基础轨迹和一次性状态 |
-| 当前基础设施能力 | `v0.6` Nacos 服务注册发现和配置中心 |
+| 当前基础设施能力 | `v0.6` Nacos 服务注册发现和配置中心；`v0.7` Redis 单节点缓存与限流状态 |
 | 当前服务调用能力 | `v0.6.2` 混合同步调用：`task-service -> java-demo-app` 使用 Dubbo RPC，`task-service -> notification-service` 使用 OpenFeign |
-| 下一步演进重点 | `v0.7` Redis 缓存、未读数缓存与接口限流 |
+| 下一步演进重点 | `v0.8` WebSocket 实时通知 |
 | 接口文档 | Springdoc OpenAPI `2.6.0`、Swagger UI |
 | 前端 | React `18`、TypeScript、Ant Design `5`；Vue `3`、JavaScript、Element Plus |
 | 前端缓存 | React 端使用 IndexedDB；Vue 端使用 localStorage |
@@ -184,6 +185,44 @@ http://localhost:8848/nacos
 docker compose -f infra\docker-compose\nacos\docker-compose.yml stop
 ```
 
+## 启动 Redis
+
+```powershell
+docker compose -f infra\docker-compose\redis\docker-compose.yml up -d
+```
+
+检查容器：
+
+```powershell
+docker ps --filter "name=java-demo-redis-1"
+docker exec java-demo-redis-1 redis-cli ping
+```
+
+默认连接信息：
+
+| 项目 | 值 |
+|---|---|
+| Container | `java-demo-redis-1` |
+| Image | `redis:7.2.5-alpine` |
+| Host | `localhost` |
+| Port | `6379` |
+| Volume | `java-demo-redis-data` |
+| Network | `java-demo-redis-net` |
+
+如果本机 `6379` 被占用或被 Windows 端口策略拒绝，可以临时覆盖宿主机端口；后端服务同时设置 `JAVA_DEMO_REDIS_PORT` 指向该端口即可：
+
+```powershell
+$env:JAVA_DEMO_REDIS_HOST_PORT='16380'
+docker compose -f infra\docker-compose\redis\docker-compose.yml up -d
+$env:JAVA_DEMO_REDIS_PORT='16380'
+```
+
+如果需要停止 Redis：
+
+```powershell
+docker compose -f infra\docker-compose\redis\docker-compose.yml stop
+```
+
 ## 构建与测试
 
 运行自动化测试：
@@ -198,15 +237,16 @@ docker compose -f infra\docker-compose\nacos\docker-compose.yml stop
 .\mvnw.cmd package
 ```
 
-当前 `v0.6.2` 实际验证使用 `D:\software\apache-maven-3.9.16\bin\mvn.cmd`，并统一复用项目既定的本地 Maven 仓库 `D:\software\maven_download` 完成，结果如下：
+当前 `v0.7` 实际验证使用 `D:\software\apache-maven-3.9.16\bin\mvn.cmd`，并统一复用项目既定的本地 Maven 仓库 `D:\software\maven_download` 完成，结果如下：
 
 | 验证项 | 结果 |
 |---|---|
-| 后端 `test` | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；五个 Maven 模块测试均成功 |
-| 后端 `-DskipTests package` | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -DskipTests package`，通过；生成四个 `0.6.2-SNAPSHOT` 可执行 jar 和一个 `java-demo-rpc-api-0.6.2-SNAPSHOT.jar` |
-| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过 |
-| Vue 构建 | 标准 `npm.cmd run build` 因 `frontend-vue/dist/assets/index-DYq5bwgT.js` 被环境锁定返回 `EPERM`；改用 `npm.cmd run build -- --outDir dist-v0_6_2_check --emptyOutDir false` 后通过 |
-| 真实运行态联调 | 已通过 Docker MySQL + Docker Nacos + 四个后端 jar 完成真实 Gateway 联调，并确认 Dubbo 用户校验、Feign 通知创建、Nacos 配置读取、拼图验证码回归和 requestId 日志串联均可用 |
+| 后端 `test` | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；六个 Maven 模块测试均成功 |
+| 后端 `-DskipTests package` | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -DskipTests package`，通过；生成四个 `0.7.0-SNAPSHOT` 可执行 jar 和一个 `java-demo-rpc-api-0.7.0-SNAPSHOT.jar` |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| Redis 容器 | 已使用 `java-demo-redis-1` 完成验证；本机 `6379` 被 Windows 拒绝绑定，本次通过 `JAVA_DEMO_REDIS_HOST_PORT=16380` 覆盖宿主机端口，容器内 `redis-cli ping` 返回 `PONG` |
+| 真实运行态联调 | 已通过 Docker MySQL + Docker Nacos + Docker Redis + 四个后端 jar 完成真实 Gateway 联调，并确认 Redis 缓存、Redis TTL 验证码状态、四类限流、Dubbo 用户校验、Feign 通知创建、Nacos 配置读取、拼图验证码回归和 requestId 日志串联均可用 |
 
 当前集成测试代码覆盖注册、重复注册、登录、登录失败风险判断、拼图验证码触发、错误位置、过短耗时、异常轨迹、图片差分求解、一次性 token、验证码通过后登录、JWT 查询当前用户、无 token 拦截、错误密码拦截、用户分页、详情、创建、更新、逻辑删除、修改密码、任务创建/状态流转/逻辑删除、通知创建/未读数/已读标记和 OpenAPI JSON 生成；网关测试覆盖公开路径放行、验证码公开路径放行、无 token 拦截、有效 token 放行、无效 token 拦截以及任务/通知健康检查白名单。
 
@@ -340,6 +380,7 @@ Vue 端使用 Vue `3`、JavaScript 和 Element Plus，不启用 TypeScript 模�
 | 后续拆分服务 | `8095-8145` 或 `8246+` | 不使用 `8146-8245` |
 | 本地 Nginx 非标准 HTTP/HTTPS | `8250` / `8251` | 如不使用 `80` / `443`，优先使用该范围 |
 | MySQL Docker | `3306` | 当前 MySQL 单节点 |
+| Redis Docker | `6379` | `v0.7` Redis 单节点；如本机端口不可用，可用 `JAVA_DEMO_REDIS_HOST_PORT` 临时覆盖宿主机端口 |
 
 React 前端生产构建：
 
@@ -608,6 +649,23 @@ http://localhost:8092/v3/api-docs
 | `JAVA_DEMO_FEIGN_CONNECT_TIMEOUT` | `3000` | task-service 调用 notification-service 时使用的 Feign 连接超时，单位毫秒 |
 | `JAVA_DEMO_FEIGN_READ_TIMEOUT` | `5000` | task-service 调用 notification-service 时使用的 Feign 读取超时，单位毫秒 |
 | `JAVA_DEMO_FEIGN_LOGGER_LEVEL` | `basic` | task-service 调用 notification-service 时使用的 Feign 日志级别 |
+| `JAVA_DEMO_REDIS_HOST` | `127.0.0.1` | 后端连接 Redis 的主机 |
+| `JAVA_DEMO_REDIS_PORT` | `6379` | 后端连接 Redis 的端口；如果 compose 用 `JAVA_DEMO_REDIS_HOST_PORT=16380` 覆盖宿主机端口，这里也要设为 `16380` |
+| `JAVA_DEMO_REDIS_DATABASE` | `0` | Redis database index |
+| `JAVA_DEMO_REDIS_PASSWORD` | 空 | Redis 密码；默认单节点学习环境不设置密码，日志不会打印该值 |
+| `JAVA_DEMO_REDIS_TIMEOUT` | `2s` | Redis 命令超时时间 |
+| `JAVA_DEMO_REDIS_ENABLED` | `true` | 是否启用 Redis 主存储；关闭后缓存和限流会走进程内存降级 |
+| `JAVA_DEMO_REDIS_KEY_PREFIX` | `java-demo:v0_7` | Redis key 前缀，用于隔离本项目 milestone 数据 |
+| `JAVA_DEMO_CACHE_ENABLED` | `true` | 是否启用业务缓存 |
+| `JAVA_DEMO_USER_CACHE_TTL_SECONDS` | `300` | 用户摘要缓存 TTL |
+| `JAVA_DEMO_TASK_CACHE_TTL_SECONDS` | `60` | 任务列表/详情缓存 TTL |
+| `JAVA_DEMO_NOTIFICATION_UNREAD_CACHE_TTL_SECONDS` | `60` | 通知未读数缓存 TTL |
+| `JAVA_DEMO_RATE_LIMIT_ENABLED` | `true` | 是否启用接口限流 |
+| `JAVA_DEMO_RATE_LIMIT_WINDOW_SECONDS` | `60` | 限流窗口秒数 |
+| `JAVA_DEMO_LOGIN_RATE_LIMIT` | `20` | 登录接口单窗口限制 |
+| `JAVA_DEMO_USER_QUERY_RATE_LIMIT` | `120` | 用户查询接口单窗口限制 |
+| `JAVA_DEMO_TASK_QUERY_RATE_LIMIT` | `120` | 任务查询接口单窗口限制 |
+| `JAVA_DEMO_NOTIFICATION_QUERY_RATE_LIMIT` | `120` | 通知查询接口单窗口限制 |
 | `JAVA_DEMO_LOG_LEVEL_ROOT` | `INFO` | 三个业务服务的 root 日志级别 |
 | `JAVA_DEMO_APP_LOG_LEVEL` | `INFO` | `java-demo-app` 业务包日志级别 |
 | `JAVA_DEMO_TASK_LOG_LEVEL` | `INFO` | `task-service` 业务包日志级别 |
@@ -624,11 +682,11 @@ http://localhost:8092/v3/api-docs
 
 | 服务 | 默认日志文件 | 关键日志 |
 |---|---|---|
-| `java-demo-app` | `logs/java-demo-app.log` | 服务启动摘要、请求入口/完成、注册、登录、JWT 解析、用户管理、异常处理 |
-| `task-service` | `logs/task-service.log` | 服务启动摘要、请求入口/完成、任务创建、查询、状态流转、服务间调用、异常处理 |
-| `notification-service` | `logs/notification-service.log` | 服务启动摘要、请求入口/完成、通知创建、查询、未读数、已读标记、异常处理 |
+| `java-demo-app` | `logs/java-demo-app.log` | 服务启动摘要、请求入口/完成、注册、登录、JWT 解析、用户管理、验证码状态、用户缓存、登录/用户查询限流、异常处理 |
+| `task-service` | `logs/task-service.log` | 服务启动摘要、请求入口/完成、任务创建、查询、状态流转、任务缓存、任务查询限流、服务间调用、异常处理 |
+| `notification-service` | `logs/notification-service.log` | 服务启动摘要、请求入口/完成、通知创建、查询、未读数缓存、通知查询限流、已读标记、异常处理 |
 
-日志格式包含服务名、线程和 `requestId`。外部请求可以传入 `X-Request-Id`；未传时业务服务会自动生成。`v0.6.2` 以后，`task-service` 调用 `java-demo-app` 时会通过 Dubbo attachment 透传 `requestId`，调用 `notification-service` 时继续通过 Feign 请求头透传 `X-Request-Id`，便于在多个日志文件中串起同一次任务/通知链路。
+日志格式包含服务名、线程和 `requestId`。外部请求可以传入 `X-Request-Id`；未传时业务服务会自动生成。`v0.6.2` 以后，`task-service` 调用 `java-demo-app` 时会通过 Dubbo attachment 透传 `requestId`，调用 `notification-service` 时继续通过 Feign 请求头透传 `X-Request-Id`，便于在多个日志文件中串起同一次任务/通知链路。`v0.7` 启动摘要会额外打印 `redisEnabled`、Redis 地址、`cacheEnabled`、缓存 TTL 和 `rateLimitEnabled`，限流触发会以 WARN 级别输出；缓存命中/未命中默认是 DEBUG，调试时可临时提高业务包日志级别。
 
 本项目日志规则要求：不打印明文密码、密码哈希、完整 JWT、Authorization header、数据库密码、验证码答案、验证码 token 或真实密钥。调试时可以临时开启业务包 DEBUG：
 
@@ -800,13 +858,31 @@ $env:JAVA_DEMO_LOG_LEVEL_ROOT='WARN'
 | Windows 编码约束 | 已继续确认 Nacos 待发布 YAML 必须保持 ASCII-only，Dubbo 注册分组仅放在配置文档中说明，不写入中文注释 |
 | 临时进程清理 | 真实联调结束后已停止本次临时启动的 Java 进程，未保留额外监听端口 |
 
+本次 `v0.7` 验证内容：
+
+| 验证项 | 结果 |
+|---|---|
+| Redis 容器 | 已新增 `infra/docker-compose/redis/docker-compose.yml`；默认宿主端口 `6379`，本机验证因 Windows 拒绝绑定 `6379`，临时使用 `JAVA_DEMO_REDIS_HOST_PORT=16380` 启动，`docker exec java-demo-redis-1 redis-cli ping` 返回 `PONG` |
+| Nacos 配置导入 | 已执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infra\docker-compose\nacos\import-configs.ps1`，确认 `java-demo-common.yml` 中的 Redis、缓存和限流配置已导入 |
+| Maven test | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test`，通过；包含新增 `RateLimitIntegrationTest`，测试环境默认关闭 Redis 并验证内存降级限流 |
+| Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -DskipTests package`，通过；生成 `0.7.0-SNAPSHOT` 后端 jar 和 `rpc-api` 契约 jar |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| 真实 Gateway 健康检查 | 使用临时端口 `8252-8255` 启动四个 `0.7.0-SNAPSHOT` jar，并用 `JAVA_DEMO_V07_CHECK` / `JAVA_DEMO_DUBBO_V07_CHECK` 隔离 Nacos 与 Dubbo；直连和经 Gateway 的 health 均返回 `redisEnabled=true`、`cacheEnabled=true`、`rateLimitEnabled=true` 和 `configLabel=v0.7-redis-real-check` |
+| Redis key 验证 | 经 Gateway 联调后确认存在 `java-demo:v0_7:user:summary:34`、`java-demo:v0_7:task:list:version`、`java-demo:v0_7:task:my:v1:34:1:10:ALL`、`java-demo:v0_7:task:detail:13`、`java-demo:v0_7:notification:unread:34`、`java-demo:v0_7:captcha:token:*`、`java-demo:v0_7:login:fail:*` 和 `java-demo:v0_7:rate:*` |
+| `v0.5.5` 拼图验证码回归 | 经 Gateway 创建 challenge，响应不包含 `targetX`；使用原始背景图与缺口背景图做像素差分求解 `sliderX=100`，verify 成功并写入 Redis captcha token TTL key |
+| `v0.6` Nacos 注册发现回归 | Nacos `JAVA_DEMO_V07_CHECK` 分组可见 `java-demo-app:8252`、`task-service:8254`、`notification-service:8255` 健康实例；Gateway `lb://` 路由可访问三类 health |
+| `v0.6.2` Dubbo + Feign 回归 | 任务创建前主动删除用户摘要缓存，确认 `task-service` 日志出现 `Calling user service via Dubbo`，`java-demo-app` 日志出现 `Received Dubbo user validation request`，随后 `task-service` 日志出现 `Calling notification service via OpenFeign` |
+| 限流验证 | 临时把用户/任务/通知查询 limit 设为 `2`，第三次分别返回 `429`；登录接口用独立 `X-Forwarded-For` 验证第三次错误登录返回 `429`，四类限流均生成 Redis `rate:*` key |
+| 临时进程清理 | 真实联调结束后已停止本次临时启动的 `8252-8255` Java 进程；Docker MySQL、Nacos、Redis 容器保留运行，便于继续手动复查 |
+
 ## 下一步
 
-下一步进入 `v0.7 Redis Cache And Rate Limit`，准备为登录失败计数、拼图 challenge、验证码 token、用户校验、任务列表和通知未读数增加缓存与 TTL 控制。基础设施服务继续按当前规则使用 Docker Desktop 独立容器运行，并且后续回归验证仍需确认 `v0.5.5` 拼图验证码链路、`v0.6` 的 Nacos 注册发现能力和 `v0.6.2` 的 Dubbo + Feign 混合主路径保持可用。
+下一步进入 `v0.8 WebSocket`，准备基于当前任务与通知业务补齐实时通知链路。基础设施服务继续按当前规则使用 Docker Desktop 独立容器运行，并且后续回归验证仍需确认 `v0.5.5` 拼图验证码链路、`v0.6` 的 Nacos 注册发现能力、`v0.6.2` 的 Dubbo + Feign 混合主路径以及 `v0.7` Redis 缓存/限流能力保持可用。
 
 | 重点 | 说明 |
 |---|---|
-| Redis 能力 | 为登录失败计数、验证码挑战态、用户校验和未读数增加缓存与 TTL 策略 |
-| 调用边界 | 保持 `task-service -> java-demo-app` 继续走 Dubbo，`task-service -> notification-service` 继续走 OpenFeign |
-| 请求链路 | 继续保留 `requestId`、JWT 语义、Dubbo 附件透传、Feign 头透传和关键调用日志可观察 |
-| 回归验证 | 保持注册登录、拼图验证码、用户管理、任务通知链路、Gateway 白名单、Nacos 配置加载和 React/Vue 构建可用 |
+| WebSocket 能力 | 为通知中心增加实时推送入口，优先承接任务通知创建后的用户可见提醒 |
+| 调用边界 | 保持 `task-service -> java-demo-app` 继续走 Dubbo，`task-service -> notification-service` 继续走 OpenFeign，不在 `v0.8` 顺手改动同步调用主路径 |
+| 请求链路 | 继续保留 `requestId`、JWT 语义、Dubbo 附件透传、Feign 头透传、Redis key 前缀和关键调用日志可观察 |
+| 回归验证 | 保持注册登录、拼图验证码、Redis 缓存/限流、用户管理、任务通知链路、Gateway 白名单、Nacos 配置加载和 React/Vue 构建可用 |

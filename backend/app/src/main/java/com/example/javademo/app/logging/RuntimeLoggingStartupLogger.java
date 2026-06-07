@@ -29,7 +29,7 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         log.info(
-                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, appLevel={}, datasource={}, userValidationProviderMode={}, dubboAppName={}, dubboRegistryAddress={}, dubboRegistryGroup={}, dubboProtocolName={}, dubboProtocolPort={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
+                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, appLevel={}, datasource={}, redisEnabled={}, redisAddress={}, cacheEnabled={}, userCacheTtlSeconds={}, rateLimitEnabled={}, userValidationProviderMode={}, dubboAppName={}, dubboRegistryAddress={}, dubboRegistryGroup={}, dubboProtocolName={}, dubboProtocolPort={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
                 environment.getProperty("spring.application.name", "java-demo-app"),
                 environment.getProperty("local.server.port", environment.getProperty("server.port", "unknown")),
                 resolveProfiles(),
@@ -37,6 +37,11 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
                 environment.getProperty("logging.level.root", "INFO"),
                 environment.getProperty("logging.level.com.example.javademo.app", "INFO"),
                 sanitizeConfigValue(environment.getProperty("spring.datasource.url", "not-configured")),
+                environment.getProperty("java-demo.redis.enabled", "true"),
+                environment.getProperty("spring.data.redis.host", "127.0.0.1") + ":" + environment.getProperty("spring.data.redis.port", "6379"),
+                environment.getProperty("java-demo.cache.enabled", "true"),
+                environment.getProperty("java-demo.cache.user-ttl-seconds", "300"),
+                environment.getProperty("java-demo.rate-limit.enabled", "true"),
                 environment.getProperty("java-demo.rpc.user-provider-mode", "dubbo"),
                 sanitizeConfigValue(environment.getProperty("dubbo.application.name", "java-demo-app")),
                 sanitizeConfigValue(environment.getProperty("dubbo.registry.address", "not-configured")),

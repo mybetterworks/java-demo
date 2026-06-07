@@ -48,6 +48,10 @@ public class UserRpcServiceImpl implements UserRpcService {
 
         try {
             log.info("Received Dubbo user validation request, userId={}, requestIdPresent={}", userId, requestId != null);
+            /*
+             * getUser 内部已经接入 Redis 用户缓存。这里继续复用领域服务而不是直接查 Redis，
+             * 是为了保证“用户不存在、已删除、缓存失效、回表查询”的业务语义仍集中在用户服务内。
+             */
             UserProfileResponse user = userManagementService.getUser(userId);
             UserSummaryRpcResponse response = new UserSummaryRpcResponse(user.getId(), user.getUsername(), user.getStatus());
             log.info("Dubbo user validation succeeded, userId={}, durationMs={}", userId, System.currentTimeMillis() - startTime);

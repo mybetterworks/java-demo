@@ -32,6 +32,12 @@ public class HealthController {
         data.put("configSource", environment.getProperty("java-demo.runtime.config-source", "local"));
         data.put("configLabel", environment.getProperty("java-demo.runtime.config-label", "not-configured"));
         data.put("serviceRole", environment.getProperty("java-demo.runtime.service-role", "notification-service"));
+        data.put("redisEnabled", environment.getProperty("java-demo.redis.enabled", Boolean.class, true));
+        data.put("redisHost", environment.getProperty("spring.data.redis.host", "127.0.0.1"));
+        data.put("redisPort", environment.getProperty("spring.data.redis.port", Integer.class, 6379));
+        data.put("cacheEnabled", environment.getProperty("java-demo.cache.enabled", Boolean.class, true));
+        data.put("notificationUnreadCacheTtlSeconds", environment.getProperty("java-demo.cache.notification-unread-ttl-seconds", Long.class, 60L));
+        data.put("rateLimitEnabled", environment.getProperty("java-demo.rate-limit.enabled", Boolean.class, true));
         return ApiResponse.success(data);
     }
 }

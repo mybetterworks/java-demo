@@ -27,7 +27,7 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         log.info(
-                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, notificationLevel={}, datasource={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
+                "Runtime logging initialized, serviceName={}, port={}, profiles={}, logFile={}, rootLevel={}, notificationLevel={}, datasource={}, redisEnabled={}, redisAddress={}, cacheEnabled={}, notificationUnreadCacheTtlSeconds={}, rateLimitEnabled={}, nacosDiscoveryEnabled={}, nacosConfigEnabled={}, nacosServerAddr={}, configSource={}, configLabel={}",
                 environment.getProperty("spring.application.name", "notification-service"),
                 environment.getProperty("local.server.port", environment.getProperty("server.port", "unknown")),
                 resolveProfiles(),
@@ -35,6 +35,11 @@ public class RuntimeLoggingStartupLogger implements ApplicationRunner {
                 environment.getProperty("logging.level.root", "INFO"),
                 environment.getProperty("logging.level.com.example.javademo.notification", "INFO"),
                 sanitizeConfigValue(environment.getProperty("spring.datasource.url", "not-configured")),
+                environment.getProperty("java-demo.redis.enabled", "true"),
+                environment.getProperty("spring.data.redis.host", "127.0.0.1") + ":" + environment.getProperty("spring.data.redis.port", "6379"),
+                environment.getProperty("java-demo.cache.enabled", "true"),
+                environment.getProperty("java-demo.cache.notification-unread-ttl-seconds", "60"),
+                environment.getProperty("java-demo.rate-limit.enabled", "true"),
                 environment.getProperty("spring.cloud.nacos.discovery.enabled", "true"),
                 environment.getProperty("spring.cloud.nacos.config.enabled", "true"),
                 sanitizeConfigValue(environment.getProperty("spring.cloud.nacos.discovery.server-addr", "not-configured")),

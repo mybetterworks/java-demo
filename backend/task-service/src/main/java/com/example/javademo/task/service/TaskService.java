@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.javademo.task.cache.TaskCacheService;
 import com.example.javademo.task.client.NotificationServiceClient;
 import com.example.javademo.task.client.UserServiceClient;
 import com.example.javademo.task.common.BusinessException;
@@ -46,11 +47,13 @@ public class TaskService {
     private final TaskMapper taskMapper;
     private final UserServiceClient userServiceClient;
     private final NotificationServiceClient notificationServiceClient;
+    private final TaskCacheService taskCacheService;
 
-    public TaskService(TaskMapper taskMapper, UserServiceClient userServiceClient, NotificationServiceClient notificationServiceClient) {
+    public TaskService(TaskMapper taskMapper, UserServiceClient userServiceClient, NotificationServiceClient notificationServiceClient, TaskCacheService taskCacheService) {
         this.taskMapper = taskMapper;
         this.userServiceClient = userServiceClient;
         this.notificationServiceClient = notificationServiceClient;
+        this.taskCacheService = taskCacheService;
     }
 
     /**
@@ -90,26 +93,38 @@ public class TaskService {
         );
         log.info("Task created, taskId={}, creatorUserId={}, assigneeUserId={}",
                 task.getId(), task.getCreatorUserId(), task.getAssigneeUserId());
-        return TaskResponse.from(task);
+        taskCacheService.invalidateTaskLists("task_created");
+        TaskResponse response = TaskResponse.from(task);
+        taskCacheService.putTask(response);
+        return response;
     }
 
     /**
      * 查询当前用户创建或负责的任务。
      */
     public PageResponse<TaskResponse> pageMyTasks(AuthUser currentUser, Long current, Long size, String status) {
+        long safeCurrent = normalizeCurrent(current);
+        long safeSize = normalizeSize(size);
+        String normalizedStatus = status == null || status.isBlank() ? null : resolveStatus(status);
+        String cacheKey = taskCacheService.myTasksKey(currentUser.getId(), safeCurrent, safeSize, normalizedStatus);
+        PageResponse<TaskResponse> cachedPage = taskCacheService.getPage(cacheKey).orElse(null);
+        if (cachedPage != null) {
+            return cachedPage;
+        }
         LambdaQueryWrapper<TaskItem> queryWrapper = Wrappers.<TaskItem>lambdaQuery()
                 .and(wrapper -> wrapper
                         .eq(TaskItem::getCreatorUserId, currentUser.getId())
                         .or()
                         .eq(TaskItem::getAssigneeUserId, currentUser.getId()));
-        if (status != null && !status.isBlank()) {
-            queryWrapper.eq(TaskItem::getStatus, resolveStatus(status));
+        if (normalizedStatus != null) {
+            queryWrapper.eq(TaskItem::getStatus, normalizedStatus);
         }
         queryWrapper.orderByDesc(TaskItem::getUpdatedAt)
                 .orderByDesc(TaskItem::getId);
-        PageResponse<TaskResponse> page = page(queryWrapper, current, size);
+        PageResponse<TaskResponse> page = page(queryWrapper, safeCurrent, safeSize);
+        taskCacheService.putPage(cacheKey, page);
         log.debug("My tasks queried, userId={}, current={}, size={}, status={}, total={}",
-                currentUser.getId(), page.getCurrent(), page.getSize(), status, page.getTotal());
+                currentUser.getId(), page.getCurrent(), page.getSize(), normalizedStatus, page.getTotal());
         return page;
     }
 
@@ -119,16 +134,25 @@ public class TaskService {
      * <p>当前还没有复杂 RBAC，沿用项目早期“登录即可访问”的简化策略；真正权限模型会在后续 milestone 引入。</p>
      */
     public PageResponse<TaskResponse> pageTasks(Long current, Long size, String status, Long assigneeUserId) {
+        long safeCurrent = normalizeCurrent(current);
+        long safeSize = normalizeSize(size);
+        String normalizedStatus = status == null || status.isBlank() ? null : resolveStatus(status);
+        String cacheKey = taskCacheService.taskPageKey(safeCurrent, safeSize, normalizedStatus, assigneeUserId);
+        PageResponse<TaskResponse> cachedPage = taskCacheService.getPage(cacheKey).orElse(null);
+        if (cachedPage != null) {
+            return cachedPage;
+        }
         LambdaQueryWrapper<TaskItem> queryWrapper = Wrappers.<TaskItem>lambdaQuery()
                 .eq(assigneeUserId != null, TaskItem::getAssigneeUserId, assigneeUserId);
-        if (status != null && !status.isBlank()) {
-            queryWrapper.eq(TaskItem::getStatus, resolveStatus(status));
+        if (normalizedStatus != null) {
+            queryWrapper.eq(TaskItem::getStatus, normalizedStatus);
         }
         queryWrapper.orderByDesc(TaskItem::getUpdatedAt)
                 .orderByDesc(TaskItem::getId);
-        PageResponse<TaskResponse> page = page(queryWrapper, current, size);
+        PageResponse<TaskResponse> page = page(queryWrapper, safeCurrent, safeSize);
+        taskCacheService.putPage(cacheKey, page);
         log.debug("Task page queried, current={}, size={}, status={}, assigneeUserId={}, total={}",
-                page.getCurrent(), page.getSize(), status, assigneeUserId, page.getTotal());
+                page.getCurrent(), page.getSize(), normalizedStatus, assigneeUserId, page.getTotal());
         return page;
     }
 
@@ -136,10 +160,16 @@ public class TaskService {
      * 查询任务详情。
      */
     public TaskResponse getTask(Long id) {
+        TaskResponse cachedTask = taskCacheService.getTask(id).orElse(null);
+        if (cachedTask != null) {
+            return cachedTask;
+        }
         TaskItem task = getExistingTask(id);
+        TaskResponse response = TaskResponse.from(task);
+        taskCacheService.putTask(response);
         log.debug("Task detail loaded, taskId={}, status={}, assigneeUserId={}",
                 task.getId(), task.getStatus(), task.getAssigneeUserId());
-        return TaskResponse.from(task);
+        return response;
     }
 
     /**
@@ -183,7 +213,11 @@ public class TaskService {
         }
         log.info("Task updated, taskId={}, operatorUserId={}, assigneeChanged={}",
                 task.getId(), currentUser.getId(), !oldAssigneeUserId.equals(task.getAssigneeUserId()));
-        return TaskResponse.from(task);
+        taskCacheService.evictTask(task.getId(), "task_updated");
+        taskCacheService.invalidateTaskLists("task_updated");
+        TaskResponse response = TaskResponse.from(task);
+        taskCacheService.putTask(response);
+        return response;
     }
 
     /**
@@ -208,11 +242,15 @@ public class TaskService {
             );
             log.info("Task status updated, taskId={}, oldStatus={}, newStatus={}, operatorUserId={}",
                     task.getId(), oldStatus, nextStatus, currentUser.getId());
+            taskCacheService.evictTask(task.getId(), "task_status_updated");
+            taskCacheService.invalidateTaskLists("task_status_updated");
         } else {
             log.debug("Task status unchanged, taskId={}, status={}, operatorUserId={}",
                     task.getId(), task.getStatus(), currentUser.getId());
         }
-        return TaskResponse.from(task);
+        TaskResponse response = TaskResponse.from(task);
+        taskCacheService.putTask(response);
+        return response;
     }
 
     /**
@@ -222,6 +260,8 @@ public class TaskService {
     public void deleteTask(Long id, AuthUser currentUser) {
         TaskItem task = getExistingTask(id);
         taskMapper.deleteById(task.getId());
+        taskCacheService.evictTask(task.getId(), "task_deleted");
+        taskCacheService.invalidateTaskLists("task_deleted");
         log.info("Task deleted logically, taskId={}, operatorUserId={}", task.getId(), currentUser.getId());
     }
 

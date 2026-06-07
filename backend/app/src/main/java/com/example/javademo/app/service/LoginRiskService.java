@@ -8,6 +8,8 @@ import com.example.javademo.app.dto.SliderCaptchaVerifyResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.env.Environment;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -118,6 +120,14 @@ public class LoginRiskService {
     /** key 为 captchaToken，值为校验通过后的短 TTL 登录前置凭证。 */
     private final Map<String, VerifiedCaptchaToken> verifiedTokens = new ConcurrentHashMap<>();
 
+    private final StringRedisTemplate redisTemplate;
+    private final Environment environment;
+
+    public LoginRiskService(StringRedisTemplate redisTemplate, Environment environment) {
+        this.redisTemplate = redisTemplate;
+        this.environment = environment;
+    }
+
     /**
      * 判断当前登录主体是否已经进入验证码风险状态。
      *
@@ -126,6 +136,11 @@ public class LoginRiskService {
      * @return 登录风险快照
      */
     public LoginRiskSnapshot snapshot(String username, String clientIp) {
+        LoginRiskSnapshot redisSnapshot = snapshotFromRedis(username, clientIp);
+        if (redisSnapshot != null) {
+            return redisSnapshot;
+        }
+
         Instant now = Instant.now();
         String riskKey = buildRiskKey(username, clientIp);
         FailureState state = failureStates.get(riskKey);
@@ -144,6 +159,11 @@ public class LoginRiskService {
      * 避免通过接口或日志区分账号是否存在。</p>
      */
     public LoginRiskSnapshot recordFailure(String username, String clientIp) {
+        LoginRiskSnapshot redisSnapshot = recordFailureInRedis(username, clientIp);
+        if (redisSnapshot != null) {
+            return redisSnapshot;
+        }
+
         Instant now = Instant.now();
         String riskKey = buildRiskKey(username, clientIp);
         // ConcurrentHashMap，用于存储登录失败状态。
@@ -183,7 +203,10 @@ public class LoginRiskService {
         int targetY = randomBetween(VERTICAL_PADDING, IMAGE_HEIGHT - PUZZLE_HEIGHT - VERTICAL_PADDING);
         PuzzleImages images = generatePuzzleImages(targetX, targetY);
 
-        challenges.put(challengeId, new SliderChallenge(riskKey, targetX, targetY, createdAt, expiresAt));
+        SliderChallenge challenge = new SliderChallenge(riskKey, targetX, targetY, createdAt, expiresAt);
+        if (!storeChallengeInRedis(challengeId, challenge)) {
+            challenges.put(challengeId, challenge);
+        }
         log.info("Puzzle captcha challenge created, challengeId={}, username={}, clientIpHash={}, imageSize={}x{}, puzzleSize={}x{}, expiresInSeconds={}",
                 challengeId, username, hashClientIp(clientIp), IMAGE_WIDTH, IMAGE_HEIGHT, PUZZLE_WIDTH, PUZZLE_HEIGHT, CAPTCHA_TTL.toSeconds());
 
@@ -214,8 +237,15 @@ public class LoginRiskService {
 
         // 根据 challengeId 获取 challenge 状态，校验是否存在且未过期。过期或不存在都返回 4602，并在日志中记录非敏感原因。
         SliderChallenge challenge = challenges.get(challengeId);
+        boolean redisChallenge = false;
+        LoadedChallenge loadedChallenge = loadChallengeFromRedis(challengeId);
+        if (loadedChallenge != null) {
+            challenge = loadedChallenge.challenge();
+            redisChallenge = true;
+        }
         if (challenge == null || challenge.isExpired(Instant.now())) {
             challenges.remove(challengeId);
+            deleteChallengeFromRedis(challengeId);
             log.warn("Puzzle captcha verification failed, challengeId={}, reason=missing_or_expired", challengeId);
             throw BusinessException.captchaInvalid("拼图验证码已过期，请重新获取");
         }
@@ -223,10 +253,13 @@ public class LoginRiskService {
         // 校验拖动结果，任何维度不满足都返回 4602，并在日志中记录非敏感原因。challengeId 和非敏感原因可以帮助排查攻击模式，但禁止记录 sliderX、targetX、token 等敏感信息。
         String invalidReason = validateDragResult(challenge, sliderX, durationMs, tracks);
         if (invalidReason != null) {
-            int failureCount = challenge.addFailureAndCount();
+            int failureCount = redisChallenge
+                    ? addRedisChallengeFailure(challengeId, challenge)
+                    : challenge.addFailureAndCount();
             boolean invalidated = failureCount >= MAX_CHALLENGE_FAILURES;
             if (invalidated) {
                 challenges.remove(challengeId, challenge);
+                deleteChallengeFromRedis(challengeId);
             }
             log.warn("Puzzle captcha verification failed, challengeId={}, reason={}, failureCount={}, invalidated={}",
                     challengeId, invalidReason, failureCount, invalidated);
@@ -235,8 +268,11 @@ public class LoginRiskService {
 
         // 成功后立即删除 challenge，避免同一个图片挑战被重复换取多个 token。
         challenges.remove(challengeId, challenge);
+        deleteChallengeFromRedis(challengeId);
         String captchaToken = randomUrlSafeToken(32);
-        verifiedTokens.put(captchaToken, new VerifiedCaptchaToken(challenge.riskKey(), Instant.now().plus(CAPTCHA_TTL)));
+        if (!storeVerifiedTokenInRedis(captchaToken, challenge.riskKey())) {
+            verifiedTokens.put(captchaToken, new VerifiedCaptchaToken(challenge.riskKey(), Instant.now().plus(CAPTCHA_TTL)));
+        }
         log.info("Puzzle captcha verification succeeded, challengeId={}, durationMs={}, trackPoints={}, tokenExpiresInSeconds={}",
                 challengeId, durationMs, tracks == null ? 0 : tracks.size(), CAPTCHA_TTL.toSeconds());
         return new SliderCaptchaVerifyResponse(captchaToken, CAPTCHA_TTL.toSeconds());
@@ -251,6 +287,11 @@ public class LoginRiskService {
     public boolean consumeVerifiedToken(String username, String clientIp, String captchaToken) {
         if (captchaToken == null || captchaToken.trim().isEmpty()) {
             return false;
+        }
+
+        Boolean redisConsumed = consumeVerifiedTokenFromRedis(username, clientIp, captchaToken);
+        if (redisConsumed != null) {
+            return redisConsumed;
         }
 
         VerifiedCaptchaToken token = verifiedTokens.remove(captchaToken.trim());
@@ -284,6 +325,7 @@ public class LoginRiskService {
         failureStates.remove(riskKey);
         challenges.entrySet().removeIf(entry -> riskKey.equals(entry.getValue().riskKey()));
         verifiedTokens.entrySet().removeIf(entry -> riskKey.equals(entry.getValue().riskKey()));
+        clearRedisLoginState(riskKey);
         log.info("Login risk state cleared, username={}, clientIpHash={}", username, hashClientIp(clientIp));
     }
 
@@ -295,6 +337,216 @@ public class LoginRiskService {
                 snapshot.failureThreshold(),
                 snapshot.windowSeconds()
         );
+    }
+
+    /**
+     * 从 Redis 读取登录失败计数快照。
+     *
+     * <p>失败计数 key 使用 5 分钟 TTL。这里如果 Redis 不可用，会返回 null 让调用方继续走内存降级路径，
+     * 同时日志明确标记 fallback，便于真实联调时观察 Redis 是否参与了登录风控。</p>
+     */
+    private LoginRiskSnapshot snapshotFromRedis(String username, String clientIp) {
+        if (!redisEnabled()) {
+            return null;
+        }
+        String key = failureKey(buildRiskKey(username, clientIp));
+        try {
+            String value = redisTemplate.opsForValue().get(key);
+            int failureCount = value == null || value.isBlank() ? 0 : Integer.parseInt(value);
+            log.debug("Login failure snapshot loaded, username={}, clientIpHash={}, failureCount={}, cache=redis",
+                    username, hashClientIp(clientIp), failureCount);
+            return new LoginRiskSnapshot(failureCount, failureCount >= FAILURE_THRESHOLD, FAILURE_THRESHOLD, FAILURE_WINDOW.toSeconds());
+        } catch (Exception exception) {
+            log.warn("Redis login failure snapshot failed, username={}, clientIpHash={}, reason={}, fallback=memory",
+                    username, hashClientIp(clientIp), exception.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /**
+     * 在 Redis 中记录一次登录失败。
+     *
+     * <p>使用 INCR 保证多实例下同一 username + clientIp 的失败次数原子递增；
+     * 第一次写入时设置 TTL，窗口过期后 Redis 自动删除计数。</p>
+     */
+    private LoginRiskSnapshot recordFailureInRedis(String username, String clientIp) {
+        if (!redisEnabled()) {
+            return null;
+        }
+        String key = failureKey(buildRiskKey(username, clientIp));
+        try {
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1L) {
+                redisTemplate.expire(key, FAILURE_WINDOW);
+            }
+            int failureCount = count == null ? 1 : count.intValue();
+            if (failureCount >= FAILURE_THRESHOLD) {
+                log.warn("Login captcha required, username={}, clientIpHash={}, failureCount={}, windowSeconds={}, cache=redis",
+                        username, hashClientIp(clientIp), failureCount, FAILURE_WINDOW.toSeconds());
+            } else {
+                log.warn("Login failure counted, username={}, clientIpHash={}, failureCount={}, threshold={}, cache=redis",
+                        username, hashClientIp(clientIp), failureCount, FAILURE_THRESHOLD);
+            }
+            return new LoginRiskSnapshot(failureCount, failureCount >= FAILURE_THRESHOLD, FAILURE_THRESHOLD, FAILURE_WINDOW.toSeconds());
+        } catch (Exception exception) {
+            log.warn("Redis login failure count failed, username={}, clientIpHash={}, reason={}, fallback=memory",
+                    username, hashClientIp(clientIp), exception.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /**
+     * 把拼图 challenge 写入 Redis hash。
+     *
+     * <p>真实答案 targetX 仍然只保存在服务端状态里，不进入响应或日志。Redis hash 只设置短 TTL，
+     * 避免 challenge 长期残留。</p>
+     */
+    private boolean storeChallengeInRedis(String challengeId, SliderChallenge challenge) {
+        if (!redisEnabled()) {
+            return false;
+        }
+        try {
+            String key = challengeKey(challengeId);
+            redisTemplate.opsForHash().put(key, "riskKey", challenge.riskKey());
+            redisTemplate.opsForHash().put(key, "targetX", Integer.toString(challenge.targetX()));
+            redisTemplate.opsForHash().put(key, "targetY", Integer.toString(challenge.targetY()));
+            redisTemplate.opsForHash().put(key, "createdAt", Long.toString(challenge.createdAt().toEpochMilli()));
+            redisTemplate.opsForHash().put(key, "expiresAt", Long.toString(challenge.expiresAt().toEpochMilli()));
+            redisTemplate.opsForHash().put(key, "failureCount", "0");
+            redisTemplate.expire(key, CAPTCHA_TTL);
+            log.debug("Puzzle captcha challenge stored, challengeId={}, ttlSeconds={}, cache=redis",
+                    challengeId, CAPTCHA_TTL.toSeconds());
+            return true;
+        } catch (Exception exception) {
+            log.warn("Redis captcha challenge write failed, challengeId={}, reason={}, fallback=memory",
+                    challengeId, exception.getClass().getSimpleName());
+            return false;
+        }
+    }
+
+    /**
+     * 从 Redis 读取 challenge。
+     */
+    private LoadedChallenge loadChallengeFromRedis(String challengeId) {
+        if (!redisEnabled()) {
+            return null;
+        }
+        try {
+            String key = challengeKey(challengeId);
+            Map<Object, Object> values = redisTemplate.opsForHash().entries(key);
+            if (values.isEmpty()) {
+                return null;
+            }
+            SliderChallenge challenge = new SliderChallenge(
+                    stringValue(values, "riskKey"),
+                    integerValue(values, "targetX"),
+                    integerValue(values, "targetY"),
+                    Instant.ofEpochMilli(longValue(values, "createdAt")),
+                    Instant.ofEpochMilli(longValue(values, "expiresAt")),
+                    integerValue(values, "failureCount")
+            );
+            log.debug("Puzzle captcha challenge loaded, challengeId={}, cache=redis", challengeId);
+            return new LoadedChallenge(challenge);
+        } catch (Exception exception) {
+            log.warn("Redis captcha challenge read failed, challengeId={}, reason={}, fallback=memory",
+                    challengeId, exception.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    private int addRedisChallengeFailure(String challengeId, SliderChallenge challenge) {
+        if (!redisEnabled()) {
+            return challenge.addFailureAndCount();
+        }
+        try {
+            Long count = redisTemplate.opsForHash().increment(challengeKey(challengeId), "failureCount", 1);
+            return count == null ? challenge.addFailureAndCount() : count.intValue();
+        } catch (Exception exception) {
+            log.warn("Redis captcha challenge failure update failed, challengeId={}, reason={}, fallback=memory",
+                    challengeId, exception.getClass().getSimpleName());
+            return challenge.addFailureAndCount();
+        }
+    }
+
+    private void deleteChallengeFromRedis(String challengeId) {
+        if (!redisEnabled()) {
+            return;
+        }
+        try {
+            redisTemplate.delete(challengeKey(challengeId));
+        } catch (Exception exception) {
+            log.warn("Redis captcha challenge delete failed, challengeId={}, reason={}",
+                    challengeId, exception.getClass().getSimpleName());
+        }
+    }
+
+    /**
+     * 把验证码通过后的短 TTL token 写入 Redis。
+     */
+    private boolean storeVerifiedTokenInRedis(String captchaToken, String riskKey) {
+        if (!redisEnabled()) {
+            return false;
+        }
+        try {
+            redisTemplate.opsForValue().set(verifiedTokenKey(captchaToken), riskKey, CAPTCHA_TTL);
+            log.debug("Login captcha token stored, tokenHash={}, ttlSeconds={}, cache=redis",
+                    hashToken(captchaToken), CAPTCHA_TTL.toSeconds());
+            return true;
+        } catch (Exception exception) {
+            log.warn("Redis captcha token write failed, tokenHash={}, reason={}, fallback=memory",
+                    hashToken(captchaToken), exception.getClass().getSimpleName());
+            return false;
+        }
+    }
+
+    /**
+     * 从 Redis 原子消费一次性 captchaToken。
+     */
+    private Boolean consumeVerifiedTokenFromRedis(String username, String clientIp, String captchaToken) {
+        if (!redisEnabled()) {
+            return null;
+        }
+        String key = verifiedTokenKey(captchaToken.trim());
+        String expectedRiskKey = buildRiskKey(username, clientIp);
+        try {
+            String riskKey = redisTemplate.opsForValue().get(key);
+            redisTemplate.delete(key);
+            if (riskKey == null || riskKey.isBlank()) {
+                log.warn("Login captcha token rejected, username={}, clientIpHash={}, reason=missing_or_expired, cache=redis",
+                        username, hashClientIp(clientIp));
+                return false;
+            }
+            if (!expectedRiskKey.equals(riskKey)) {
+                log.warn("Login captcha token rejected, username={}, clientIpHash={}, reason=risk_key_mismatch, cache=redis",
+                        username, hashClientIp(clientIp));
+                return false;
+            }
+            log.info("Login captcha token consumed, username={}, clientIpHash={}, cache=redis", username, hashClientIp(clientIp));
+            return true;
+        } catch (Exception exception) {
+            log.warn("Redis captcha token consume failed, username={}, clientIpHash={}, reason={}, fallback=memory",
+                    username, hashClientIp(clientIp), exception.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /**
+     * 清理 Redis 中当前风险主体的失败计数。
+     *
+     * <p>challenge 和 token 的 key 不按 riskKey 建索引，成功登录后依赖短 TTL 自动过期；
+     * 这样可以避免为了反向索引维护更多 Redis 集合。失败计数必须立即删除，保证登录成功后恢复低风险状态。</p>
+     */
+    private void clearRedisLoginState(String riskKey) {
+        if (!redisEnabled()) {
+            return;
+        }
+        try {
+            redisTemplate.delete(failureKey(riskKey));
+            log.debug("Login failure state cleared, riskKeyHash={}, cache=redis", hashToken(riskKey));
+        } catch (Exception exception) {
+            log.warn("Redis login failure clear failed, riskKeyHash={}, reason={}",
+                    hashToken(riskKey), exception.getClass().getSimpleName());
+        }
     }
 
     /**
@@ -556,6 +808,42 @@ public class LoginRiskService {
         return username + "|" + (clientIp == null || clientIp.isBlank() ? "unknown" : clientIp.trim());
     }
 
+    private boolean redisEnabled() {
+        return environment.getProperty("java-demo.redis.enabled", Boolean.class, true);
+    }
+
+    private String redisKeyPrefix() {
+        return environment.getProperty("java-demo.redis.key-prefix", "java-demo:v0_7");
+    }
+
+    private String failureKey(String riskKey) {
+        return redisKeyPrefix() + ":login:fail:" + hashToken(riskKey);
+    }
+
+    private String challengeKey(String challengeId) {
+        return redisKeyPrefix() + ":captcha:challenge:" + challengeId;
+    }
+
+    private String verifiedTokenKey(String captchaToken) {
+        return redisKeyPrefix() + ":captcha:token:" + hashToken(captchaToken);
+    }
+
+    private String stringValue(Map<Object, Object> values, String field) {
+        Object value = values.get(field);
+        if (value == null) {
+            throw new IllegalStateException("Redis captcha challenge missing field: " + field);
+        }
+        return value.toString();
+    }
+
+    private int integerValue(Map<Object, Object> values, String field) {
+        return Integer.parseInt(stringValue(values, field));
+    }
+
+    private long longValue(Map<Object, Object> values, String field) {
+        return Long.parseLong(stringValue(values, field));
+    }
+
     /** 懒清理过期 challenge 和 token，避免为 MVP 引入后台定时任务。 */
     private void cleanupExpiredCaptchaState() {
         Instant now = Instant.now();
@@ -583,16 +871,26 @@ public class LoginRiskService {
      */
     private String hashClientIp(String clientIp) {
         String value = clientIp == null || clientIp.isBlank() ? "unknown" : clientIp.trim();
+        return hashToken(value).substring(0, 8);
+    }
+
+    /**
+     * 对 Redis key 的敏感片段做 SHA-256 摘要。
+     *
+     * <p>captchaToken 和 riskKey 都不应该原样出现在日志或 Redis key 后缀里，因此统一使用摘要。</p>
+     */
+    private String hashToken(String value) {
+        String normalized = value == null || value.isBlank() ? "blank" : value.trim();
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashed = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            byte[] hashed = digest.digest(normalized.getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder();
-            for (int i = 0; i < 4; i++) {
-                builder.append(String.format("%02x", hashed[i]));
+            for (byte current : hashed) {
+                builder.append(String.format("%02x", current));
             }
             return builder.toString();
         } catch (NoSuchAlgorithmException exception) {
-            return "sha256-unavailable";
+            return Integer.toHexString(normalized.hashCode());
         }
     }
 
@@ -656,11 +954,16 @@ public class LoginRiskService {
         private int failureCount;
 
         SliderChallenge(String riskKey, int targetX, int targetY, Instant createdAt, Instant expiresAt) {
+            this(riskKey, targetX, targetY, createdAt, expiresAt, 0);
+        }
+
+        SliderChallenge(String riskKey, int targetX, int targetY, Instant createdAt, Instant expiresAt, int failureCount) {
             this.riskKey = riskKey;
             this.targetX = targetX;
             this.targetY = targetY;
             this.createdAt = createdAt;
             this.expiresAt = expiresAt;
+            this.failureCount = failureCount;
         }
 
         String riskKey() {
@@ -679,6 +982,10 @@ public class LoginRiskService {
             return createdAt;
         }
 
+        Instant expiresAt() {
+            return expiresAt;
+        }
+
         boolean isExpired(Instant now) {
             return !expiresAt.isAfter(now);
         }
@@ -694,6 +1001,10 @@ public class LoginRiskService {
         boolean isExpired(Instant now) {
             return !expiresAt.isAfter(now);
         }
+    }
+
+    /** Redis 中读取出的 challenge 包装对象，后续可扩展来源标记或调试字段。 */
+    private record LoadedChallenge(SliderChallenge challenge) {
     }
 
     /** 后端生成的两张验证码图片 data URL。 */

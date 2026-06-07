@@ -1,0 +1,30 @@
+services:
+  redis:
+    # v0.7 uses a single Redis node first; Redis Cluster is documented in README.md in this directory.
+    image: redis:7.2.5-alpine
+    container_name: java-demo-redis-1
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    ports:
+      # Expose Redis to local Spring Boot processes.
+      - "${JAVA_DEMO_REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      # Project-scoped volume, so Redis state does not mix with other learning projects.
+      - java-demo-redis-data:/data
+    networks:
+      - java-demo-redis-net
+    healthcheck:
+      # The alpine image includes redis-cli; PING=PONG is enough for local milestone validation.
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  java-demo-redis-data:
+    name: java-demo-redis-data
+
+networks:
+  java-demo-redis-net:
+    name: java-demo-redis-net

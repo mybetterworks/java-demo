@@ -1,10 +1,10 @@
 # Project Progress
 
-最后更新：2026-06-05，Asia/Shanghai。
+最后更新：2026-06-06，Asia/Shanghai。
 
 ## 当前状态
 
-`v0.6.2 Dubbo RPC User Validation` 已完成。当前已新增共享契约模块 `backend/rpc-api`，并把 `task-service -> java-demo-app` 的负责人用户校验主路径从 OpenFeign 切换为 Dubbo RPC；`task-service -> notification-service` 的通知创建链路继续保留 OpenFeign。业务层仍保留 `UserServiceClient` 和 `NotificationServiceClient` 包装层，分别集中处理 Dubbo attachment `requestId` 透传、Feign 请求头透传、异常转换和关键日志。真实 Gateway 联调已确认 `task-service` 健康检查返回 `serviceCallMode=mixed-dubbo-feign`，`java-demo-app` 返回 `userValidationProviderMode=dubbo`，同时 `v0.5.5` 拼图验证码、`v0.6` Nacos 注册发现和 `v0.6.1` Feign 通知链路均无回归。
+`v0.7 Redis Cache And Rate Limit` 已完成。当前已新增 Redis 单节点 Docker Compose，`java-demo-app`、`task-service` 和 `notification-service` 均已接入 Redis 客户端、缓存开关、TTL 配置和基础限流；登录失败计数、拼图验证码 challenge、一次性 captchaToken、用户摘要、任务查询、任务详情和通知未读数均已具备 Redis-first + memory fallback 策略。真实 Gateway 联调已确认 `redisEnabled=true`、`cacheEnabled=true`、`rateLimitEnabled=true`，并继续保持 `v0.5.5` 拼图验证码、`v0.6` Nacos 注册发现和 `v0.6.2` Dubbo + Feign 混合调用链路无回归。
 
 `v0.5 Gateway JWT` 已实现并完成 Spring Cloud Gateway 模块、网关 JWT 校验过滤器、React/Vue 代理切换、Maven reactor package、前端构建回归、Gateway 真实接口联调和文档更新。
 
@@ -22,7 +22,9 @@
 
 Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` 的编码限制保持 ASCII-only，中文说明继续写在 README、milestone 或 `docs/PROGRESS.md`；导入脚本也会主动拒绝非 ASCII 内容。
 
-`v0.6.2 Dubbo RPC User Validation` 已完成。最终实现选择共享契约接口 `UserRpcService#getUserSummary(Long userId)`，provider 通过返回 `null` 表达“用户不存在或已逻辑删除”，consumer 再映射为 task-service 自己的 `400` 业务错误；Dubbo 注册仍使用 Nacos，但与 Spring Cloud 发现分组隔离到 `JAVA_DEMO_DUBBO`。测试环境通过 `@Profile("!test")` 避开真实 Dubbo 引用配置，并使用 `@MockBean(name = "userRpcServiceBridge")` 保持自动化测试稳定。下一步进入 `v0.7 Redis Cache And Rate Limit`。
+`v0.6.2 Dubbo RPC User Validation` 已完成。最终实现选择共享契约接口 `UserRpcService#getUserSummary(Long userId)`，provider 通过返回 `null` 表达“用户不存在或已逻辑删除”，consumer 再映射为 task-service 自己的 `400` 业务错误；Dubbo 注册仍使用 Nacos，但与 Spring Cloud 发现分组隔离到 `JAVA_DEMO_DUBBO`。测试环境通过 `@Profile("!test")` 避开真实 Dubbo 引用配置，并使用 `@MockBean(name = "userRpcServiceBridge")` 保持自动化测试稳定。
+
+`v0.7 Redis Cache And Rate Limit` 已完成。用户摘要缓存使用跨服务统一 key `java-demo:v0_7:user:summary:{userId}`，任务列表使用版本 key `java-demo:v0_7:task:list:version` 避免扫描删除大量列表 key，通知未读数使用 `java-demo:v0_7:notification:unread:{userId}`；登录、用户查询、任务查询和通知查询均已覆盖 Redis 计数限流。下一步进入 `v0.8 WebSocket`。
 
 已完成：
 
@@ -113,13 +115,18 @@ Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` �
 | v0.6.2 milestone 文档 | 已更新 `docs/milestones/v0.6.2-dubbo-rpc-user-validation.md`，记录共享契约、Dubbo Provider/Consumer、验证结果与下一步 |
 | 共享 RPC 契约模块 | 已新增 `backend/rpc-api`，提供 `DubboAttachmentConstants`、`UserRpcService` 和 `UserSummaryRpcResponse` |
 | v0.6.2 Dubbo 用户校验实现 | 已完成 `task-service -> java-demo-app` Dubbo 用户校验、`task-service -> notification-service` Feign 保留、requestId 附件透传、健康检查与启动日志增强 |
+| v0.7 Redis 单节点基础设施 | 已新增 `infra/docker-compose/redis`，容器 `java-demo-redis-1`、镜像 `redis:7.2.5-alpine`、volume、network、healthcheck 和端口覆盖说明均已记录 |
+| v0.7 Redis 缓存实现 | 已完成用户摘要、任务列表/详情、通知未读数缓存，以及用户/任务/通知变更后的失效策略 |
+| v0.7 登录风险状态迁移 | 已将登录失败计数、拼图验证码 challenge 和一次性 captchaToken 迁移为 Redis TTL 存储，并保留 Redis 不可用时的内存降级 |
+| v0.7 接口限流实现 | 已覆盖登录、用户查询、任务查询和通知查询接口，支持 Redis 计数和内存降级 |
+| v0.7 验证与文档 | 已完成 Maven test/package、React/Vue 构建、Docker Redis/Nacos/MySQL + Gateway 真实联调，并更新 README、PROGRESS、milestone 与 notebook |
 
 尚未完成：
 
 | 项目 | 状态 |
 |---|---|
 | Git milestone commit、tag 和 push | 必须由用户手动执行，Codex 不自动提交、不自动打 tag、不自动推送 |
-| v0.7 Redis 缓存与限流 | 未开始，待在 `v0.6.2` 稳定后实施 |
+| v0.8 WebSocket | 未开始，待在 `v0.7` 稳定后实施 |
 
 ## 环境观察
 
@@ -129,7 +136,7 @@ Nacos 发布配置已按 Windows 上 `spring-alibaba-nacos-config 2023.0.3.2` �
 | Maven | 目标版本 Maven `3.9.16`，路径 `D:\software\apache-maven-3.9.16` |
 | Maven 本地仓库 | `D:\software\maven_download` |
 | Node.js | 目标版本 Node.js `22.x`，用于 React TypeScript 和 Vue JavaScript 前端开发 |
-| Docker | Docker Desktop 当前可用，MySQL `8.4` 单节点容器 `java-demo-mysql` 为 `healthy`；`java-demo-nacos-1` 也已处于 `healthy`，`v0.6` 已使用 Docker MySQL + Docker Nacos 完成真实 Gateway 业务联调 |
+| Docker | Docker Desktop 当前可用，MySQL `8.4` 单节点容器 `java-demo-mysql` 为 `healthy`；`java-demo-nacos-1` 和 `java-demo-redis-1` 也已处于 `healthy`，`v0.7` 已使用 Docker MySQL + Docker Nacos + Docker Redis 完成真实 Gateway 业务联调 |
 | Git | 已初始化 Git 仓库，用户已提交 GitHub；后续提交、tag 和推送由用户手动执行 |
 | 本机占用/保留端口 | `5112-5311`、`7991-8090`、`8146-8245`；当前项目端口规划已避开 |
 | Gateway | Spring Cloud Gateway `2023.0.3` 已接入，默认端口 `8092` |
@@ -605,18 +612,41 @@ v0.4 Vue 项目结构记录：
 | Windows 编码约束 | 已继续确认 Nacos 待发布 YAML 必须保持 ASCII-only，Dubbo 注册分组仅写入配置，不写入中文注释 |
 | 临时进程清理 | 真实联调结束后已停止本次临时启动的 Java 进程，未保留额外监听端口 |
 
+## v0.7 验证记录
+
+自动化、构建和联调验证：
+
+| 验证项 | 结果 |
+|---|---|
+| Redis 容器 | 已新增 `infra/docker-compose/redis/docker-compose.yml` 和说明文档；默认宿主端口为 `6379`。本机验证时 Windows 拒绝绑定 `6379`，因此通过 `JAVA_DEMO_REDIS_HOST_PORT=16380` 启动项目独立容器 `java-demo-redis-1`，`docker exec java-demo-redis-1 redis-cli ping` 返回 `PONG` |
+| Nacos 配置导入 | 已执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infra\docker-compose\nacos\import-configs.ps1`，`java-demo-common.yml`、`java-demo-app.yml`、`java-demo-gateway.yml`、`task-service.yml`、`notification-service.yml` 均导入成功 |
+| Maven test | 首次 `mvn test` 在 124 秒处超时但测试报告已显示通过；清理残留 Maven/Surefire 进程后，已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd test` 并通过 |
+| Maven package | 已执行 `D:\software\apache-maven-3.9.16\bin\mvn.cmd -DskipTests package`，通过；已生成四个 `0.7.0-SNAPSHOT` 可执行 jar 和一个 `rpc-api` 契约 jar |
+| React 构建 | 已在 `frontend-react` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning |
+| Vue 构建 | 已在 `frontend-vue` 执行 `npm.cmd run build`，通过；保留既有 Vite chunk size warning 和 VueUse 注释提示 |
+| 真实运行态端口 | 由于本机 IntelliJ 已运行默认 `8091-8094` 服务，真实联调使用临时端口：`java-demo-app:8252`、Gateway `8253`、`task-service:8254`、`notification-service:8255`、Dubbo provider `20891`、Redis host port `16380` |
+| Nacos/Dubbo 隔离 | 本次真实联调使用 Spring Cloud discovery group `JAVA_DEMO_V07_CHECK` 和 Dubbo registry group `JAVA_DEMO_DUBBO_V07_CHECK`，避免 Gateway、Feign 或 Dubbo 串到 IntelliJ 中已有旧进程 |
+| 健康检查 | 直连和经 Gateway 的 app/task/notification health 均返回 `configSource=nacos`、`configLabel=v0.7-redis-real-check`、`redisEnabled=true`、`cacheEnabled=true`、`rateLimitEnabled=true`；task health 继续返回 `serviceCallMode=mixed-dubbo-feign` |
+| Nacos 注册发现 | Nacos `instance/list` 在 `JAVA_DEMO_V07_CHECK` 分组可见 `java-demo-app:8252`、`task-service:8254`、`notification-service:8255` 健康实例 |
+| `v0.5.5` 拼图验证码回归 | 经 Gateway 创建 challenge，响应不包含 `targetX`；使用原始背景图与缺口背景图做像素差分求得 `sliderX=100`，verify 成功并生成 Redis captcha token TTL key |
+| `v0.6.2` Dubbo + Feign 回归 | 任务创建前删除共享用户摘要缓存，确认 `task-service` 日志出现 `Calling user service via Dubbo`，`java-demo-app` 日志出现 `Received Dubbo user validation request`，随后 `task-service` 日志出现 `Calling notification service via OpenFeign` |
+| Redis key 验证 | 联调后 Redis 中可见 `java-demo:v0_7:user:summary:34`、`java-demo:v0_7:task:list:version`、`java-demo:v0_7:task:my:v1:34:1:10:ALL`、`java-demo:v0_7:task:detail:13`、`java-demo:v0_7:notification:unread:34`、`java-demo:v0_7:captcha:token:*`、`java-demo:v0_7:login:fail:*` 和 `java-demo:v0_7:rate:*` |
+| 限流验证 | 临时设置用户/任务/通知查询 limit 为 `2`，第三次 `GET /api/users/me`、`GET /api/tasks/my`、`GET /api/notifications/my/unread-count` 均返回 `429`；登录接口用独立 `X-Forwarded-For` 验证第三次错误登录返回 `429` |
+| 日志验证 | app/task/notification 启动摘要均包含 Redis 地址、缓存 TTL 和限流启用状态；限流触发日志以 WARN 输出，缓存命中/未命中默认 DEBUG，可通过业务包日志级别开启观察 |
+| 临时进程清理 | 真实联调结束后已停止本次临时启动的 `8252-8255` Java 进程；Docker MySQL、Nacos、Redis 容器保留运行，便于继续手动复查 |
+
 ## 当前 milestone
 
 当前已完成：
 
 ```text
-docs/milestones/v0.6.2-dubbo-rpc-user-validation.md
+docs/milestones/v0.7-redis-cache-rate-limit.md
 ```
 
 下一步尚未开始：
 
 ```text
-docs/milestones/v0.7-redis-cache-rate-limit.md
+docs/milestones/v0.8-websocket.md
 ```
 
 ## 端口调整记录
@@ -646,6 +676,7 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | 后续拆分业务服务 | `8095-8145` 或 `8246+` | 后续按需分配 |
 | 本地 Nginx 非标准 HTTP/HTTPS | `8250` / `8251` | 后续 `v1.6` 如不使用 `80` / `443` 时优先使用 |
 | MySQL Docker | `3306` | 已配置，未落入占用范围 |
+| Redis Docker | `6379` | 已配置；本机如拒绝绑定可用 `JAVA_DEMO_REDIS_HOST_PORT` 覆盖宿主机端口，并同步设置 `JAVA_DEMO_REDIS_PORT` |
 
 端口调整验证：
 
@@ -684,6 +715,7 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | `v0.6` | 接入 Nacos，进入服务注册和配置中心阶段 |
 | `v0.6.1` | 使用 OpenFeign 改造 `task-service` 到用户服务和通知服务的普通同步 HTTP 调用 |
 | `v0.6.2` | 使用 Dubbo RPC 改造 `task-service -> java-demo-app` 用户校验链路，通知链路继续保留 Feign |
+| `v0.7` | 接入 Redis，覆盖登录风险状态、用户摘要、任务查询、通知未读数缓存和接口限流 |
 | `v1.5` 前后 | 基于已有用户、任务、通知服务验证 Seata 和链路追踪 |
 
 部署路线：
@@ -697,17 +729,17 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 
 ## 下一步建议
 
-1. 如需保存当前 `v0.6.2` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
-2. 下一次开发从 `docs/milestones/v0.7-redis-cache-rate-limit.md` 开始，为登录失败计数、拼图 challenge、验证码 token、用户校验、任务列表和通知未读数引入 Redis 缓存与 TTL。
-3. 继续保持 `task-service -> java-demo-app` 的 Dubbo 用户校验主路径，以及 `task-service -> notification-service` 的 Feign 通知主路径，不在同一版本一次性改动全部内部调用。
-4. 继续保持 `v0.5.5` 拼图验证码链路回归，确认后续 Redis 改造不会破坏登录安全流程。
-5. 继续保持 `v0.6` 的 Nacos 注册发现、`JAVA_DEMO_DUBBO` Dubbo 独立注册分组和 `requestId` 跨 Dubbo/Feign 链路串联能力。
-6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL 和后续 Nacos、Redis、RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
+1. 如需保存当前 `v0.7` 稳定点，请用户手动提交 Git commit、手动打 tag 并手动推送 GitHub；Codex 不自动执行这些 Git 写操作。
+2. 下一次开发从 `docs/milestones/v0.8-websocket.md` 开始，基于当前通知业务增加 WebSocket 实时通知能力。
+3. 继续保持 `task-service -> java-demo-app` 的 Dubbo 用户校验主路径，以及 `task-service -> notification-service` 的 Feign 通知主路径，不在 WebSocket 版本顺手改动全部内部调用。
+4. 继续保持 `v0.5.5` 拼图验证码链路、`v0.6` Nacos 注册发现、`v0.6.2` Dubbo + Feign 混合调用和 `v0.7` Redis 缓存/限流回归。
+5. 继续保持 `JAVA_DEMO_DUBBO` Dubbo 独立注册分组、Redis key 前缀和 `requestId` 跨 Dubbo/Feign 链路串联能力。
+6. 保持当前部署路线：后端、网关、任务服务、通知服务和前端先用本地进程；MySQL、Nacos、Redis 和后续 RabbitMQ、Kafka、Elasticsearch、Seata、Jenkins 等服务使用 Docker Desktop 独立容器。
 
 ## 后续对 Codex 的推荐指令
 
 ```text
-请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.7-redis-cache-rate-limit.md。当前 `v0.6.2 Dubbo RPC User Validation` 已完成，请在保留 Nacos 服务发现、Gateway 路由、`task-service -> java-demo-app` Dubbo 用户校验主路径和 `task-service -> notification-service` Feign 通知链路的前提下，引入 Redis 缓存与限流；优先覆盖登录失败计数、拼图 challenge、验证码 token、用户校验、任务列表和通知未读数。完成后运行后端测试、前端构建、真实 Gateway 联调，并继续确认 `v0.5.5` 的固定背景图随机拼图验证码、`v0.6` 的注册发现链路和 `v0.6.2` 的 Dubbo + Feign 混合主路径仍然可用，然后更新 README 和 docs/PROGRESS.md。
+请读取 README.md、docs/ROADMAP.md、docs/DEVELOPMENT_RULES.md、docs/PROGRESS.md 和 docs/milestones/v0.8-websocket.md。当前 `v0.7 Redis Cache And Rate Limit` 已完成，请在保留 Nacos 服务发现、Gateway 路由、Redis 缓存/限流、`task-service -> java-demo-app` Dubbo 用户校验主路径和 `task-service -> notification-service` Feign 通知链路的前提下，引入 WebSocket 实时通知能力；优先让任务创建后的通知能实时推送给当前用户，并同步补齐 React/Vue 前端提示或通知中心刷新。完成后运行后端测试、前端构建、真实 Gateway 联调，并继续确认 `v0.5.5` 的固定背景图随机拼图验证码、`v0.6` 的注册发现链路、`v0.6.2` 的 Dubbo + Feign 混合主路径和 `v0.7` 的 Redis 缓存/限流能力仍然可用，然后更新 README、docs/PROGRESS.md 和当前 milestone 文档。
 ```
 
 ## 完成记录
@@ -727,7 +759,7 @@ docs/milestones/v0.7-redis-cache-rate-limit.md
 | `v0.6` | 已完成 | 2026-06-03 | Nacos 服务注册发现和配置中心；已完成单节点 Docker Compose、配置导入、四服务注册发现、Gateway `lb://` 路由、`task-service` 服务名调用、Maven test/package、前端构建和真实 Gateway 业务联调 |
 | `v0.6.1` | 已完成 | 2026-06-04 | OpenFeign 服务调用；已完成 `task-service` Feign 客户端、Nacos 服务名配置、Maven test/package、React 构建、Vue 备用输出目录构建和真实 Gateway 联调 |
 | `v0.6.2` | 已完成 | 2026-06-05 | Dubbo RPC 用户校验；已新增 `backend/rpc-api`、共享 `UserRpcService` 契约、Dubbo requestId 附件透传、Maven test/package、React 构建、Vue 备用输出目录构建和真实 Gateway 联调 |
-| `v0.7` | 未开始 | - | Redis 缓存、未读数缓存与接口限流 |
+| `v0.7` | 已完成 | 2026-06-06 | Redis 缓存与限流；已新增 Redis 单节点 Compose、用户/任务/通知缓存、登录风险 Redis TTL、四类接口限流、Maven test/package、React/Vue 构建和真实 Gateway 联调 |
 | `v0.8` | 未开始 | - | WebSocket |
 | `v0.9` | 未开始 | - | MinIO |
 | `v1.0` | 未开始 | - | RabbitMQ 与 Kafka |
